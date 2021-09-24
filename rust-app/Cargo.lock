@@ -191,6 +191,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstringify"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd769563b4ea2953e2825c9e6b7470a5f55f67e0be00030bf3e390a2a6071f64"
+
+[[package]]
 name = "bumpalo"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -266,6 +272,16 @@ name = "dtoa"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56899898ce76aaf4a0f24d914c97ea6ed976d42fec6ad33fcbb0a1103e07b2b0"
+
+[[package]]
+name = "error-code"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5115567ac25674e0043e472be13d14e537f37ea8aa4bdc4aef0c89add1db1ff"
+dependencies = [
+ "libc",
+ "str-buf",
+]
 
 [[package]]
 name = "event-listener"
@@ -605,13 +621,24 @@ version = "0.7.0"
 source = "git+https://github.com/zondax/ledger-rs.git#f2d484927c59840637b9870868bba9078fbf3834"
 
 [[package]]
-name = "ledger-parser-combinators"
+name = "ledger-log"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=working-in-speculos#281b4877f6172a53506767112c3afac6eb470cf5"
 dependencies = [
  "arrayvec",
+ "nanos_sdk",
+]
+
+[[package]]
+name = "ledger-parser-combinators"
+version = "0.1.0"
+source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=json-parser#fc3053f943c21033c0397bbeb72f8e3338195137"
+dependencies = [
+ "arrayvec",
+ "bstringify",
  "generic-array",
  "log",
+ "nanos_sdk",
+ "paste",
 ]
 
 [[package]]
@@ -732,6 +759,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
+name = "os-sync"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17f40da6806492f0fd8753e6cf83e0485919f1045469d847e7db0700ef36441c"
+dependencies = [
+ "error-code",
+ "libc",
+]
+
+[[package]]
 name = "parking"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -761,6 +798,12 @@ dependencies = [
  "smallvec",
  "winapi",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
 
 [[package]]
 name = "percent-encoding"
@@ -907,11 +950,14 @@ dependencies = [
  "futures",
  "hex",
  "hyper",
+ "lazy_static",
  "ledger-apdu",
+ "ledger-log",
  "ledger-parser-combinators",
  "log",
  "nanos_sdk",
  "nanos_ui",
+ "os-sync",
  "speculos-api",
  "testmacro",
  "tokio",
@@ -1031,6 +1077,12 @@ dependencies = [
  "serde_yaml",
  "url",
 ]
+
+[[package]]
+name = "str-buf"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d44a3643b4ff9caf57abcee9c2c621d6c03d9135e0d8b589bd9afb5992cb176a"
 
 [[package]]
 name = "syn"

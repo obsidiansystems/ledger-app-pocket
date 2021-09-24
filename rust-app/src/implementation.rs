@@ -2,8 +2,13 @@ use arrayvec::{ArrayVec, ArrayString};
 use core::fmt::Write;
 use crate::crypto_helpers::{get_pubkey, get_private_key, detecdsa_sign, get_pkh, Hasher};
 use crate::interface::*;
-use ledger_parser_combinators::interp_parser::{InterpParser, DefaultInterp, SubInterp, ObserveBytes, DropInterp, Action};
+use ledger_parser_combinators::interp_parser::{InterpParser, DefaultInterp, SubInterp, ObserveLengthedBytes, DropInterp, Action};
+use ledger_parser_combinators::json::Json;
 use nanos_ui::ui;
+
+use ledger_parser_combinators::json::*;
+use ledger_parser_combinators::define_json_struct_interp;
+use ledger_parser_combinators::json_interp::*;
 
 pub type GetAddressImplT = Action<SubInterp<DefaultInterp>, fn(&ArrayVec<u32, 10>) -> Option<ArrayVec<u8, 260>>>;
 
@@ -32,22 +37,54 @@ pub const GET_ADDRESS_IMPL : GetAddressImplT
       }
   );
 
+
+
 pub type SignImplT = Action<
-      (  Action<
-           ObserveBytes<Hasher, fn(&mut Hasher, &[u8]), SubInterp<DropInterp>>,
-           fn(&(Hasher, ArrayVec<(), { usize::MAX }>)) -> Option<[u8; 32]> >
+   (  Action<
+           ObserveLengthedBytes<Hasher, fn(&mut Hasher, &[u8]), 
+             Json<KadenaCmd<
+               DropInterp,
+               DropInterp,
+               SubInterp<Signer<DropInterp,
+                      DropInterp,
+                      DropInterp,
+                      SubInterp<Action<JsonStringAccumulate<32>, fn(&ArrayVec<u8, 32>) -> Option<()>>>>>,
+               DropInterp,
+               DropInterp>>>,
+           fn(&(Result<KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>, ()>, Hasher)) -> Option<[u8; 32]> >
       ,  Action<SubInterp<DefaultInterp>,
             fn(&ArrayVec<u32,10>) -> Option<nanos_sdk::bindings::cx_ecfp_private_key_t> >),
        fn(&([u8; 32], nanos_sdk::bindings::cx_ecfp_private_key_t)) -> Option<ArrayVec<u8, 260>>>;
 
 pub const SIGN_IMPL : SignImplT = Action(
-            (
+    (
             Action(
                 // Calculate the hash of the transaction
-                ObserveBytes( Hasher::new, Hasher::update, SubInterp(DropInterp)),
+                ObserveLengthedBytes( Hasher::new, Hasher::update, 
+                    Json(KadenaCmd {
+                        nonce: DropInterp,
+                        meta: DropInterp,
+                        signers: SubInterp(Signer {
+                           scheme: DropInterp,
+                           pub_key: DropInterp,
+                           addr: DropInterp,
+                           caps: SubInterp(Action(JsonStringAccumulate, |cap_str : &ArrayVec<u8, 32>| {
+                              let mut pmpt = ArrayString::<128>::new();
+                              //pmpt.extend_from_slice(cap_str);
+                              //write!(pmpt, "{}", cap_str).ok()?;
+                              if ! ui::MessageValidator::new(&["Transaction May", &pmpt], &[], &[]).ask() {
+                                  None
+                              } else {
+                                  Some(())
+                              }
+                           }))
+                        }),
+                        payload: DropInterp,
+                        network_id: DropInterp
+                         })),
 
                 // Ask the user if they accept the transaction body's hash
-                | ( hash, _ ) : &( Hasher, ArrayVec<(), { usize::MAX } > ) | {
+                | ( _, hash) : &( _, Hasher ) | {
 
                     let the_hash = hash.clone().finalize();
 
@@ -97,6 +134,28 @@ pub enum ParsersState {
     GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::State),
     SignState(<SignImplT as InterpParser<SignParameters>>::State)
 }
+
+define_json_struct_interp!{ Meta 16 {
+    chainId: JsonString,
+    sender: JsonString,
+    gasLimit: JsonNumber,
+    gasPrice: JsonNumber,
+    ttl: JsonNumber,
+    creationTime: JsonNumber
+}}
+define_json_struct_interp!{ Signer 16 {
+    scheme: JsonString,
+    pubKey: JsonString,
+    addr: JsonString,
+    caps: JsonArray<JsonString>
+}}
+define_json_struct_interp!{ KadenaCmd 16 {
+  nonce: JsonString,
+  meta: MetaSchema,
+  signers: JsonArray<SignerSchema>,
+  payload: JsonAny,
+  networkId: JsonAny
+}}
 
 pub fn get_get_address_state(s : &mut ParsersState) -> &mut <GetAddressImplT as InterpParser<Bip32Key>>::State {
     match s {

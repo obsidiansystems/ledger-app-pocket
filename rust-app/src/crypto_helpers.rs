@@ -3,6 +3,7 @@ use nanos_sdk::ecc::{CurvesId, DerEncodedEcdsaSignature};
 use nanos_sdk::io::SyscallError;
 use core::default::Default;
 use core::fmt;
+use crate::info;
 
 pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
 
@@ -65,6 +66,20 @@ impl fmt::Display for PKH {
     }
 }
 
+
+struct HexSlice<'a>(&'a [u8]);
+
+// You can choose to implement multiple traits, like Lower and UpperHex
+impl fmt::Display for HexSlice<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in self.0 {
+            // Decide if you want to pad the value or have spaces inbetween, etc.
+            write!(f, "{:02X}", byte)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone)]
 pub struct Hasher(cx_sha256_s);
 
@@ -77,6 +92,7 @@ impl Hasher {
 
     pub fn update(&mut self, bytes: &[u8]) {
         unsafe {
+            info!("HASHING: {}\n", HexSlice(bytes));
             cx_hash_update(&mut self.0 as *mut cx_sha256_s as *mut cx_hash_t, bytes.as_ptr(), bytes.len() as u32);
         }
     }

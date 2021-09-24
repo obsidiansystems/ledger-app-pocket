@@ -1,3 +1,4 @@
+#![feature(str_internals)]
 #![cfg_attr(target_os="nanos", no_std)]
 #![cfg_attr(target_os="nanos", no_main)]
 
@@ -22,10 +23,6 @@ use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
 #[cfg(target_os="nanos")]
 use nanos_ui::ui;
-#[cfg(target_os="nanos")]
-use rust_app::DBG;
-#[cfg(target_os="nanos")]
-use core::fmt::Write;
 
 #[cfg(target_os="nanos")]
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -84,13 +81,9 @@ use ledger_parser_combinators::interp_parser::OOB;
 #[no_mangle]
 extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
-    // let mut states = parser_states!();
-    // let mut parsers = mk_parsers();
     let mut states = ParsersState::NoState;
 
-    use core::mem::size_of_val;
-    write!(DBG, "State struct uses {} bytes\n", size_of_val(&states)).unwrap_or(());
-    // with_parser_state!(parsers);
+    info!("State struct uses {} bytes", core::mem::size_of_val(&states));
 
     loop {
         // Draw some 'welcome' screen
@@ -134,8 +127,6 @@ impl From<u8> for Ins {
 #[cfg(target_os="nanos")]
 use nanos_sdk::io::Reply;
 #[cfg(target_os="nanos")]
-use nanos_sdk::debug_print;
-#[cfg(target_os="nanos")]
 use arrayvec::ArrayVec;
 
 #[cfg(target_os="nanos")]
@@ -145,9 +136,9 @@ fn run_parser_apdu<P : InterpParser<A, Returning = ArrayVec<u8, 260> >, A>(state
     let cursor = comm.get_data()?;
 
     loop {
-        write!(DBG, "Parsing APDU input: {:?}\n", cursor);
+        trace!("Parsing APDU input: {:?}\n", cursor);
         let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor);
-        write!(DBG, "Parser result: {:?}\n", parse_rv);
+        trace!("Parser result: {:?}\n", parse_rv);
         match parse_rv {
             // Explicit rejection; reset the parser. Possibly send error message to host?
             Err((Some(OOB::Reject), _)) => { *states = ParsersState::NoState; break Err(io::StatusWords::Unknown.into()) }

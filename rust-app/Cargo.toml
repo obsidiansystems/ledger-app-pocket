@@ -4,13 +4,17 @@ version = "0.2.0"
 authors = ["yhql"]
 edition = "2018"
 autobins = false
+target = "thumv6m-none-eabi"
 
 [dependencies]
-ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch = "working-in-speculos"}
+ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch = "json-parser"}
+ledger-log = { path = "./ledger-log", features=["log_warn"] } # change to log_info, log_trace, etc. to change log level.
 arrayvec = { version = "0.7.1", default-features = false }
 
 [features]
-speculos = ["nanos_sdk/speculos"]
+default = [ "speculos" ]
+speculos = ["nanos_sdk/speculos", "ledger-log/speculos"]
+extra_debug = []
 
 [target.thumbv6m-none-eabi.dependencies]
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git" } 
@@ -32,6 +36,8 @@ hex = "0.4.3"
 log = "0.4.14"
 async-std = { version = "1.9.0", features = ["attributes", "unstable"] }
 futures = "0.3.16"
+lazy_static = "1.4.0"
+os-sync = "0.3.3"
 
 [[bin]]
 name = "rust-app"

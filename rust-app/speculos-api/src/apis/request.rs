@@ -70,6 +70,7 @@ impl Request {
         self
     }
 
+    #[allow(unused)]
     pub fn with_header_param(mut self, basename: String, param: String) -> Self {
         self.header_params.insert(basename, param);
         self
@@ -85,6 +86,7 @@ impl Request {
         self
     }
 
+    #[allow(unused)]
     pub fn with_form_param(mut self, basename: String, param: String) -> Self {
         self.form_params.insert(basename, param);
         self
@@ -95,6 +97,7 @@ impl Request {
         self
     }
 
+    #[allow(unused)]
     pub fn with_auth(mut self, auth: Auth) -> Self {
         self.auth = Some(auth);
         self
