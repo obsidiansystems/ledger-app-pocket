@@ -8,7 +8,7 @@ target = "thumv6m-none-eabi"
 
 [dependencies]
 ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch = "json-parser"}
-ledger-log = { path = "./ledger-log", features=["log_warn"] } # change to log_info, log_trace, etc. to change log level.
+ledger-log = { path = "./ledger-log", features=["log_trace"] } # change to log_info, log_trace, etc. to change log level.
 arrayvec = { version = "0.7.1", default-features = false }
 
 [features]
@@ -33,7 +33,6 @@ tokio = { version = "1", features = ["full"] } # features = ["full"] }
 tokio-retry = "0.3.0"
 hyper = { version = "0.14.10", features = ["client", "http1", "http2", "tcp"] }
 hex = "0.4.3"
-log = "0.4.14"
 async-std = { version = "1.9.0", features = ["attributes", "unstable"] }
 futures = "0.3.16"
 lazy_static = "1.4.0"

@@ -2,6 +2,7 @@ use arrayvec::{ArrayVec, ArrayString};
 use core::fmt::Write;
 use crate::crypto_helpers::{get_pubkey, get_private_key, detecdsa_sign, get_pkh, Hasher};
 use crate::interface::*;
+use ledger_log::*;
 use ledger_parser_combinators::interp_parser::{InterpParser, DefaultInterp, SubInterp, ObserveLengthedBytes, DropInterp, Action};
 use ledger_parser_combinators::json::Json;
 use nanos_ui::ui;
@@ -48,7 +49,7 @@ pub type SignImplT = Action<
                SubInterp<Signer<DropInterp,
                       DropInterp,
                       DropInterp,
-                      SubInterp<Action<JsonStringAccumulate<32>, fn(&ArrayVec<u8, 32>) -> Option<()>>>>>,
+                      SubInterp<Action<JsonStringAccumulate<64>, fn(&ArrayVec<u8, 64>) -> Option<()>>>>>,
                DropInterp,
                DropInterp>>>,
            fn(&(Result<KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>, ()>, Hasher)) -> Option<[u8; 32]> >
@@ -68,10 +69,8 @@ pub const SIGN_IMPL : SignImplT = Action(
                            scheme: DropInterp,
                            pub_key: DropInterp,
                            addr: DropInterp,
-                           caps: SubInterp(Action(JsonStringAccumulate, |cap_str : &ArrayVec<u8, 32>| {
-                              let mut pmpt = ArrayString::<128>::new();
-                              //pmpt.extend_from_slice(cap_str);
-                              //write!(pmpt, "{}", cap_str).ok()?;
+                           caps: SubInterp(Action(JsonStringAccumulate, |cap_str : &ArrayVec<u8, 64>| {
+                              let pmpt = ArrayString::<128>::from(core::str::from_utf8(&cap_str[..]).ok()?).ok()?;
                               if ! ui::MessageValidator::new(&["Transaction May", &pmpt], &[], &[]).ask() {
                                   None
                               } else {

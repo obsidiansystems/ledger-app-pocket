@@ -33,7 +33,7 @@ use core::panic::PanicInfo;
 #[cfg(all(target_os="nanos", test))]
 #[inline]
 #[cfg_attr(all(target_os="nanos", test), panic_handler)]
-pub fn exiting_panic(_info: &PanicInfo) -> ! {
+pub fn exiting_panic(info: &PanicInfo) -> ! {
     //let mut comm = io::Comm::new();
     //comm.reply(io::StatusWords::Panic);
     error!("Panicking: {:?}\n", info);
