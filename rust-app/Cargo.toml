@@ -41,6 +41,7 @@ os-sync = "0.3.3"
 [[bin]]
 name = "rust-app"
 test = false
+path = "bin-src/main.rs"
 
 [[test]]
 name = "integration"
