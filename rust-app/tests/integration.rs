@@ -44,17 +44,18 @@ mod tests {
             eprintln!("Building with {}\n", features);
             match Command::new("cargo")
                 .args(["build", "-Z", "build-std=core", "--features", features])
-                .status().await.map(|s| s.success())
-                {
-                    Ok(true) => (),
-                    _ => {
-                        print!("Build Failed; terminating");
-                        std::process::exit(1);
-                    }
+                .status()
+                .await
+                .map(|s| s.success())
+            {
+                Ok(true) => (),
+                _ => {
+                    print!("Build Failed; terminating");
+                    std::process::exit(1);
                 }
+            }
             DID_BUILD.store(true, Ordering::Relaxed);
         }
-
 
         let _speculos = Command::new("speculos")
             .args([
@@ -85,7 +86,7 @@ mod tests {
         }
 
         let rv = f(client).await;
-        
+
         core::mem::drop(speculos_lock);
 
         rv
@@ -239,7 +240,6 @@ mod tests {
                 sleep(Duration::from_millis(2000)).await;
                 client.button_button_post(ButtonName::Both, Button { action: Action::PressAndRelease, delay: Some(0.5) }).await.ok()?;
                 sleep(Duration::from_millis(2000)).await;
-                
                 client.button_button_post(ButtonName::Right, Button { action: Action::PressAndRelease, delay: Some(0.5) }).await.ok()?;
                 sleep(Duration::from_millis(2000)).await;
                 client.button_button_post(ButtonName::Right, Button { action: Action::PressAndRelease, delay: Some(0.5) }).await.ok()?;

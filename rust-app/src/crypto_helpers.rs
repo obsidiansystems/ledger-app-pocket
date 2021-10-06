@@ -1,9 +1,9 @@
+use crate::info;
+use core::default::Default;
+use core::fmt;
 use nanos_sdk::bindings::*;
 use nanos_sdk::ecc::{CurvesId, DerEncodedEcdsaSignature};
 use nanos_sdk::io::SyscallError;
-use core::default::Default;
-use core::fmt;
-use crate::info;
 
 pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
 
@@ -31,7 +31,9 @@ pub fn get_pubkey(path: &[u32]) -> Result<nanos_sdk::bindings::cx_ecfp_public_ke
 }
 
 #[allow(dead_code)]
-pub fn get_private_key(path: &[u32]) -> Result<nanos_sdk::bindings::cx_ecfp_private_key_t, SyscallError> {
+pub fn get_private_key(
+    path: &[u32],
+) -> Result<nanos_sdk::bindings::cx_ecfp_private_key_t, SyscallError> {
     let raw_key = bip32_derive_secp256k1(path)?;
     nanos_sdk::ecc::ec_init_key(CurvesId::Secp256k1, &raw_key)
 }
@@ -42,10 +44,15 @@ pub fn get_private_key(path: &[u32]) -> Result<nanos_sdk::bindings::cx_ecfp_priv
 pub struct PKH([u8; 32]);
 
 #[allow(dead_code)]
-pub fn get_pkh(key : nanos_sdk::bindings::cx_ecfp_public_key_t) -> PKH {
+pub fn get_pkh(key: nanos_sdk::bindings::cx_ecfp_public_key_t) -> PKH {
     let mut public_key_hash = PKH::default();
-    unsafe { 
-        cx_hash_sha256(key.W.as_ptr(), key.W_len, public_key_hash.0[..].as_mut_ptr(), public_key_hash.0.len() as u32);
+    unsafe {
+        cx_hash_sha256(
+            key.W.as_ptr(),
+            key.W_len,
+            public_key_hash.0[..].as_mut_ptr(),
+            public_key_hash.0.len() as u32,
+        );
     }
     public_key_hash
 }
@@ -65,7 +72,6 @@ impl fmt::Display for PKH {
         Ok(())
     }
 }
-
 
 struct HexSlice<'a>(&'a [u8]);
 
@@ -93,13 +99,22 @@ impl Hasher {
     pub fn update(&mut self, bytes: &[u8]) {
         unsafe {
             info!("HASHING: {}\n", HexSlice(bytes));
-            cx_hash_update(&mut self.0 as *mut cx_sha256_s as *mut cx_hash_t, bytes.as_ptr(), bytes.len() as u32);
+            cx_hash_update(
+                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+                bytes.as_ptr(),
+                bytes.len() as u32,
+            );
         }
     }
 
     pub fn finalize(&mut self) -> Hash {
         let mut rv = <[u8; 32]>::default();
-        unsafe { cx_hash_final(&mut self.0 as *mut cx_sha256_s as *mut cx_hash_t, rv.as_mut_ptr()) };
+        unsafe {
+            cx_hash_final(
+                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+                rv.as_mut_ptr(),
+            )
+        };
         Hash(rv)
     }
 }
@@ -114,5 +129,3 @@ impl fmt::Display for Hash {
         Ok(())
     }
 }
-
-
