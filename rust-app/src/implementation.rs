@@ -8,6 +8,7 @@ use ledger_parser_combinators::interp_parser::{
 };
 use ledger_parser_combinators::json::Json;
 use nanos_ui::ui;
+use nanos_sdk::pic_rs;
 
 use ledger_parser_combinators::define_json_struct_interp;
 use ledger_parser_combinators::json::*;
@@ -20,6 +21,7 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), |path: &ArrayVec<u32, 10>| {
         let key = get_pubkey(path).ok()?;
         let mut rv = ArrayVec::<u8, 260>::new();
+        rv.try_extend_from_slice(&[(key.W.len() as u8)][..]).ok()?;
         rv.try_extend_from_slice(&key.W[..]).ok()?;
 
         // At this point we have the value to send to the host; but there's a bit more to do to
@@ -30,7 +32,8 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
         let mut pmpt = ArrayString::<128>::new();
         write!(pmpt, "{}", pkh).ok()?;
 
-        if !ui::MessageValidator::new(&["Provide Public Key", &pmpt], &[], &[]).ask() {
+        if !ui::MessageValidator::new(&["Provide Public Key", &pmpt], &[&"Confirm"], &[]).ask() {
+            trace!("User rejected\n");
             None
         } else {
             Some(rv)
@@ -197,6 +200,7 @@ pub fn get_get_address_state(
     match s {
         ParsersState::GetAddressState(_) => {}
         _ => {
+            trace!("Non-same state found; initializing state.");
             *s = ParsersState::GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::init(
                 &GET_ADDRESS_IMPL,
             ));
@@ -216,6 +220,7 @@ pub fn get_sign_state(
     match s {
         ParsersState::SignState(_) => {}
         _ => {
+            trace!("Non-same state found; initializing state.");
             *s = ParsersState::SignState(<SignImplT as InterpParser<SignParameters>>::init(
                 &SIGN_IMPL,
             ));

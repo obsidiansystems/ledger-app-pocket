@@ -73,7 +73,7 @@ extern "C" fn sample_main() {
         // Wait for either a specific button push to exit the app
         // or an APDU command
         match comm.next_event() {
-            io::Event::Button(ButtonEvent::RightButtonRelease) => nanos_sdk::exit_app(0),
+            // io::Event::Button(ButtonEvent::RightButtonRelease) => nanos_sdk::exit_app(0),
             io::Event::Command(ins) => match handle_apdu(&mut comm, ins, &mut states) {
                 Ok(()) => comm.reply_ok(),
                 Err(sw) => comm.reply(sw),
@@ -139,6 +139,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 260>>, A>(
             }
             // Consumed the whole chunk and parser finished; send response.
             Ok((rv, [])) => {
+                trace!("Parser finished, resetting state\n");
                 comm.append(&rv[..]);
                 // Parse finished; reset.
                 *states = ParsersState::NoState;
