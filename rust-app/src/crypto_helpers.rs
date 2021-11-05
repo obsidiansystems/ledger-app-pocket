@@ -98,7 +98,7 @@ impl Hasher {
 
     pub fn update(&mut self, bytes: &[u8]) {
         unsafe {
-            info!("HASHING: {}\n", HexSlice(bytes));
+            info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
             cx_hash_update(
                 &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
                 bytes.as_ptr(),
