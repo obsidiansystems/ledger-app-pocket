@@ -3,7 +3,7 @@ import { describe, it } from 'mocha';
 import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
 import Axios from 'axios';
 import Transport from "./common";
-import Kda from "hw-app-kda";
+import Kda from "hw-app-pokt";
 
 let setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
@@ -137,11 +137,39 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
      }
 }
 
+
+let exampleObject = {
+    "account_number": "108",
+    "chain_id": "cosmoshub-2",
+    "fee": {
+        "amount": [
+            {
+                "amount": "600",
+                "denom": "uatom"
+            }
+        ],
+        "gas": "200000"
+    },
+    "memo": "",
+    "msgs": [
+        {
+            "type": "cosmos-sdk/MsgWithdrawDelegationReward",
+            "value": {
+                "from_address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
+                "to_address": "cosmosvaloper1kn3wugetjuy4zetlq6wadchfhvu3x740ae6z6x",
+                "amount":[{"amount":"10","denom":"atom"}],
+            }
+        }
+    ],
+    "sequence": "106"
+}
+
+
 describe("Signing tests", function() {
-  it("can sign a simple transfer",
+  it.only("can sign a simple transfer",
      testTransaction(
        "0/0",
-       '{"networkId":"mainnet01","payload":{"exec":{"data":{},"code":"(coin.transfer \"83934c0f9b005f378ba3520f9dea952fb0a90e5aa36f1b5ff837d9b30c471790\" \"9790d119589a26114e1a42d92598b3f632551c566819ec48e0e8c54dae6ebb42\" 11.0)"}},"signers":[{"pubKey":"83934c0f9b005f378ba3520f9dea952fb0a90e5aa36f1b5ff837d9b30c471790","clist":[{"args":[],"name":"coin.GAS"},{"args":["83934c0f9b005f378ba3520f9dea952fb0a90e5aa36f1b5ff837d9b30c471790","9790d119589a26114e1a42d92598b3f632551c566819ec48e0e8c54dae6ebb42",11],"name":"coin.TRANSFER"}]}],"meta":{"creationTime":1634009214,"ttl":28800,"gasLimit":600,"chainId":"0","gasPrice":1.0e-5,"sender":"83934c0f9b005f378ba3520f9dea952fb0a90e5aa36f1b5ff837d9b30c471790"},"nonce":"\"2021-10-12T03:27:53.700Z\""}',
+       JSON.stringify(exampleObject),
        []));
   it("can sign a different simple transfer",
      testTransaction(
