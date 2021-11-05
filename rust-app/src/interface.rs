@@ -22,7 +22,35 @@ define_json_struct! { Signer 16 {
     caps: JsonArray<JsonString>
 }}
 
+// This should just be called Amount, but we have a name collition between
+// field names and type names
+define_json_struct! { AmountType 16 {
+  amount: JsonString,
+  denom: JsonString
+}}
+
+define_json_struct! { Fee 16 {
+  amount: JsonArray<AmountTypeSchema>,
+  gas: JsonString
+}}
+
+define_json_struct! { Value 16 {
+  from_address: JsonString,
+  to_address: JsonString,
+  amount: JsonArray<AmountTypeSchema>
+}}
+
+define_json_struct! { Message 16 {
+  type: JsonString,
+  value: ValueSchema
+}}
+
 define_json_struct! { KadenaCmd 16 {
+  account_number: JsonString,
+  chain_id: JsonString,
+  fee: FeeSchema,
+  memo: JsonString,
+  msgs: JsonArray<MessageSchema>,
   nonce: JsonString,
   meta: MetaSchema,
   signers: JsonArray<SignerSchema>,

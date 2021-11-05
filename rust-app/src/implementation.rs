@@ -48,6 +48,11 @@ pub type SignImplT = Action<
                 fn(&mut Hasher, &[u8]),
                 Json<
                     KadenaCmd<
+                        Action<DropInterp, fn(&()) -> Option<()>>,
+                        DropInterp,
+                        DropInterp,
+                        DropInterp,
+                        DropInterp,
                         DropInterp,
                         DropInterp,
                         SubInterp<
@@ -71,7 +76,7 @@ pub type SignImplT = Action<
             fn(
                 &(
                     Result<
-                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
+                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
                         (),
                     >,
                     Hasher,
@@ -94,13 +99,18 @@ pub const SIGN_IMPL: SignImplT = Action(
                 Hasher::new,
                 Hasher::update,
                 Json(KadenaCmd {
-                    nonce: DropInterp,
-                    meta: DropInterp,
-                    signers: SubInterp(Signer {
-                        scheme: DropInterp,
-                        pub_key: DropInterp,
-                        addr: DropInterp,
-                        caps: SubInterp(Action(
+                    field_account_number: Action(DropInterp, |_| {write!(DBG, "HEEEEY\n\n\n\n"); Some(())}),
+                    field_chain_id: DropInterp,
+                    field_fee: DropInterp,
+                    field_memo: DropInterp,
+                    field_msgs: DropInterp,
+                    field_nonce: DropInterp,
+                    field_meta: DropInterp,
+                    field_signers: SubInterp(Signer {
+                        field_scheme: DropInterp,
+                        field_pub_key: DropInterp,
+                        field_addr: DropInterp,
+                        field_caps: SubInterp(Action(
                             JsonStringAccumulate,
                             |cap_str: &ArrayVec<u8, 64>| {
                                 let pmpt = ArrayString::<128>::from(
@@ -117,8 +127,8 @@ pub const SIGN_IMPL: SignImplT = Action(
                             },
                         )),
                     }),
-                    payload: DropInterp,
-                    network_id: DropInterp,
+                    field_payload: DropInterp,
+                    field_network_id: DropInterp,
                 }),
             ),
             // Ask the user if they accept the transaction body's hash
@@ -186,7 +196,36 @@ define_json_struct_interp! { Signer 16 {
     addr: JsonString,
     caps: JsonArray<JsonString>
 }}
+
+// This should just be called Amount, but we have a name collition between
+// field names and type names
+define_json_struct_interp! { AmountType 16 {
+  amount: JsonString,
+  denom: JsonString
+}}
+
+define_json_struct_interp! { Fee 16 {
+  amount: JsonArray<AmountTypeSchema>,
+  gas: JsonString
+}}
+
+define_json_struct_interp! { Value 16 {
+  from_address: JsonString,
+  to_address: JsonString,
+  amount: JsonArray<AmountTypeSchema>
+}}
+
+define_json_struct_interp! { Message 16 {
+  type: JsonString,
+  value: ValueSchema
+}}
+
 define_json_struct_interp! { KadenaCmd 16 {
+  account_number: JsonString,
+  chain_id: JsonString,
+  fee: FeeSchema,
+  memo: JsonString,
+  msgs: JsonArray<MessageSchema>,
   nonce: JsonString,
   meta: MetaSchema,
   signers: JsonArray<SignerSchema>,
