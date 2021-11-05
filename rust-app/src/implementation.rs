@@ -53,13 +53,14 @@ pub type SignImplT = Action<
                         DropInterp,
                         DropInterp,
                         DropInterp,
+                        DropInterp,
                     >,
                 >,
             >,
             fn(
                 &(
                     Result<
-                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
+                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
                         (),
                     >,
                     Hasher,
@@ -87,6 +88,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                     field_fee: DropInterp,
                     field_memo: DropInterp,
                     field_msgs: DropInterp,
+                    field_sequence: DropInterp,
                 }),
             ),
             // Ask the user if they accept the transaction body's hash
@@ -183,7 +185,9 @@ define_json_struct_interp! { KadenaCmd 16 {
   chain_id: JsonString,
   fee: FeeSchema,
   memo: JsonString,
-  msgs: JsonArray<MessageSchema>
+  msgs: JsonArray<MessageSchema>,
+  sequence: JsonString
+
 }}
 
 pub fn get_get_address_state(
