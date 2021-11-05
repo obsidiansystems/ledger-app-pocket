@@ -53,30 +53,13 @@ pub type SignImplT = Action<
                         DropInterp,
                         DropInterp,
                         DropInterp,
-                        DropInterp,
-                        DropInterp,
-                        SubInterp<
-                            Signer<
-                                DropInterp,
-                                DropInterp,
-                                DropInterp,
-                                SubInterp<
-                                    Action<
-                                        JsonStringAccumulate<64>,
-                                        fn(&ArrayVec<u8, 64>) -> Option<()>,
-                                    >,
-                                >,
-                            >,
-                        >,
-                        DropInterp,
-                        DropInterp,
                     >,
                 >,
             >,
             fn(
                 &(
                     Result<
-                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
+                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
                         (),
                     >,
                     Hasher,
@@ -104,31 +87,6 @@ pub const SIGN_IMPL: SignImplT = Action(
                     field_fee: DropInterp,
                     field_memo: DropInterp,
                     field_msgs: DropInterp,
-                    field_nonce: DropInterp,
-                    field_meta: DropInterp,
-                    field_signers: SubInterp(Signer {
-                        field_scheme: DropInterp,
-                        field_pub_key: DropInterp,
-                        field_addr: DropInterp,
-                        field_caps: SubInterp(Action(
-                            JsonStringAccumulate,
-                            |cap_str: &ArrayVec<u8, 64>| {
-                                let pmpt = ArrayString::<128>::from(
-                                    core::str::from_utf8(&cap_str[..]).ok()?,
-                                )
-                                .ok()?;
-                                if !ui::MessageValidator::new(&["Transaction May", &pmpt], &[], &[])
-                                    .ask()
-                                {
-                                    None
-                                } else {
-                                    Some(())
-                                }
-                            },
-                        )),
-                    }),
-                    field_payload: DropInterp,
-                    field_network_id: DropInterp,
                 }),
             ),
             // Ask the user if they accept the transaction body's hash
@@ -225,12 +183,7 @@ define_json_struct_interp! { KadenaCmd 16 {
   chain_id: JsonString,
   fee: FeeSchema,
   memo: JsonString,
-  msgs: JsonArray<MessageSchema>,
-  nonce: JsonString,
-  meta: MetaSchema,
-  signers: JsonArray<SignerSchema>,
-  payload: JsonAny,
-  networkId: JsonAny
+  msgs: JsonArray<MessageSchema>
 }}
 
 pub fn get_get_address_state(

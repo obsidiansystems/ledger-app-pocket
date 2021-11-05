@@ -50,12 +50,7 @@ define_json_struct! { KadenaCmd 16 {
   chain_id: JsonString,
   fee: FeeSchema,
   memo: JsonString,
-  msgs: JsonArray<MessageSchema>,
-  nonce: JsonString,
-  meta: MetaSchema,
-  signers: JsonArray<SignerSchema>,
-  payload: JsonAny,
-  networkId: JsonString
+  msgs: JsonArray<MessageSchema>
 }}
 
 // Payload for a signature request, content-agnostic.
