@@ -15,10 +15,10 @@ use ledger_parser_combinators::json::*;
 use ledger_parser_combinators::json_interp::*;
 
 pub type GetAddressImplT =
-    Action<SubInterp<DefaultInterp>, fn(&ArrayVec<u32, 10>) -> Option<ArrayVec<u8, 260>>>;
+    Action<SubInterp<DefaultInterp>, fn(&ArrayVec<u32, 10>, &mut Option<ArrayVec<u8, 260>>) -> Option<()>>;
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
-    Action(SubInterp(DefaultInterp), |path: &ArrayVec<u32, 10>| {
+    Action(SubInterp(DefaultInterp), |path: &ArrayVec<u32, 10>, destination| {
         let key = get_pubkey(path).ok()?;
         let mut rv = ArrayVec::<u8, 260>::new();
         rv.try_extend_from_slice(&[(key.W.len() as u8)][..]).ok()?;
@@ -36,7 +36,8 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
             trace!("User rejected\n");
             None
         } else {
-            Some(rv)
+            *destination = Some(rv);
+            Some(())
         }
     });
 
@@ -48,7 +49,7 @@ pub type SignImplT = Action<
                 fn(&mut Hasher, &[u8]),
                 Json<
                     KadenaCmd<
-                        Action<DropInterp, fn(&()) -> Option<()>>,
+                        Action<DropInterp, fn(&(), &mut Option<()>) -> Option<()>>,
                         DropInterp,
                         DropInterp,
                         DropInterp,
@@ -59,20 +60,19 @@ pub type SignImplT = Action<
             >,
             fn(
                 &(
-                    Result<
-                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>,
-                        (),
-                    >,
+                    Option<
+                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>>,
                     Hasher,
                 ),
-            ) -> Option<[u8; 32]>,
+                &mut Option<[u8; 32]>
+            ) -> Option<()>,
         >,
         Action<
             SubInterp<DefaultInterp>,
-            fn(&ArrayVec<u32, 10>) -> Option<nanos_sdk::bindings::cx_ecfp_private_key_t>,
+            fn(&ArrayVec<u32, 10>, &mut Option<nanos_sdk::bindings::cx_ecfp_private_key_t>) -> Option<()>,
         >,
     ),
-    fn(&([u8; 32], nanos_sdk::bindings::cx_ecfp_private_key_t)) -> Option<ArrayVec<u8, 260>>,
+    fn(&(Option<[u8; 32]>, Option<nanos_sdk::bindings::cx_ecfp_private_key_t>), &mut Option<ArrayVec<u8, 260>>) -> Option<()>,
 >;
 
 pub const SIGN_IMPL: SignImplT = Action(
@@ -83,16 +83,17 @@ pub const SIGN_IMPL: SignImplT = Action(
                 Hasher::new,
                 Hasher::update,
                 Json(KadenaCmd {
-                    field_account_number: Action(DropInterp, |_| {write!(DBG, "HEEEEY\n\n\n\n"); Some(())}),
+                    field_account_number: Action(DropInterp, |_, _| {write!(DBG, "HEEEEY\n\n\n\n"); Some(())}),
                     field_chain_id: DropInterp,
                     field_fee: DropInterp,
                     field_memo: DropInterp,
                     field_msgs: DropInterp,
                     field_sequence: DropInterp,
                 }),
+                true,
             ),
             // Ask the user if they accept the transaction body's hash
-            |(_, hash): &(_, Hasher)| {
+            |(_, hash): &(_, Hasher), destination| {
                 let the_hash = hash.clone().finalize();
 
                 let mut pmpt = ArrayString::<128>::new();
@@ -101,14 +102,15 @@ pub const SIGN_IMPL: SignImplT = Action(
                 if !ui::MessageValidator::new(&["Sign Hash?", &pmpt], &[], &[]).ask() {
                     None
                 } else {
-                    Some(the_hash.0.into())
+                    *destination = Some(the_hash.0.into());
+                    Some(())
                 }
             },
         ),
         Action(
             SubInterp(DefaultInterp),
             // And ask the user if this is the key the meant to sign with:
-            |path: &ArrayVec<u32, 10>| {
+            |path: &ArrayVec<u32, 10>, destination| {
                 let privkey = get_private_key(path).ok()?;
                 let pubkey = get_pubkey(path).ok()?; // Redoing work here; fix.
                 let pkh = get_pkh(pubkey);
@@ -119,17 +121,19 @@ pub const SIGN_IMPL: SignImplT = Action(
                 if !ui::MessageValidator::new(&["With PKH", &pmpt], &[], &[]).ask() {
                     None
                 } else {
-                    Some(privkey)
+                    *destination = Some(privkey);
+                    Some(())
                 }
             },
         ),
     ),
-    |(hash, key): &([u8; 32], _)| {
+    |(hash, key): &(Option<[u8; 32]>, _), destination: &mut Option<ArrayVec<u8, 260>>| {
         // By the time we get here, we've approved and just need to do the signature.
-        let (sig, len) = detecdsa_sign(hash, key)?;
+        let (sig, len) = detecdsa_sign(hash.as_ref()?, key.as_ref()?)?;
         let mut rv = ArrayVec::<u8, 260>::new();
         rv.try_extend_from_slice(&sig[0..len as usize]).ok()?;
-        Some(rv)
+        *destination = Some(rv);
+        Some(())
     },
 );
 

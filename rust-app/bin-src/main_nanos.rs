@@ -109,17 +109,20 @@ use arrayvec::ArrayVec;
 use nanos_sdk::io::Reply;
 
 use ledger_parser_combinators::interp_parser::InterpParser;
+
+#[inline(never)]
 fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 260>>, A>(
     states: &mut ParsersState,
     get_state: fn(&mut ParsersState) -> &mut <P as InterpParser<A>>::State,
     parser: &P,
     comm: &mut io::Comm,
 ) -> Result<(), Reply> {
-    let cursor = comm.get_data()?;
+    let cursor: &[u8] = comm.get_data()?;
 
     loop {
         trace!("Parsing APDU input: {:?}\n", cursor);
-        let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor);
+        let mut parse_destination = None;
+        let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor, &mut parse_destination);
         trace!("Parser result: {:?}\n", parse_rv);
         match parse_rv {
             // Explicit rejection; reset the parser. Possibly send error message to host?
@@ -138,15 +141,18 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 260>>, A>(
                 break Err(io::StatusWords::Unknown.into());
             }
             // Consumed the whole chunk and parser finished; send response.
-            Ok((rv, [])) => {
+            Ok([]) => {
                 trace!("Parser finished, resetting state\n");
-                comm.append(&rv[..]);
+                match parse_destination.as_ref() {
+                    Some(rv) => comm.append(&rv[..]),
+                    None => break Err(io::StatusWords::Unknown.into()),
+                }
                 // Parse finished; reset.
                 *states = ParsersState::NoState;
                 break Ok(());
             }
             // Parse ended before the chunk did; reset.
-            Ok((_, _)) => {
+            Ok(_) => {
                 *states = ParsersState::NoState;
                 break Err(io::StatusWords::Unknown.into());
             }
