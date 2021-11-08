@@ -138,7 +138,7 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
 }
 
 
-let exampleObject = {
+let exampleSend = {
     "account_number": "108",
     "chain_id": "cosmoshub-2",
     "fee": {
@@ -153,7 +153,7 @@ let exampleObject = {
     "memo": "",
     "msgs": [
         {
-            "type": "cosmos-sdk/MsgWithdrawDelegationReward",
+            "type": "cosmos-sdk/MsgSend",
             "value": {
                 "from_address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
                 "to_address": "cosmosvaloper1kn3wugetjuy4zetlq6wadchfhvu3x740ae6z6x",
@@ -164,13 +164,67 @@ let exampleObject = {
     "sequence": "106"
 }
 
+let exampleUnjail = {
+    "account_number": "108",
+    "chain_id": "cosmoshub-2",
+    "fee": {
+        "amount": [
+            {
+                "amount": "600",
+                "denom": "uatom"
+            }
+        ],
+        "gas": "200000"
+    },
+    "memo": "",
+    "msgs": [
+        {
+            "type": "cosmos-sdk/MsgUnjail",
+            "value": {
+                "address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
+            }
+        }
+    ],
+    "sequence": "106"
+}
 
 describe("Signing tests", function() {
   it.only("can sign a simple transfer",
      testTransaction(
        "0/0",
-       JSON.stringify(exampleObject),
-       []));
+       JSON.stringify(exampleSend),
+       [
+           {
+               "text": "Sign Hash?",
+               "x": 36,
+               "y": 11,
+           },
+           {
+               "text": "ADACF427D2556833E0DC741CF48CEC9F36E66785631794EB80218098C6F24CD1",
+               "x": -47,
+               "y": 11,
+           },
+           {
+               "text": "Confirm",
+               "x": 43,
+               "y": 11,
+           },
+           {
+               "text": "With PKH",
+               "x": 40,
+               "y": 11,
+           },
+           {
+               "text": "pkh-929B536E11497F4EF573A22680528E1785AEA757D9D3C29A5D4CDCBA9E2BF",
+               "x": -50,
+               "y": 11,
+           },
+           {
+               "text": "Confirm",
+               "x": 43,
+               "y": 11,
+           }
+       ]));
   it("can sign a different simple transfer",
      testTransaction(
        "0/0",

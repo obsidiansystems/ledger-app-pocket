@@ -60,8 +60,7 @@ pub type SignImplT = Action<
             >,
             fn(
                 &(
-                    Option<
-                        KadenaCmd<Option<()>, Option<()>, Option<()>, Option<()>, Option<()>, Option<()>>>,
+                    Option<<DropInterp as JsonInterp<KadenaCmdSchema>>::Returning>,
                     Hasher,
                 ),
                 &mut Option<[u8; 32]>
@@ -99,7 +98,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                 let mut pmpt = ArrayString::<128>::new();
                 write!(pmpt, "{}", the_hash).ok()?;
 
-                if !ui::MessageValidator::new(&["Sign Hash?", &pmpt], &[], &[]).ask() {
+                if !ui::MessageValidator::new(&["Sign Hash?", &pmpt], &[&"Confirm"], &[&"Reject"]).ask() {
                     None
                 } else {
                     *destination = Some(the_hash.0.into());
@@ -118,7 +117,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                 let mut pmpt = ArrayString::<128>::new();
                 write!(pmpt, "{}", pkh).ok()?;
 
-                if !ui::MessageValidator::new(&["With PKH", &pmpt], &[], &[]).ask() {
+                if !ui::MessageValidator::new(&["With PKH", &pmpt], &[&"Confirm"], &[&"Reject"]).ask() {
                     None
                 } else {
                     *destination = Some(privkey);
