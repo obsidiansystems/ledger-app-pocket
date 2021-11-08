@@ -194,6 +194,7 @@ define_json_struct_interp! { KadenaCmd 16 {
 
 }}
 
+#[inline(never)]
 pub fn get_get_address_state(
     s: &mut ParsersState,
 ) -> &mut <GetAddressImplT as InterpParser<Bip32Key>>::State {
@@ -214,6 +215,7 @@ pub fn get_get_address_state(
     }
 }
 
+#[inline(never)]
 pub fn get_sign_state(
     s: &mut ParsersState,
 ) -> &mut <SignImplT as InterpParser<SignParameters>>::State {
