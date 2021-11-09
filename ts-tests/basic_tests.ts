@@ -200,8 +200,8 @@ describe("Signing tests", function() {
                "y": 11,
            },
            {
-               "text": "ADACF427D2556833E0DC741CF48CEC9F36E66785631794EB80218098C6F24CD1",
-               "x": -47,
+               "text": "1786E003E1DCE76D388108803846C1F0B4827A48BDF39F52C2D9506AF05903D2",
+               "x": -49,
                "y": 11,
            },
            {
@@ -215,7 +215,43 @@ describe("Signing tests", function() {
                "y": 11,
            },
            {
-               "text": "pkh-929B536E11497F4EF573A22680528E1785AEA757D9D3C29A5D4CDCBA9E2BF",
+               "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
+               "x": -50,
+               "y": 11,
+           },
+           {
+               "text": "Confirm",
+               "x": 43,
+               "y": 11,
+           }
+       ]));
+  it.only("can sign a simple unjail",
+     testTransaction(
+       "0/0",
+       JSON.stringify(exampleUnjail),
+       [
+           {
+               "text": "Sign Hash?",
+               "x": 36,
+               "y": 11,
+           },
+           {
+               "text": "2E4A55FC71AA15D9C3CE02CCC03F3E4C50E00C6D298A5C8E6AB26D9A193A5450",
+               "x": -49,
+               "y": 11,
+           },
+           {
+               "text": "Confirm",
+               "x": 43,
+               "y": 11,
+           },
+           {
+               "text": "With PKH",
+               "x": 40,
+               "y": 11,
+           },
+           {
+               "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
                "x": -50,
                "y": 11,
            },

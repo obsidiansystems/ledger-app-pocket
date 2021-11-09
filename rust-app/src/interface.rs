@@ -34,16 +34,17 @@ define_json_struct! { Fee 16 {
   gas: JsonString
 }}
 
-define_json_struct! { Value 16 {
+define_json_struct! { SendValue 16 {
   from_address: JsonString,
   to_address: JsonString,
   amount: JsonArray<AmountTypeSchema>
 }}
 
-define_json_struct! { Message 16 {
-  type: JsonString,
-  value: ValueSchema
+define_json_struct! { UnjailValue 16 {
+  address: JsonString
 }}
+
+pub struct MessageSchema;
 
 define_json_struct! { KadenaCmd 16 {
   account_number: JsonString,

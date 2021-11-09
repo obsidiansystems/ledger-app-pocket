@@ -4,7 +4,7 @@ use arrayvec::{ArrayString, ArrayVec};
 use core::fmt::Write;
 use ledger_log::*;
 use ledger_parser_combinators::interp_parser::{
-    Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp,
+    Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
 };
 use ledger_parser_combinators::json::Json;
 use nanos_ui::ui;
@@ -41,26 +41,25 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
         }
     });
 
+type CmdInterp = KadenaCmd<
+    Action<DropInterp, fn(&(), &mut Option<()>) -> Option<()>>,
+    DropInterp,
+    DropInterp,
+    DropInterp,
+    SubInterp<Message<DropInterp, DropInterp>>,
+    DropInterp>;
+
 pub type SignImplT = Action<
     (
         Action<
             ObserveLengthedBytes<
                 Hasher,
                 fn(&mut Hasher, &[u8]),
-                Json<
-                    KadenaCmd<
-                        Action<DropInterp, fn(&(), &mut Option<()>) -> Option<()>>,
-                        DropInterp,
-                        DropInterp,
-                        DropInterp,
-                        DropInterp,
-                        DropInterp,
-                    >,
-                >,
+                Json<CmdInterp>
             >,
             fn(
                 &(
-                    Option<<DropInterp as JsonInterp<KadenaCmdSchema>>::Returning>,
+                    Option<<CmdInterp as JsonInterp<KadenaCmdSchema>>::Returning>,
                     Hasher,
                 ),
                 &mut Option<[u8; 32]>
@@ -86,7 +85,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                     field_chain_id: DropInterp,
                     field_fee: DropInterp,
                     field_memo: DropInterp,
-                    field_msgs: DropInterp,
+                    field_msgs: SubInterp(Message {send_message: DropInterp, unjail_message: DropInterp}),
                     field_sequence: DropInterp,
                 }),
                 true,
@@ -172,16 +171,177 @@ define_json_struct_interp! { Fee 16 {
   gas: JsonString
 }}
 
-define_json_struct_interp! { Value 16 {
+define_json_struct_interp! { SendValue 16 {
   from_address: JsonString,
   to_address: JsonString,
   amount: JsonArray<AmountTypeSchema>
 }}
 
-define_json_struct_interp! { Message 16 {
-  type: JsonString,
-  value: ValueSchema
+define_json_struct_interp! { UnjailValue 16 {
+  address: JsonString
 }}
+
+#[derive(Copy, Clone, Debug)]
+pub enum MessageType {
+  SendMessage,
+  UnjailMessage
+}
+
+#[derive(Debug)]
+pub struct Message<
+  SendInterp: JsonInterp<SendValueSchema>,
+  UnjailInterp: JsonInterp<UnjailValueSchema>> {
+  pub send_message: SendInterp,
+  pub unjail_message: UnjailInterp
+}
+
+type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State;
+type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>;
+
+#[derive(Debug)]
+pub enum MessageState<SendMessageState, UnjailMessageState> {
+  Start,
+  TypeLabel(TemporaryStringState<4>, TemporaryStringReturn<4>),
+  KeySep1,
+  Type(TemporaryStringState<64>, TemporaryStringReturn<64>),
+  ValueSep(MessageType),
+  ValueLabel(MessageType, TemporaryStringState<5>, TemporaryStringReturn<5>),
+  KeySep2(MessageType),
+  SendMessageState(SendMessageState),
+  UnjailMessageState(UnjailMessageState),
+  End,
+}
+
+pub enum MessageReturn<SendMessageReturn, UnjailMessageReturn> {
+  SendMessageReturn(Option<SendMessageReturn>),
+  UnjailMessageReturn(Option<UnjailMessageReturn>)
+}
+
+impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailValueSchema>>
+  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp>
+  where
+  <SendInterp as JsonInterp<SendValueSchema>>::State: core::fmt::Debug,
+  <UnjailInterp as JsonInterp<UnjailValueSchema>>::State: core::fmt::Debug {
+  type State = MessageState<<SendInterp as JsonInterp<SendValueSchema>>::State,
+                           <UnjailInterp as JsonInterp<UnjailValueSchema>>::State>;
+  type Returning = MessageReturn<<SendInterp as JsonInterp<SendValueSchema>>::Returning,
+                                <UnjailInterp as JsonInterp<UnjailValueSchema>>::Returning>;
+  fn init(&self) -> Self::State {
+    MessageState::Start
+  }
+  #[inline(never)]
+  fn parse<'a>(&self,
+               state: &mut Self::State,
+               token: JsonToken<'a>,
+               destination: &mut Option<Self::Returning>)
+               -> Result<(), Option<OOB>> {
+    match state {
+      MessageState::Start => {
+        match token {
+          JsonToken::BeginObject => {
+            set_from_thunk(state, ||MessageState::TypeLabel(JsonStringAccumulate.init(), None));
+          }
+          _ => return Err(Some(OOB::Reject)),
+        }
+      }
+      MessageState::TypeLabel(ref mut temp_string_state, ref mut temp_string_return) => {
+        JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
+        if temp_string_return.as_ref().unwrap().as_slice() == b"type" {
+          set_from_thunk(state, ||MessageState::KeySep1);
+        } else {
+          return Err(Some(OOB::Reject));
+        }
+      }
+      MessageState::KeySep1 => {
+        match token {
+          JsonToken::NameSeparator => {
+            set_from_thunk(state, ||MessageState::Type(JsonStringAccumulate.init(), None));
+          }
+          _ => return Err(Some(OOB::Reject)),
+        }
+      }
+      MessageState::Type(ref mut temp_string_state, ref mut temp_string_return) => {
+        JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
+        match temp_string_return.as_ref().unwrap().as_slice() {
+          b"cosmos-sdk/MsgSend" =>  {
+            set_from_thunk(state, ||MessageState::ValueSep(MessageType::SendMessage));
+          }
+          b"cosmos-sdk/MsgUnjail" =>  {
+            set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnjailMessage));
+          }
+          _ => return Err(Some(OOB::Reject)),
+        }
+      }
+      MessageState::ValueSep(msgType) => {
+        match token {
+          JsonToken::ValueSeparator => {
+            let msgTypeTemp = *msgType;
+            set_from_thunk(state, ||MessageState::ValueLabel(msgTypeTemp, JsonStringAccumulate.init(), None));
+          }
+          _ => return Err(Some(OOB::Reject)),
+        }
+      }
+      MessageState::ValueLabel(msgType, temp_string_state, temp_string_return) => {
+        JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
+        if temp_string_return.as_ref().unwrap().as_slice() == b"value" {
+          let msgTypeTemp = *msgType;
+          set_from_thunk(state, ||MessageState::KeySep2(msgTypeTemp));
+        } else {
+          return Err(Some(OOB::Reject));
+        }
+      }
+      MessageState::KeySep2(msgType) => {
+        match token {
+          JsonToken::NameSeparator => {
+            match msgType {
+              MessageType::SendMessage => {
+                *destination = Some(MessageReturn::SendMessageReturn(None));
+                set_from_thunk(state, ||MessageState::SendMessageState(self.send_message.init()));
+              }
+              MessageType::UnjailMessage => {
+                *destination = Some(MessageReturn::UnjailMessageReturn(None));
+                set_from_thunk(state, ||MessageState::UnjailMessageState(self.unjail_message.init()));
+              }
+            }
+          }
+          _ => return Err(Some(OOB::Reject)),
+        }
+      }
+      MessageState::SendMessageState(ref mut sendMessageState) => {
+        let sub_destination = &mut destination.as_mut().ok_or(Some(OOB::Reject))?;
+        match sub_destination {
+          MessageReturn::SendMessageReturn(sendMessageReturn) => {
+            self.send_message.parse(sendMessageState, token, sendMessageReturn)?;
+            set_from_thunk(state, ||MessageState::End);
+          }
+          _ => {
+            return Err(Some(OOB::Reject))
+          }
+        }
+      }
+      MessageState::UnjailMessageState(ref mut unjailMessageState) => {
+        let sub_destination = &mut destination.as_mut().ok_or(Some(OOB::Reject))?;
+        match sub_destination {
+          MessageReturn::UnjailMessageReturn(unjailMessageReturn) => {
+            self.unjail_message.parse(unjailMessageState, token, unjailMessageReturn)?;
+            set_from_thunk(state, ||MessageState::End);
+          }
+          _ => {
+            return Err(Some(OOB::Reject))
+          }
+        }
+      }
+      MessageState::End => {
+        match token {
+          JsonToken::EndObject => return Ok(()),
+          _ => return Err(Some(OOB::Reject)),
+        }
+      }
+      _ => return Err(Some(OOB::Reject)),
+    };
+    Err(None)
+  }
+}
 
 define_json_struct_interp! { KadenaCmd 16 {
   account_number: JsonString,
