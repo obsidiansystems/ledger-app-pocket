@@ -46,8 +46,32 @@ type CmdInterp = KadenaCmd<
     DropInterp,
     DropInterp,
     DropInterp,
-    SubInterp<Message<DropInterp, DropInterp>>,
+    SubInterp<Message<
+      SendMessageActionT,
+      DropInterp>>,
     DropInterp>;
+
+type SendMessageActionT = Action<SendValue<JsonStringAccumulate<64>, JsonStringAccumulate<64>, DropInterp>,
+                                 fn(& SendValue<Option<ArrayVec<u8,64>>, Option<ArrayVec<u8,64>>, Option<()>>, &mut Option<()>) -> Option<()>>;
+
+const SEND_MESSAGE_ACTION: SendMessageActionT =
+  Action(SendValue{field_from_address: JsonStringAccumulate::<64>,
+                   field_to_address: JsonStringAccumulate::<64>,
+                   field_amount: DropInterp},
+         |parseResult, destination| {
+           let mut pmpt = ArrayString::<256>::new();
+           write!(pmpt, "Transfer from:");
+           write!(pmpt, "{}", core::str::from_utf8(parseResult.field_from_address.as_ref()?).ok()?);
+           write!(pmpt, "Transfer to:");
+           write!(pmpt, "{}", core::str::from_utf8(parseResult.field_to_address.as_ref()?).ok()?);
+
+           if !ui::MessageValidator::new(&["Accept?", &pmpt], &[&"Confirm"], &[&"Reject"]).ask() {
+               None
+           } else {
+               *destination = Some(());
+               Some(())
+           }
+         });
 
 pub type SignImplT = Action<
     (
@@ -85,7 +109,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                     field_chain_id: DropInterp,
                     field_fee: DropInterp,
                     field_memo: DropInterp,
-                    field_msgs: SubInterp(Message {send_message: DropInterp, unjail_message: DropInterp}),
+                    field_msgs: SubInterp(Message {send_message: SEND_MESSAGE_ACTION, unjail_message: DropInterp}),
                     field_sequence: DropInterp,
                 }),
                 true,
