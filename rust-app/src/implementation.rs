@@ -260,13 +260,8 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
                destination: &mut Option<Self::Returning>)
                -> Result<(), Option<OOB>> {
     match state {
-      MessageState::Start => {
-        match token {
-          JsonToken::BeginObject => {
-            set_from_thunk(state, ||MessageState::TypeLabel(JsonStringAccumulate.init(), None));
-          }
-          _ => return Err(Some(OOB::Reject)),
-        }
+      MessageState::Start if token == JsonToken::BeginObject => {
+        set_from_thunk(state, ||MessageState::TypeLabel(JsonStringAccumulate.init(), None));
       }
       MessageState::TypeLabel(ref mut temp_string_state, ref mut temp_string_return) => {
         JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
@@ -276,13 +271,8 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           return Err(Some(OOB::Reject));
         }
       }
-      MessageState::KeySep1 => {
-        match token {
-          JsonToken::NameSeparator => {
-            set_from_thunk(state, ||MessageState::Type(JsonStringAccumulate.init(), None));
-          }
-          _ => return Err(Some(OOB::Reject)),
-        }
+      MessageState::KeySep1 if token == JsonToken::NameSeparator => {
+        set_from_thunk(state, ||MessageState::Type(JsonStringAccumulate.init(), None));
       }
       MessageState::Type(ref mut temp_string_state, ref mut temp_string_return) => {
         JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
@@ -296,14 +286,9 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           _ => return Err(Some(OOB::Reject)),
         }
       }
-      MessageState::ValueSep(msgType) => {
-        match token {
-          JsonToken::ValueSeparator => {
-            let msgTypeTemp = *msgType;
-            set_from_thunk(state, ||MessageState::ValueLabel(msgTypeTemp, JsonStringAccumulate.init(), None));
-          }
-          _ => return Err(Some(OOB::Reject)),
-        }
+      MessageState::ValueSep(msgType) if token == JsonToken::ValueSeparator => {
+        let msgTypeTemp = *msgType;
+        set_from_thunk(state, ||MessageState::ValueLabel(msgTypeTemp, JsonStringAccumulate.init(), None));
       }
       MessageState::ValueLabel(msgType, temp_string_state, temp_string_return) => {
         JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
@@ -314,21 +299,16 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           return Err(Some(OOB::Reject));
         }
       }
-      MessageState::KeySep2(msgType) => {
-        match token {
-          JsonToken::NameSeparator => {
-            match msgType {
-              MessageType::SendMessage => {
-                *destination = Some(MessageReturn::SendMessageReturn(None));
-                set_from_thunk(state, ||MessageState::SendMessageState(self.send_message.init()));
-              }
-              MessageType::UnjailMessage => {
-                *destination = Some(MessageReturn::UnjailMessageReturn(None));
-                set_from_thunk(state, ||MessageState::UnjailMessageState(self.unjail_message.init()));
-              }
-            }
+      MessageState::KeySep2(msgType) if token == JsonToken::NameSeparator => {
+        match msgType {
+          MessageType::SendMessage => {
+            *destination = Some(MessageReturn::SendMessageReturn(None));
+            set_from_thunk(state, ||MessageState::SendMessageState(self.send_message.init()));
           }
-          _ => return Err(Some(OOB::Reject)),
+          MessageType::UnjailMessage => {
+            *destination = Some(MessageReturn::UnjailMessageReturn(None));
+            set_from_thunk(state, ||MessageState::UnjailMessageState(self.unjail_message.init()));
+          }
         }
       }
       MessageState::SendMessageState(ref mut sendMessageState) => {
@@ -355,11 +335,8 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           }
         }
       }
-      MessageState::End => {
-        match token {
-          JsonToken::EndObject => return Ok(()),
-          _ => return Err(Some(OOB::Reject)),
-        }
+      MessageState::End if token == JsonToken::EndObject => {
+          return Ok(())
       }
       _ => return Err(Some(OOB::Reject)),
     };
