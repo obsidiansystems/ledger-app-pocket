@@ -2,6 +2,7 @@ use crate::crypto_helpers::{detecdsa_sign, get_pkh, get_private_key, get_pubkey,
 use crate::interface::*;
 use arrayvec::{ArrayString, ArrayVec};
 use core::fmt::Write;
+use core::iter::FromIterator;
 use ledger_log::*;
 use ledger_parser_combinators::interp_parser::{
     Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
@@ -51,21 +52,53 @@ type CmdInterp = KadenaCmd<
       DropInterp>>,
     DropInterp>;
 
-type SendMessageActionT = Action<SendValue<JsonStringAccumulate<64>, JsonStringAccumulate<64>, DropInterp>,
-                                 fn(& SendValue<Option<ArrayVec<u8,64>>, Option<ArrayVec<u8,64>>, Option<()>>, &mut Option<()>) -> Option<()>>;
+type SendMessageActionT = Action<SendValue<JsonStringAccumulate<64>,
+                                           JsonStringAccumulate<64>,
+                                           AccumulateArray<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>, 2>>,
+                                 fn(& SendValue<Option<ArrayVec<u8, 64>>,
+                                                Option<ArrayVec<u8, 64>>,
+                                                Option<ArrayVec<AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, 2>>>,
+                                    &mut Option<()>) -> Option<()>>;
+
+const NANOS_DISPLAY_LENGHT: usize = 15;
 
 const SEND_MESSAGE_ACTION: SendMessageActionT =
   Action(SendValue{field_from_address: JsonStringAccumulate::<64>,
                    field_to_address: JsonStringAccumulate::<64>,
-                   field_amount: DropInterp},
+                   field_amount: AccumulateArray(AmountType {field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>})},
          |parseResult, destination| {
-           let mut pmpt = ArrayString::<256>::new();
-           write!(pmpt, "Transfer from:");
-           write!(pmpt, "{}", core::str::from_utf8(parseResult.field_from_address.as_ref()?).ok()?);
-           write!(pmpt, "Transfer to:");
-           write!(pmpt, "{}", core::str::from_utf8(parseResult.field_to_address.as_ref()?).ok()?);
 
-           if !ui::MessageValidator::new(&["Accept?", &pmpt], &[&"Confirm"], &[&"Reject"]).ask() {
+           let mut pmpt = ArrayString::<256>::new();
+
+           let from_address = parseResult
+             .field_from_address
+             .as_ref()?
+             .chunks(NANOS_DISPLAY_LENGHT)
+             .map(| chunk | core::str::from_utf8(chunk))
+             .collect::<Result<ArrayVec<&str, 5>, _>>()
+             .ok()?;
+           let to_address = parseResult
+             .field_to_address
+             .as_ref()?
+             .chunks(NANOS_DISPLAY_LENGHT)
+             .map(| chunk | core::str::from_utf8(chunk))
+             .collect::<Result<ArrayVec<&str, 5>, _>>()
+             .ok()?;
+           let amount = parseResult
+             .field_amount.as_ref()?
+             .iter()
+             .map(| a | core::str::from_utf8(& a.field_amount.as_ref()?).ok())
+             .collect::<Option<ArrayVec<&str, 2>>>()?;
+
+           // write!(DBG, "\n\n\nAAAAAAA: {:?}\n\n\n\n", amount);
+           let mut concatenated = ArrayVec::<_, 2>::new();
+
+           concatenated.try_push("Transfer from:");
+           concatenated.try_extend_from_slice(&from_address[..]);
+           concatenated.try_push("Transfer to:");
+           concatenated.try_extend_from_slice(&to_address[..]);
+
+           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
                None
            } else {
                *destination = Some(());
