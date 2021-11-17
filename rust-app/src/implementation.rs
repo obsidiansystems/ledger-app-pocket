@@ -41,7 +41,7 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
     });
 
 type CmdInterp = KadenaCmd<
-    Action<DropInterp, fn(&(), &mut Option<()>) -> Option<()>>,
+    DropInterp,
     DropInterp,
     DropInterp,
     DropInterp,
@@ -170,7 +170,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                 Hasher::new,
                 Hasher::update,
                 Json(KadenaCmd {
-                    field_account_number: Action(DropInterp, |_, _| {write!(DBG, "HEEEEY\n\n\n\n"); Some(())}),
+                    field_account_number: DropInterp,
                     field_chain_id: DropInterp,
                     field_fee: DropInterp,
                     field_memo: DropInterp,
