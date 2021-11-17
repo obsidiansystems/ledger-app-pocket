@@ -4,7 +4,6 @@ use rust_app::interface::*;
 use rust_app::utils;
 
 use core::str::from_utf8;
-use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
 use nanos_ui::ui;
 

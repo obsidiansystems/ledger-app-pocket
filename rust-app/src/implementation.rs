@@ -2,14 +2,12 @@ use crate::crypto_helpers::{detecdsa_sign, get_pkh, get_private_key, get_pubkey,
 use crate::interface::*;
 use arrayvec::{ArrayString, ArrayVec};
 use core::fmt::Write;
-use core::iter::FromIterator;
 use ledger_log::*;
 use ledger_parser_combinators::interp_parser::{
     Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
 };
 use ledger_parser_combinators::json::Json;
 use nanos_ui::ui;
-use nanos_sdk::pic_rs;
 
 use ledger_parser_combinators::define_json_struct_interp;
 use ledger_parser_combinators::json::*;
@@ -112,7 +110,7 @@ const TO_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
 const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
                                   fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>> =
   Action(AmountType{field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>},
-        | AmountType{field_amount: mAmount, field_denom: mDenom}, destination | {
+        | AmountType{field_amount: amount, field_denom: denom}, destination | {
 
           // let prompt =
           //   .chunks(NANOS_DISPLAY_LENGHT)
@@ -123,9 +121,9 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
           let mut concatenated = ArrayVec::<_, 10>::new();
 
           concatenated.try_push("Amount:");
-          concatenated.try_push(core::str::from_utf8(mAmount.as_ref()?).ok()?);
+          concatenated.try_push(core::str::from_utf8(amount.as_ref()?).ok()?);
           concatenated.try_push("Denom:");
-          concatenated.try_push(core::str::from_utf8(mDenom.as_ref()?).ok()?);
+          concatenated.try_push(core::str::from_utf8(denom.as_ref()?).ok()?);
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -353,21 +351,21 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           _ => return Err(Some(OOB::Reject)),
         }
       }
-      MessageState::ValueSep(msgType) if token == JsonToken::ValueSeparator => {
-        let msgTypeTemp = *msgType;
-        set_from_thunk(state, ||MessageState::ValueLabel(msgTypeTemp, JsonStringAccumulate.init(), None));
+      MessageState::ValueSep(msg_type) if token == JsonToken::ValueSeparator => {
+        let new_msg_type = *msg_type;
+        set_from_thunk(state, ||MessageState::ValueLabel(new_msg_type, JsonStringAccumulate.init(), None));
       }
-      MessageState::ValueLabel(msgType, temp_string_state, temp_string_return) => {
+      MessageState::ValueLabel(msg_type, temp_string_state, temp_string_return) => {
         JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
         if temp_string_return.as_ref().unwrap().as_slice() == b"value" {
-          let msgTypeTemp = *msgType;
-          set_from_thunk(state, ||MessageState::KeySep2(msgTypeTemp));
+          let new_msg_type = *msg_type;
+          set_from_thunk(state, ||MessageState::KeySep2(new_msg_type));
         } else {
           return Err(Some(OOB::Reject));
         }
       }
-      MessageState::KeySep2(msgType) if token == JsonToken::NameSeparator => {
-        match msgType {
+      MessageState::KeySep2(msg_type) if token == JsonToken::NameSeparator => {
+        match msg_type {
           MessageType::SendMessage => {
             *destination = Some(MessageReturn::SendMessageReturn(None));
             set_from_thunk(state, ||MessageState::SendMessageState(self.send_message.init()));
@@ -378,11 +376,11 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           }
         }
       }
-      MessageState::SendMessageState(ref mut sendMessageState) => {
+      MessageState::SendMessageState(ref mut send_message_state) => {
         let sub_destination = &mut destination.as_mut().ok_or(Some(OOB::Reject))?;
         match sub_destination {
-          MessageReturn::SendMessageReturn(sendMessageReturn) => {
-            self.send_message.parse(sendMessageState, token, sendMessageReturn)?;
+          MessageReturn::SendMessageReturn(send_message_return) => {
+            self.send_message.parse(send_message_state, token, send_message_return)?;
             set_from_thunk(state, ||MessageState::End);
           }
           _ => {
@@ -390,11 +388,11 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           }
         }
       }
-      MessageState::UnjailMessageState(ref mut unjailMessageState) => {
+      MessageState::UnjailMessageState(ref mut unjail_message_state) => {
         let sub_destination = &mut destination.as_mut().ok_or(Some(OOB::Reject))?;
         match sub_destination {
-          MessageReturn::UnjailMessageReturn(unjailMessageReturn) => {
-            self.unjail_message.parse(unjailMessageState, token, unjailMessageReturn)?;
+          MessageReturn::UnjailMessageReturn(unjail_message_return) => {
+            self.unjail_message.parse(unjail_message_state, token, unjail_message_return)?;
             set_from_thunk(state, ||MessageState::End);
           }
           _ => {
