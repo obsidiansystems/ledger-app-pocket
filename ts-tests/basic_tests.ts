@@ -137,6 +137,8 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
      }
 }
 
+// These tests have been extracted mostly by the cosmos source code and the pokt
+// proto files.
 
 let exampleSend = {
     "account_number": "108",
@@ -182,6 +184,33 @@ let exampleUnjail = {
             "type": "cosmos-sdk/MsgUnjail",
             "value": {
                 "address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
+            }
+        }
+    ],
+    "sequence": "106"
+}
+
+let exampleStake = {
+    "account_number": "108",
+    "chain_id": "cosmoshub-2",
+    "fee": {
+        "amount": [
+            {
+                "amount": "600",
+                "denom": "uatom"
+            }
+        ],
+        "gas": "200000"
+    },
+    "memo": "",
+    "msgs": [
+        {
+            "type": "cosmos-sdk/MsgStake",
+            "value": {
+                "public_key": "publicKey1",
+                "chains": ["chain1", "chain2"],
+                "value": "35",
+                "service_url": "serviceurl1"
             }
         }
     ],
@@ -343,26 +372,117 @@ describe("Signing tests", function() {
                "y": 11,
            }
        ]));
-  it("can sign a different simple transfer",
-     testTransaction(
-       "0/0",
-       '{"networkId":"mainnet01","payload":{"exec":{"data":{},"code":"(coin.transfer \"aab7d3e457f3f78480832d6ac4ace7387f460620a63a5b68c8c799d6bff1566a\" \"4c310df6224d674d80463a29cde00cb0ecfb71e0cfdce494243a61b8ea572dfd\" 2.0)"}},"signers":[{"pubKey":"aab7d3e457f3f78480832d6ac4ace7387f460620a63a5b68c8c799d6bff1566a","clist":[{"args":["aab7d3e457f3f78480832d6ac4ace7387f460620a63a5b68c8c799d6bff1566a","4c310df6224d674d80463a29cde00cb0ecfb71e0cfdce494243a61b8ea572dfd",2],"name":"coin.TRANSFER"},{"args":[],"name":"coin.GAS"}]}],"meta":{"creationTime":1634009195,"ttl":900,"gasLimit":600,"chainId":"0","gasPrice":1.0e-6,"sender":"aab7d3e457f3f78480832d6ac4ace7387f460620a63a5b68c8c799d6bff1566a"},"nonce":"\"2021-10-12T03:27:35.231Z\""}',
-       []));
-  it("can sign a transfer-create",
-     testTransaction(
-       "0/0",
-       '{"networkId":"mainnet01","payload":{"exec":{"data":{"recp-ks":{"pred":"keys-all","keys":["875e4493e19c8721583bfb46f0768f10266ebcca33c4a0e04bc099a7044a90f7"]}},"code":"(coin.transfer-create \"e4a1b2980c086c4551ab7d2148cf56e9774c64eb86f795d5fd83e39ccfd2ec66\" \"875e4493e19c8721583bfb46f0768f10266ebcca33c4a0e04bc099a7044a90f7\" (read-keyset \"recp-ks\") 4.98340488)"}},"signers":[{"pubKey":"e4a1b2980c086c4551ab7d2148cf56e9774c64eb86f795d5fd83e39ccfd2ec66","clist":[{"args":[],"name":"coin.GAS"},{"args":["e4a1b2980c086c4551ab7d2148cf56e9774c64eb86f795d5fd83e39ccfd2ec66","875e4493e19c8721583bfb46f0768f10266ebcca33c4a0e04bc099a7044a90f7",4.98340488],"name":"coin.TRANSFER"}]}],"meta":{"creationTime":1634009142,"ttl":28800,"gasLimit":60000,"chainId":"0","gasPrice":1.0e-6,"sender":"e4a1b2980c086c4551ab7d2148cf56e9774c64eb86f795d5fd83e39ccfd2ec66"},"nonce":"\"1634009156943\""}',
-       []));
-  it("can sign a transfer-create",
-     testTransaction(
-       "0/0",
-       '{"networkId":"mainnet01","payload":{"exec":{"data":{"recp-ks":{"pred":"keys-all","keys":["875e4493e19c8721583bfb46f0768f10266ebcca33c4a0e04bc099a7044a90f7"]}},"code":"(coin.transfer-create \"73580ffb3e5ca9859442395d4c1cb0bf3aa4e7246564ce943b7ae508b3ee7c03\" \"875e4493e19c8721583bfb46f0768f10266ebcca33c4a0e04bc099a7044a90f7\" (read-keyset \"recp-ks\") 4.89093455)"}},"signers":[{"pubKey":"73580ffb3e5ca9859442395d4c1cb0bf3aa4e7246564ce943b7ae508b3ee7c03","clist":[{"args":[],"name":"coin.GAS"},{"args":["73580ffb3e5ca9859442395d4c1cb0bf3aa4e7246564ce943b7ae508b3ee7c03","875e4493e19c8721583bfb46f0768f10266ebcca33c4a0e04bc099a7044a90f7",4.89093455],"name":"coin.TRANSFER"}]}],"meta":{"creationTime":1634009098,"ttl":28800,"gasLimit":60000,"chainId":"0","gasPrice":1.0e-6,"sender":"73580ffb3e5ca9859442395d4c1cb0bf3aa4e7246564ce943b7ae508b3ee7c03"},"nonce":"\"1634009113073\""}',
-       []));
 
-  it("can sign a rotate transaction",
+  it.only("can sign a simple stake",
      testTransaction(
        "0/0",
-'{"networkId":"mainnet01","payload":{"exec":{"data":{"ks":{"pred":"keys-all","keys":["d3300d284f4bcfbc91555184ef026a356e57ff0fa97b5e6c9830750892cd3093"]}},"code":"(coin.rotate \"d3300d284f4bcfbc91555184ef026a356e57ff0fa97b5e6c9830750892cd3093\" (read-keyset \"ks\"))"}},"signers":[{"pubKey":"81b4511b257fb975dace13e823c257c17ac6a695da65f91b6036d6e1429268fc","clist":[{"args":[],"name":"coin.GAS"},{"args":["d3300d284f4bcfbc91555184ef026a356e57ff0fa97b5e6c9830750892cd3093"],"name":"coin.ROTATE"}]}],"meta":{"creationTime":1633466764,"ttl":28800,"gasLimit":1500,"chainId":"0","gasPrice":1.0e-5,"sender":"81b4511b257fb975dace13e823c257c17ac6a695da65f91b6036d6e1429268fc"},"nonce":"\"1633466764\""}',
-       []));
-
+       JSON.stringify(exampleStake),
+       [
+         {
+           "text": "Stake with public key:",
+           "x": 8,
+           "y": 11,
+         },
+         {
+           "text": "publicKey1",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Chain:",
+           "x": 48,
+           "y": 11,
+         },
+         {
+           "text": "chain1",
+           "x": 47,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Chain:",
+           "x": 48,
+           "y": 11,
+         },
+         {
+           "text": "chain2",
+           "x": 47,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Value:",
+           "x": 48,
+           "y": 11,
+         },
+         {
+           "text": "35",
+           "x": 58,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Service url:",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "serviceurl1",
+           "x": 37,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Sign Hash?",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "E88C1414CD6E4E3F79FBFAD3FC60E41D77B88517304A828901E27FD6D6D89890",
+           "x": -47,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "With PKH",
+           "x": 40,
+           "y": 11,
+         },
+         {
+           "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
+           "x": -50,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+       ]
+     ));
 });

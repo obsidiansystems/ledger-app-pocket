@@ -47,7 +47,8 @@ type CmdInterp = KadenaCmd<
     DropInterp,
     SubInterp<Message<
       SendMessageActionT,
-      DropInterp>>,
+      DropInterp,
+      StakeMessageActionT>>,
     DropInterp>;
 
 type SendMessageActionT = SendValue<
@@ -55,6 +56,14 @@ type SendMessageActionT = SendValue<
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
     SubInterp<Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
                      fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>>>
+>;
+
+type StakeMessageActionT = StakeValue<
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
+    SubInterp<Action<JsonStringAccumulate<64>,
+                     fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>>,
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
 >;
 
 const NANOS_DISPLAY_LENGHT: usize = 15;
@@ -138,6 +147,108 @@ const SEND_MESSAGE_ACTION: SendMessageActionT =
             field_to_address: TO_ADDRESS_ACTION,
             field_amount: SubInterp(AMOUNT_ACTION)};
 
+const PUBLIC_KEY_ACTION: Action<JsonStringAccumulate<64>,
+                                fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        | public_key, destination | {
+
+          let prompt = public_key
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Stake with public key:");
+          concatenated.try_extend_from_slice(&prompt[..]);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
+const CHAIN_ACTION: Action<JsonStringAccumulate<64>,
+                           fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        | chain, destination | {
+
+          let prompt = chain
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Chain:");
+          concatenated.try_extend_from_slice(&prompt[..]);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
+const VALUE_ACTION: Action<JsonStringAccumulate<64>,
+                                 fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        | value, destination | {
+
+          let prompt = value
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Value:");
+          concatenated.try_extend_from_slice(&prompt[..]);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
+const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
+                                 fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        | service_url, destination | {
+
+          let prompt = service_url
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Service url:");
+          concatenated.try_extend_from_slice(&prompt[..]);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
+const STAKE_MESSAGE_ACTION: StakeMessageActionT =
+  StakeValue{field_public_key: PUBLIC_KEY_ACTION,
+             field_chains: SubInterp(CHAIN_ACTION),
+             field_value: VALUE_ACTION,
+             field_service_url: SERVICE_URL_ACTION};
+
 pub type SignImplT = Action<
     (
         Action<
@@ -174,7 +285,9 @@ pub const SIGN_IMPL: SignImplT = Action(
                     field_chain_id: DropInterp,
                     field_fee: DropInterp,
                     field_memo: DropInterp,
-                    field_msgs: SubInterp(Message {send_message: SEND_MESSAGE_ACTION, unjail_message: DropInterp}),
+                    field_msgs: SubInterp(Message {send_message: SEND_MESSAGE_ACTION,
+                                                   unjail_message: DropInterp,
+                                                   stake_message: STAKE_MESSAGE_ACTION}),
                     field_sequence: DropInterp,
                 }),
                 true,
@@ -270,25 +383,35 @@ define_json_struct_interp! { UnjailValue 16 {
   address: JsonString
 }}
 
+define_json_struct_interp! { StakeValue 16 {
+  public_key: JsonString,
+  chains: JsonArray<JsonString>,
+  value: JsonString,
+  service_url: JsonString
+}}
+
 #[derive(Copy, Clone, Debug)]
 pub enum MessageType {
   SendMessage,
-  UnjailMessage
+  UnjailMessage,
+  StakeMessage,
 }
 
 #[derive(Debug)]
 pub struct Message<
   SendInterp: JsonInterp<SendValueSchema>,
-  UnjailInterp: JsonInterp<UnjailValueSchema>> {
+  UnjailInterp: JsonInterp<UnjailValueSchema>,
+  StakeInterp: JsonInterp<StakeValueSchema>> {
   pub send_message: SendInterp,
-  pub unjail_message: UnjailInterp
+  pub unjail_message: UnjailInterp,
+  pub stake_message: StakeInterp
 }
 
 type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State;
 type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>;
 
 #[derive(Debug)]
-pub enum MessageState<SendMessageState, UnjailMessageState> {
+pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState> {
   Start,
   TypeLabel(TemporaryStringState<4>, TemporaryStringReturn<4>),
   KeySep1,
@@ -298,23 +421,33 @@ pub enum MessageState<SendMessageState, UnjailMessageState> {
   KeySep2(MessageType),
   SendMessageState(SendMessageState),
   UnjailMessageState(UnjailMessageState),
+  StakeMessageState(StakeMessageState),
   End,
 }
 
-pub enum MessageReturn<SendMessageReturn, UnjailMessageReturn> {
+pub enum MessageReturn<
+    SendMessageReturn,
+    UnjailMessageReturn,
+    StakeMessageReturn> {
   SendMessageReturn(Option<SendMessageReturn>),
-  UnjailMessageReturn(Option<UnjailMessageReturn>)
+  UnjailMessageReturn(Option<UnjailMessageReturn>),
+  StakeMessageReturn(Option<StakeMessageReturn>)
 }
 
-impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailValueSchema>>
-  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp>
+impl <SendInterp: JsonInterp<SendValueSchema>,
+      UnjailInterp: JsonInterp<UnjailValueSchema>,
+      StakeInterp: JsonInterp<StakeValueSchema>>
+  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp>
   where
   <SendInterp as JsonInterp<SendValueSchema>>::State: core::fmt::Debug,
-  <UnjailInterp as JsonInterp<UnjailValueSchema>>::State: core::fmt::Debug {
+  <UnjailInterp as JsonInterp<UnjailValueSchema>>::State: core::fmt::Debug,
+  <StakeInterp as JsonInterp<StakeValueSchema>>::State: core::fmt::Debug {
   type State = MessageState<<SendInterp as JsonInterp<SendValueSchema>>::State,
-                           <UnjailInterp as JsonInterp<UnjailValueSchema>>::State>;
+                            <UnjailInterp as JsonInterp<UnjailValueSchema>>::State,
+                            <StakeInterp as JsonInterp<StakeValueSchema>>::State>;
   type Returning = MessageReturn<<SendInterp as JsonInterp<SendValueSchema>>::Returning,
-                                <UnjailInterp as JsonInterp<UnjailValueSchema>>::Returning>;
+                                 <UnjailInterp as JsonInterp<UnjailValueSchema>>::Returning,
+                                 <StakeInterp as JsonInterp<StakeValueSchema>>::Returning>;
   fn init(&self) -> Self::State {
     MessageState::Start
   }
@@ -348,6 +481,9 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
           b"cosmos-sdk/MsgUnjail" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnjailMessage));
           }
+          b"cosmos-sdk/MsgStake" =>  {
+            set_from_thunk(state, ||MessageState::ValueSep(MessageType::StakeMessage));
+          }
           _ => return Err(Some(OOB::Reject)),
         }
       }
@@ -374,6 +510,10 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
             *destination = Some(MessageReturn::UnjailMessageReturn(None));
             set_from_thunk(state, ||MessageState::UnjailMessageState(self.unjail_message.init()));
           }
+          MessageType::StakeMessage => {
+            *destination = Some(MessageReturn::StakeMessageReturn(None));
+            set_from_thunk(state, ||MessageState::StakeMessageState(self.stake_message.init()));
+          }
         }
       }
       MessageState::SendMessageState(ref mut send_message_state) => {
@@ -393,6 +533,18 @@ impl <SendInterp: JsonInterp<SendValueSchema>, UnjailInterp: JsonInterp<UnjailVa
         match sub_destination {
           MessageReturn::UnjailMessageReturn(unjail_message_return) => {
             self.unjail_message.parse(unjail_message_state, token, unjail_message_return)?;
+            set_from_thunk(state, ||MessageState::End);
+          }
+          _ => {
+            return Err(Some(OOB::Reject))
+          }
+        }
+      }
+      MessageState::StakeMessageState(ref mut stake_message_state) => {
+        let sub_destination = &mut destination.as_mut().ok_or(Some(OOB::Reject))?;
+        match sub_destination {
+          MessageReturn::StakeMessageReturn(stake_message_return) => {
+            self.stake_message.parse(stake_message_state, token, stake_message_return)?;
             set_from_thunk(state, ||MessageState::End);
           }
           _ => {

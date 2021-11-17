@@ -44,6 +44,13 @@ define_json_struct! { UnjailValue 16 {
   address: JsonString
 }}
 
+define_json_struct! { StakeValue 16 {
+  public_key: JsonString,
+  chains: JsonArray<JsonString>,
+  value: JsonString,
+  service_url: JsonString
+}}
+
 pub struct MessageSchema;
 
 define_json_struct! { KadenaCmd 16 {
