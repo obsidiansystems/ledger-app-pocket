@@ -194,37 +194,119 @@ describe("Signing tests", function() {
        "0/0",
        JSON.stringify(exampleSend),
        [
-           {
-               "text": "Sign Hash?",
-               "x": 36,
-               "y": 11,
-           },
-           {
-               "text": "1786E003E1DCE76D388108803846C1F0B4827A48BDF39F52C2D9506AF05903D2",
-               "x": -49,
-               "y": 11,
-           },
-           {
-               "text": "Confirm",
-               "x": 43,
-               "y": 11,
-           },
-           {
-               "text": "With PKH",
-               "x": 40,
-               "y": 11,
-           },
-           {
-               "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
-               "x": -50,
-               "y": 11,
-           },
-           {
-               "text": "Confirm",
-               "x": 43,
-               "y": 11,
-           }
-       ]));
+         {
+           "text": "Transfer from:",
+           "x": 26,
+           "y": 11,
+         },
+         {
+           "text": "cosmos1kky4yzth",
+           "x": 18,
+           "y": 11,
+         },
+         {
+           "text": "6gdrm8ga5zlfwha",
+           "x": 18,
+           "y": 11,
+         },
+         {
+           "text": "v33yr7hl87jycah",
+           "x": 22,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Transfer to:",
+           "x": 34,
+           "y": 11,
+         },
+         {
+           "text": "cosmosvaloper1k",
+           "x": 19,
+           "y": 11,
+         },
+         {
+           "text": "n3wugetjuy4zetl",
+           "x": 20,
+           "y": 11,
+         },
+         {
+           "text": "q6wadchfhvu3x74",
+           "x": 15,
+           "y": 11,
+         },
+         {
+           "text": "0ae6z6x",
+           "x": 44,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Amount:",
+           "x": 42,
+           "y": 11,
+         },
+         {
+           "text": "10",
+           "x": 58,
+           "y": 11,
+         },
+         {
+           "text": "Denom:",
+           "x": 44,
+           "y": 11,
+         },
+         {
+           "text": "atom",
+           "x": 51,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Sign Hash?",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "1786E003E1DCE76D388108803846C1F0B4827A48BDF39F52C2D9506AF05903D2",
+           "x": -49,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "With PKH",
+           "x": 40,
+           "y": 11,
+         },
+         {
+           "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
+           "x": -50,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+       ]
+
+       ));
   it.only("can sign a simple unjail",
      testTransaction(
        "0/0",
