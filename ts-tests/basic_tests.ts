@@ -217,6 +217,30 @@ let exampleStake = {
     "sequence": "106"
 }
 
+let exampleUnstake = {
+    "account_number": "108",
+    "chain_id": "cosmoshub-2",
+    "fee": {
+        "amount": [
+            {
+                "amount": "600",
+                "denom": "uatom"
+            }
+        ],
+        "gas": "200000"
+    },
+    "memo": "",
+    "msgs": [
+        {
+            "type": "cosmos-sdk/MsgUnstake",
+            "value": {
+                "validator_address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
+            }
+        }
+    ],
+    "sequence": "106"
+}
+
 describe("Signing tests", function() {
   it.only("can sign a simple transfer",
      testTransaction(
@@ -484,5 +508,70 @@ describe("Signing tests", function() {
            "y": 11,
          },
        ]
+     ));
+
+  it.only("can sign a simple unstake",
+     testTransaction(
+       "0/0",
+       JSON.stringify(exampleUnstake),
+       [
+         {
+           "text": "Transfer from:",
+           "x": 26,
+           "y": 11,
+         },
+         {
+           "text": "cosmos1kky4yzth",
+           "x": 18,
+           "y": 11,
+         },
+         {
+           "text": "6gdrm8ga5zlfwha",
+           "x": 18,
+           "y": 11,
+         },
+         {
+           "text": "v33yr7hl87jycah",
+           "x": 22,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Sign Hash?",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "707610613DA68A78AFBCEC4F8D256FEBFC1B262FACD3260CBD3EC52B145EDF59",
+           "x": -48,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "With PKH",
+           "x": 40,
+           "y": 11,
+         },
+         {
+           "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
+           "x": -50,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+       ]
+
+
      ));
 });

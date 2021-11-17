@@ -48,7 +48,8 @@ type CmdInterp = KadenaCmd<
     SubInterp<Message<
       SendMessageActionT,
       DropInterp,
-      StakeMessageActionT>>,
+      StakeMessageActionT,
+      UnstakeMessageActionT>>,
     DropInterp>;
 
 type SendMessageActionT = SendValue<
@@ -65,6 +66,10 @@ type StakeMessageActionT = StakeValue<
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
 >;
+
+type UnstakeMessageActionT = UnstakeValue<
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
+    >;
 
 const NANOS_DISPLAY_LENGHT: usize = 15;
 
@@ -249,6 +254,9 @@ const STAKE_MESSAGE_ACTION: StakeMessageActionT =
              field_value: VALUE_ACTION,
              field_service_url: SERVICE_URL_ACTION};
 
+const UNSTAKE_MESSAGE_ACTION: UnstakeMessageActionT =
+  UnstakeValue{field_validator_address: FROM_ADDRESS_ACTION};
+
 pub type SignImplT = Action<
     (
         Action<
@@ -287,7 +295,8 @@ pub const SIGN_IMPL: SignImplT = Action(
                     field_memo: DropInterp,
                     field_msgs: SubInterp(Message {send_message: SEND_MESSAGE_ACTION,
                                                    unjail_message: DropInterp,
-                                                   stake_message: STAKE_MESSAGE_ACTION}),
+                                                   stake_message: STAKE_MESSAGE_ACTION,
+                                                   unstake_message: UNSTAKE_MESSAGE_ACTION}),
                     field_sequence: DropInterp,
                 }),
                 true,
@@ -390,28 +399,35 @@ define_json_struct_interp! { StakeValue 16 {
   service_url: JsonString
 }}
 
+define_json_struct_interp! { UnstakeValue 20 {
+  validator_address: JsonString
+}}
+
 #[derive(Copy, Clone, Debug)]
 pub enum MessageType {
   SendMessage,
   UnjailMessage,
   StakeMessage,
+  UnstakeMessage,
 }
 
 #[derive(Debug)]
 pub struct Message<
   SendInterp: JsonInterp<SendValueSchema>,
   UnjailInterp: JsonInterp<UnjailValueSchema>,
-  StakeInterp: JsonInterp<StakeValueSchema>> {
+  StakeInterp: JsonInterp<StakeValueSchema>,
+  UnstakeInterp: JsonInterp<UnstakeValueSchema>> {
   pub send_message: SendInterp,
   pub unjail_message: UnjailInterp,
-  pub stake_message: StakeInterp
+  pub stake_message: StakeInterp,
+  pub unstake_message: UnstakeInterp
 }
 
 type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State;
 type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>;
 
 #[derive(Debug)]
-pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState> {
+pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, UnstakeMessageState> {
   Start,
   TypeLabel(TemporaryStringState<4>, TemporaryStringReturn<4>),
   KeySep1,
@@ -422,32 +438,39 @@ pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState> {
   SendMessageState(SendMessageState),
   UnjailMessageState(UnjailMessageState),
   StakeMessageState(StakeMessageState),
+  UnstakeMessageState(UnstakeMessageState),
   End,
 }
 
 pub enum MessageReturn<
     SendMessageReturn,
     UnjailMessageReturn,
-    StakeMessageReturn> {
+    StakeMessageReturn,
+    UnstakeMessageReturn> {
   SendMessageReturn(Option<SendMessageReturn>),
   UnjailMessageReturn(Option<UnjailMessageReturn>),
-  StakeMessageReturn(Option<StakeMessageReturn>)
+  StakeMessageReturn(Option<StakeMessageReturn>),
+  UnstakeMessageReturn(Option<UnstakeMessageReturn>)
 }
 
 impl <SendInterp: JsonInterp<SendValueSchema>,
       UnjailInterp: JsonInterp<UnjailValueSchema>,
-      StakeInterp: JsonInterp<StakeValueSchema>>
-  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp>
+      StakeInterp: JsonInterp<StakeValueSchema>,
+      UnstakeInterp: JsonInterp<UnstakeValueSchema>>
+  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
   where
   <SendInterp as JsonInterp<SendValueSchema>>::State: core::fmt::Debug,
   <UnjailInterp as JsonInterp<UnjailValueSchema>>::State: core::fmt::Debug,
-  <StakeInterp as JsonInterp<StakeValueSchema>>::State: core::fmt::Debug {
+  <StakeInterp as JsonInterp<StakeValueSchema>>::State: core::fmt::Debug,
+  <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::State: core::fmt::Debug {
   type State = MessageState<<SendInterp as JsonInterp<SendValueSchema>>::State,
                             <UnjailInterp as JsonInterp<UnjailValueSchema>>::State,
-                            <StakeInterp as JsonInterp<StakeValueSchema>>::State>;
+                            <StakeInterp as JsonInterp<StakeValueSchema>>::State,
+                            <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::State>;
   type Returning = MessageReturn<<SendInterp as JsonInterp<SendValueSchema>>::Returning,
                                  <UnjailInterp as JsonInterp<UnjailValueSchema>>::Returning,
-                                 <StakeInterp as JsonInterp<StakeValueSchema>>::Returning>;
+                                 <StakeInterp as JsonInterp<StakeValueSchema>>::Returning,
+                                 <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::Returning>;
   fn init(&self) -> Self::State {
     MessageState::Start
   }
@@ -484,6 +507,9 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
           b"cosmos-sdk/MsgStake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::StakeMessage));
           }
+          b"cosmos-sdk/MsgUnstake" =>  {
+            set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnstakeMessage));
+          }
           _ => return Err(Some(OOB::Reject)),
         }
       }
@@ -513,6 +539,10 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
           MessageType::StakeMessage => {
             *destination = Some(MessageReturn::StakeMessageReturn(None));
             set_from_thunk(state, ||MessageState::StakeMessageState(self.stake_message.init()));
+          }
+          MessageType::UnstakeMessage => {
+            *destination = Some(MessageReturn::UnstakeMessageReturn(None));
+            set_from_thunk(state, ||MessageState::UnstakeMessageState(self.unstake_message.init()));
           }
         }
       }
@@ -545,6 +575,18 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
         match sub_destination {
           MessageReturn::StakeMessageReturn(stake_message_return) => {
             self.stake_message.parse(stake_message_state, token, stake_message_return)?;
+            set_from_thunk(state, ||MessageState::End);
+          }
+          _ => {
+            return Err(Some(OOB::Reject))
+          }
+        }
+      }
+      MessageState::UnstakeMessageState(ref mut unstake_message_state) => {
+        let sub_destination = &mut destination.as_mut().ok_or(Some(OOB::Reject))?;
+        match sub_destination {
+          MessageReturn::UnstakeMessageReturn(unstake_message_return) => {
+            self.unstake_message.parse(unstake_message_state, token, unstake_message_return)?;
             set_from_thunk(state, ||MessageState::End);
           }
           _ => {

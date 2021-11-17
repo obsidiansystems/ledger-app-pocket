@@ -51,6 +51,10 @@ define_json_struct! { StakeValue 16 {
   service_url: JsonString
 }}
 
+define_json_struct! { UnstakeValue 16 {
+  validator_address: JsonString
+}}
+
 pub struct MessageSchema;
 
 define_json_struct! { KadenaCmd 16 {
