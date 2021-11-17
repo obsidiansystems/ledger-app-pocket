@@ -52,59 +52,93 @@ type CmdInterp = KadenaCmd<
       DropInterp>>,
     DropInterp>;
 
-type SendMessageActionT = Action<SendValue<JsonStringAccumulate<64>,
-                                           JsonStringAccumulate<64>,
-                                           AccumulateArray<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>, 2>>,
-                                 fn(& SendValue<Option<ArrayVec<u8, 64>>,
-                                                Option<ArrayVec<u8, 64>>,
-                                                Option<ArrayVec<AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, 2>>>,
-                                    &mut Option<()>) -> Option<()>>;
+type SendMessageActionT = SendValue<
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
+    SubInterp<Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
+                     fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>>>
+>;
 
 const NANOS_DISPLAY_LENGHT: usize = 15;
 
+const FROM_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
+                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        | from_address, destination | {
+
+          let prompt = from_address
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Transfer from:");
+          concatenated.try_extend_from_slice(&prompt[..]);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
+const TO_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
+                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        | to_address, destination | {
+
+          let prompt = to_address
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Transfer to:");
+          concatenated.try_extend_from_slice(&prompt[..]);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
+const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
+                                  fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>> =
+  Action(AmountType{field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>},
+        | AmountType{field_amount: mAmount, field_denom: mDenom}, destination | {
+
+          // let prompt =
+          //   .chunks(NANOS_DISPLAY_LENGHT)
+          //   .map(| chunk | core::str::from_utf8(chunk))
+          //   .collect::<Result<ArrayVec<&str, 5>, _>>()
+          //   .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Amount:");
+          concatenated.try_push(core::str::from_utf8(mAmount.as_ref()?).ok()?);
+          concatenated.try_push("Denom:");
+          concatenated.try_push(core::str::from_utf8(mDenom.as_ref()?).ok()?);
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
 const SEND_MESSAGE_ACTION: SendMessageActionT =
-  Action(SendValue{field_from_address: JsonStringAccumulate::<64>,
-                   field_to_address: JsonStringAccumulate::<64>,
-                   field_amount: AccumulateArray(AmountType {field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>})},
-         |parseResult, destination| {
-
-           let mut pmpt = ArrayString::<256>::new();
-
-           let from_address = parseResult
-             .field_from_address
-             .as_ref()?
-             .chunks(NANOS_DISPLAY_LENGHT)
-             .map(| chunk | core::str::from_utf8(chunk))
-             .collect::<Result<ArrayVec<&str, 5>, _>>()
-             .ok()?;
-           let to_address = parseResult
-             .field_to_address
-             .as_ref()?
-             .chunks(NANOS_DISPLAY_LENGHT)
-             .map(| chunk | core::str::from_utf8(chunk))
-             .collect::<Result<ArrayVec<&str, 5>, _>>()
-             .ok()?;
-           let amount = parseResult
-             .field_amount.as_ref()?
-             .iter()
-             .map(| a | core::str::from_utf8(& a.field_amount.as_ref()?).ok())
-             .collect::<Option<ArrayVec<&str, 2>>>()?;
-
-           // write!(DBG, "\n\n\nAAAAAAA: {:?}\n\n\n\n", amount);
-           let mut concatenated = ArrayVec::<_, 2>::new();
-
-           concatenated.try_push("Transfer from:");
-           concatenated.try_extend_from_slice(&from_address[..]);
-           concatenated.try_push("Transfer to:");
-           concatenated.try_extend_from_slice(&to_address[..]);
-
-           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-               None
-           } else {
-               *destination = Some(());
-               Some(())
-           }
-         });
+  SendValue{field_from_address: FROM_ADDRESS_ACTION,
+            field_to_address: TO_ADDRESS_ACTION,
+            field_amount: SubInterp(AMOUNT_ACTION)};
 
 pub type SignImplT = Action<
     (
