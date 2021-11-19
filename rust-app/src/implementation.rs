@@ -86,8 +86,8 @@ const FROM_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Transfer from:");
-          concatenated.try_extend_from_slice(&prompt[..]);
+          concatenated.try_push("Transfer from:").ok()?;
+          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -110,8 +110,8 @@ const TO_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Transfer to:");
-          concatenated.try_extend_from_slice(&prompt[..]);
+          concatenated.try_push("Transfer to:").ok()?;
+          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -134,10 +134,10 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Amount:");
-          concatenated.try_push(core::str::from_utf8(amount.as_ref()?).ok()?);
-          concatenated.try_push("Denom:");
-          concatenated.try_push(core::str::from_utf8(denom.as_ref()?).ok()?);
+          concatenated.try_push("Amount:").ok()?;
+          concatenated.try_push(core::str::from_utf8(amount.as_ref()?).ok()?).ok()?;
+          concatenated.try_push("Denom:").ok()?;
+          concatenated.try_push(core::str::from_utf8(denom.as_ref()?).ok()?).ok();
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -165,8 +165,8 @@ const PUBLIC_KEY_ACTION: Action<JsonStringAccumulate<64>,
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Stake with public key:");
-          concatenated.try_extend_from_slice(&prompt[..]);
+          concatenated.try_push("Stake with public key:").ok()?;
+          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -189,8 +189,8 @@ const CHAIN_ACTION: Action<JsonStringAccumulate<64>,
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Chain:");
-          concatenated.try_extend_from_slice(&prompt[..]);
+          concatenated.try_push("Chain:").ok()?;
+          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -213,8 +213,8 @@ const VALUE_ACTION: Action<JsonStringAccumulate<64>,
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Value:");
-          concatenated.try_extend_from_slice(&prompt[..]);
+          concatenated.try_push("Value:").ok()?;
+          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
@@ -237,8 +237,8 @@ const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
 
           let mut concatenated = ArrayVec::<_, 10>::new();
 
-          concatenated.try_push("Service url:");
-          concatenated.try_extend_from_slice(&prompt[..]);
+          concatenated.try_push("Service url:").ok()?;
+          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
 
           if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
               None
