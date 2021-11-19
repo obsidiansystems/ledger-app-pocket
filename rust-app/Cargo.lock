@@ -631,7 +631,6 @@ dependencies = [
 [[package]]
 name = "ledger-parser-combinators"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=json-parser#fc3053f943c21033c0397bbeb72f8e3338195137"
 dependencies = [
  "arrayvec",
  "bstringify",
@@ -719,7 +718,6 @@ dependencies = [
 [[package]]
 name = "nanos_ui"
 version = "0.1.0"
-source = "git+https://github.com/LedgerHQ/ledger-nanos-ui.git#bab7dc5a40d2988f682e0ca9c04eb631d50934ca"
 dependencies = [
  "nanos_sdk",
 ]
