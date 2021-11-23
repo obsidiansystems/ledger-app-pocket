@@ -18,10 +18,13 @@ pub type GetAddressImplT =
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), |path: &ArrayVec<u32, 10>, destination| {
+        write!(DBG, "\n\npath: {:?}\n\n", path);
         let key = get_pubkey(path).ok()?;
+        write!(DBG, "\n\nkey: {:?}\n\n", key);
         let mut rv = ArrayVec::<u8, 260>::new();
-        rv.try_extend_from_slice(&[(key.W.len() as u8)][..]).ok()?;
-        rv.try_extend_from_slice(&key.W[..]).ok()?;
+      rv.try_extend_from_slice(&[33]).ok()?;
+        rv.try_extend_from_slice(&key).ok()?;
+        write!(DBG, "\n\nrv: {:?}\n\n", rv);
 
         // At this point we have the value to send to the host; but there's a bit more to do to
         // ask permission from the user.
@@ -32,6 +35,7 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
         write!(pmpt, "{}", pkh).ok()?;
 
         if !ui::MessageValidator::new(&["Provide Public Key", &pmpt], &[&"Confirm"], &[]).ask() {
+            write!(DBG, "\n\n\nUser rejected\n\n");
             trace!("User rejected\n");
             None
         } else {
@@ -45,24 +49,23 @@ type CmdInterp = KadenaCmd<
     DropInterp,
     DropInterp,
     DropInterp,
-    SubInterp<Message<
+    Message<
       SendMessageActionT,
       DropInterp,
       StakeMessageActionT,
-      UnstakeMessageActionT>>,
-    DropInterp>;
+      UnstakeMessageActionT>>;
 
 type SendMessageActionT = SendValue<
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
-    SubInterp<Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
-                     fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>>>
+    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
 >;
 
 type StakeMessageActionT = StakeValue<
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
-    SubInterp<Action<JsonStringAccumulate<64>,
-                     fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>>,
+    SubInterp<Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>>,
+    Action<PublicKey<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
+                     fn(& PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>,
+                        &mut Option<()>) -> Option<()>>,
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
     Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
 >;
@@ -148,9 +151,9 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
         });
 
 const SEND_MESSAGE_ACTION: SendMessageActionT =
-  SendValue{field_from_address: FROM_ADDRESS_ACTION,
-            field_to_address: TO_ADDRESS_ACTION,
-            field_amount: SubInterp(AMOUNT_ACTION)};
+  SendValue{field_amount: VALUE_ACTION,
+            field_from_address: FROM_ADDRESS_ACTION,
+            field_to_address: TO_ADDRESS_ACTION};
 
 const PUBLIC_KEY_ACTION: Action<JsonStringAccumulate<64>,
                                 fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
@@ -224,6 +227,42 @@ const VALUE_ACTION: Action<JsonStringAccumulate<64>,
           }
         });
 
+const PUBLICKEY_ACTION: Action<PublicKey<JsonStringAccumulate<64>,
+                                         JsonStringAccumulate<64>>,
+                               fn(& PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>,
+                                  &mut Option<()>) -> Option<()>> =
+  Action(PublicKey{
+    field_type: JsonStringAccumulate::<64>,
+    field_value:JsonStringAccumulate::<64>},
+        | PublicKey{field_type: ty, field_value: val}, destination | {
+
+          let ty_rendered = ty.as_ref()?
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let val_rendered = val.as_ref()?
+            .chunks(NANOS_DISPLAY_LENGHT)
+            .map(| chunk | core::str::from_utf8(chunk))
+            .collect::<Result<ArrayVec<&str, 5>, _>>()
+            .ok()?;
+
+          let mut concatenated = ArrayVec::<_, 10>::new();
+
+          concatenated.try_push("Type: ").ok()?;
+          concatenated.try_extend_from_slice(&ty_rendered[..]).ok()?;
+          concatenated.try_push("Value: ").ok()?;
+          concatenated.try_extend_from_slice(&val_rendered[..]).ok()?;
+
+          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
+              None
+          } else {
+              *destination = Some(());
+              Some(())
+          }
+        });
+
 const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
@@ -249,10 +288,11 @@ const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
         });
 
 const STAKE_MESSAGE_ACTION: StakeMessageActionT =
-  StakeValue{field_public_key: PUBLIC_KEY_ACTION,
-             field_chains: SubInterp(CHAIN_ACTION),
-             field_value: VALUE_ACTION,
-             field_service_url: SERVICE_URL_ACTION};
+  StakeValue{
+    field_chains: SubInterp(CHAIN_ACTION),
+    field_public_key: PUBLICKEY_ACTION,
+    field_service_url: SERVICE_URL_ACTION,
+    field_value: VALUE_ACTION};
 
 const UNSTAKE_MESSAGE_ACTION: UnstakeMessageActionT =
   UnstakeValue{field_validator_address: FROM_ADDRESS_ACTION};
@@ -289,15 +329,14 @@ pub const SIGN_IMPL: SignImplT = Action(
                 Hasher::new,
                 Hasher::update,
                 Json(KadenaCmd {
-                    field_account_number: DropInterp,
                     field_chain_id: DropInterp,
+                    field_entropy: DropInterp,
                     field_fee: DropInterp,
                     field_memo: DropInterp,
-                    field_msgs: SubInterp(Message {send_message: SEND_MESSAGE_ACTION,
-                                                   unjail_message: DropInterp,
-                                                   stake_message: STAKE_MESSAGE_ACTION,
-                                                   unstake_message: UNSTAKE_MESSAGE_ACTION}),
-                    field_sequence: DropInterp,
+                    field_msg: Message {send_message: SEND_MESSAGE_ACTION,
+                                        unjail_message: DropInterp,
+                                        stake_message: STAKE_MESSAGE_ACTION,
+                                        unstake_message: UNSTAKE_MESSAGE_ACTION},
                 }),
                 true,
             ),
@@ -338,9 +377,9 @@ pub const SIGN_IMPL: SignImplT = Action(
     ),
     |(hash, key): &(Option<[u8; 32]>, _), destination: &mut Option<ArrayVec<u8, 260>>| {
         // By the time we get here, we've approved and just need to do the signature.
-        let (sig, len) = detecdsa_sign(hash.as_ref()?, key.as_ref()?)?;
+        let sig = detecdsa_sign(hash.as_ref()?, key.as_ref()?)?;
         let mut rv = ArrayVec::<u8, 260>::new();
-        rv.try_extend_from_slice(&sig[0..len as usize]).ok()?;
+        rv.try_extend_from_slice(&sig).ok()?;
         *destination = Some(rv);
         Some(())
     },
@@ -383,20 +422,25 @@ define_json_struct_interp! { Fee 16 {
 }}
 
 define_json_struct_interp! { SendValue 16 {
+  amount: JsonString,
   from_address: JsonString,
-  to_address: JsonString,
-  amount: JsonArray<AmountTypeSchema>
+  to_address: JsonString
 }}
 
 define_json_struct_interp! { UnjailValue 16 {
   address: JsonString
 }}
 
+define_json_struct_interp! { PublicKey 16 {
+  type: JsonString,
+  value: JsonString
+}}
+
 define_json_struct_interp! { StakeValue 16 {
-  public_key: JsonString,
   chains: JsonArray<JsonString>,
-  value: JsonString,
-  service_url: JsonString
+  public_key: PublicKeySchema,
+  service_url: JsonString,
+  value: JsonString
 }}
 
 define_json_struct_interp! { UnstakeValue 20 {
@@ -498,16 +542,16 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
       MessageState::Type(ref mut temp_string_state, ref mut temp_string_return) => {
         JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
         match temp_string_return.as_ref().unwrap().as_slice() {
-          b"cosmos-sdk/MsgSend" =>  {
+          b"pos/Send" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::SendMessage));
           }
-          b"cosmos-sdk/MsgUnjail" =>  {
+          b"pos/MsgUnjail" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnjailMessage));
           }
-          b"cosmos-sdk/MsgStake" =>  {
+          b"pos/MsgStake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::StakeMessage));
           }
-          b"cosmos-sdk/MsgUnstake" =>  {
+          b"pos/MsgBeginUnstake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnstakeMessage));
           }
           _ => return Err(Some(OOB::Reject)),
@@ -604,13 +648,11 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
 }
 
 define_json_struct_interp! { KadenaCmd 16 {
-  account_number: JsonString,
   chain_id: JsonString,
-  fee: FeeSchema,
+  entropy: JsonString,
+  fee: JsonArray<AmountTypeSchema>,
   memo: JsonString,
-  msgs: JsonArray<MessageSchema>,
-  sequence: JsonString
-
+  msg: MessageSchema
 }}
 
 #[inline(never)]

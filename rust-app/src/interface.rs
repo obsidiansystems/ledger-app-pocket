@@ -35,20 +35,25 @@ define_json_struct! { Fee 16 {
 }}
 
 define_json_struct! { SendValue 16 {
+  amount: JsonString,
   from_address: JsonString,
-  to_address: JsonString,
-  amount: JsonArray<AmountTypeSchema>
+  to_address: JsonString
 }}
 
 define_json_struct! { UnjailValue 16 {
   address: JsonString
 }}
 
+define_json_struct! { PublicKey 16 {
+  type: JsonString,
+  value: JsonString
+}}
+
 define_json_struct! { StakeValue 16 {
-  public_key: JsonString,
   chains: JsonArray<JsonString>,
-  value: JsonString,
-  service_url: JsonString
+  public_key: PublicKeySchema,
+  service_url: JsonString,
+  value: JsonString
 }}
 
 define_json_struct! { UnstakeValue 16 {
@@ -58,12 +63,11 @@ define_json_struct! { UnstakeValue 16 {
 pub struct MessageSchema;
 
 define_json_struct! { KadenaCmd 16 {
-  account_number: JsonString,
   chain_id: JsonString,
-  fee: FeeSchema,
+  entropy: JsonString,
+  fee: JsonArray<AmountTypeSchema>,
   memo: JsonString,
-  msgs: JsonArray<MessageSchema>,
-  sequence: JsonString
+  msg: MessageSchema
 }}
 
 // Payload for a signature request, content-agnostic.

@@ -16,12 +16,12 @@ fn show_pubkey() {
     match pubkey {
         Ok(pk) => {
             {
-                let hex0 = utils::to_hex(&pk.W[1..33]).unwrap();
+                let hex0 = utils::to_hex(&pk[1..33]).unwrap();
                 let m = from_utf8(&hex0).unwrap();
                 ui::MessageScroller::new(m).event_loop();
             }
             {
-                let hex1 = utils::to_hex(&pk.W[33..65]).unwrap();
+                let hex1 = utils::to_hex(&pk[33..65]).unwrap();
                 let m = from_utf8(&hex1).unwrap();
                 ui::MessageScroller::new(m).event_loop();
             }
@@ -123,6 +123,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 260>>, A>(
         let mut parse_destination = None;
         let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor, &mut parse_destination);
         trace!("Parser result: {:?}\n", parse_rv);
+        trace!("Parse destination: {:?}\n", parse_destination);
         match parse_rv {
             // Explicit rejection; reset the parser. Possibly send error message to host?
             Err((Some(OOB::Reject), _)) => {

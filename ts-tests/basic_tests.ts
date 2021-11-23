@@ -40,30 +40,30 @@ describe('basic tests', () => {
     await Axios.delete("http://localhost:5000/events");
   });
 
-  it('provides a public key', async () => {
+  it.only('provides a public key', async () => {
 
     await sendCommandAndAccept(async (kda : Kda) => {
       console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
       console.log("Reached Pubkey Got");
-      expect(rv.publicKey).to.equal("046f760e57383e3b5900f7c23b78a424e74bebbe9b7b46316da7c0b4b9c2c9301c0c076310eda30506141dd47c2d0a8a1d7ca2542482926ae23b781546193b9616");
+      expect(rv.publicKey).to.equal("026f760e57383e3b5900f7c23b78a424e74bebbe9b7b46316da7c0b4b9c2c9301c");
       return;
     }, [
-        {
-          "text": "Provide Public Key",
-          "x": 16,
-          "y": 11
-        },
-        {
-          "text": "pkh-CBB24246905B6BA63DB45BE62EDAEA0BEC58166BF39F9492CD199D5479686B2",
-          "x": -48,
-          "y": 11
-        },
-        {
-          "text": "Confirm",
-          "x": 43,
-          "y": 11
-        }
+      {
+        "text": "Provide Public Key",
+        "x": 16,
+        "y": 11,
+      },
+      {
+        "text": "pkh-09CB550E56C3B91B1AB9F7836288641BC99A3C2B647470768B86C8D85863480F",
+        "x": -49,
+        "y": 11,
+      },
+      {
+        "text": "Confirm",
+        "x": 43,
+        "y": 11,
+      },
     ]);
   });
   
@@ -137,416 +137,207 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
      }
 }
 
-// These tests have been extracted mostly by the cosmos source code and the pokt
-// proto files.
+// These tests have been extracted interacting with the testnet via the cli.
 
 let exampleSend = {
-    "account_number": "108",
-    "chain_id": "cosmoshub-2",
-    "fee": {
-        "amount": [
-            {
-                "amount": "600",
-                "denom": "uatom"
-            }
-        ],
-        "gas": "200000"
-    },
-    "memo": "",
-    "msgs": [
+    "chain_id": "testnet",
+    "entropy": "-7780543831205109370",
+    "fee": [
         {
-            "type": "cosmos-sdk/MsgSend",
-            "value": {
-                "from_address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
-                "to_address": "cosmosvaloper1kn3wugetjuy4zetlq6wadchfhvu3x740ae6z6x",
-                "amount":[{"amount":"10","denom":"atom"}],
-            }
+            "amount": "10000",
+            "denom": "upokt"
         }
     ],
-    "sequence": "106"
+    "memo": "Fourth transaction",
+    "msg": {
+        "type": "pos/Send",
+        "value": {
+            "amount": "1000000",
+            "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+            "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        }
+    }
 }
 
 let exampleUnjail = {
-    "account_number": "108",
-    "chain_id": "cosmoshub-2",
-    "fee": {
-        "amount": [
-            {
-                "amount": "600",
-                "denom": "uatom"
-            }
-        ],
-        "gas": "200000"
-    },
-    "memo": "",
-    "msgs": [
-        {
-            "type": "cosmos-sdk/MsgUnjail",
-            "value": {
-                "address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
-            }
-        }
-    ],
-    "sequence": "106"
+  "chain_id": "testnet",
+  "entropy": "-8051161335943327787",
+  "fee": [
+    {
+      "amount": "10000",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "",
+  "msg": {
+    "type": "pos/MsgUnjail",
+    "value": {
+      "address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
 }
 
-let exampleStake = {
-    "account_number": "108",
-    "chain_id": "cosmoshub-2",
-    "fee": {
-        "amount": [
-            {
-                "amount": "600",
-                "denom": "uatom"
-            }
-        ],
-        "gas": "200000"
-    },
-    "memo": "",
-    "msgs": [
-        {
-            "type": "cosmos-sdk/MsgStake",
-            "value": {
-                "public_key": "publicKey1",
-                "chains": ["chain1", "chain2"],
-                "value": "35",
-                "service_url": "serviceurl1"
-            }
-        }
+let exampleStake =
+  {
+    "chain_id": "testnet",
+    "entropy": "2417661502575469960",
+    "fee": [
+      {
+        "amount": "10000",
+        "denom": "upokt"
+      }
     ],
-    "sequence": "106"
-}
+    "memo": "",
+    "msg": {
+      "type": "pos/MsgStake",
+      "value": {
+        "chains": [
+          "0034"
+        ],
+        "public_key": {
+          "type": "crypto/ed25519_public_key",
+          "value": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0"
+        },
+        "service_url": "https://serviceURI.com:3000",
+        "value": "1000000"
+      }
+    }
+  }
 
-let exampleUnstake = {
-    "account_number": "108",
-    "chain_id": "cosmoshub-2",
-    "fee": {
-        "amount": [
-            {
-                "amount": "600",
-                "denom": "uatom"
-            }
-        ],
-        "gas": "200000"
-    },
-    "memo": "",
-    "msgs": [
-        {
-            "type": "cosmos-sdk/MsgUnstake",
-            "value": {
-                "validator_address": "cosmos1kky4yzth6gdrm8ga5zlfwhav33yr7hl87jycah",
-            }
-        }
+let exampleUnstake =
+  {
+    "chain_id": "testnet",
+    "entropy": "-1105361304155186876",
+    "fee": [
+      {
+        "amount": "10000",
+        "denom": "upokt"
+      }
     ],
-    "sequence": "106"
-}
+    "memo": "",
+    "msg": {
+      "type": "pos/MsgBeginUnstake",
+      "value": {
+        "validator_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+      }
+    }
+  }
 
 describe("Signing tests", function() {
   it.only("can sign a simple transfer",
      testTransaction(
        "0/0",
        JSON.stringify(exampleSend),
-       [
-         {
-           "text": "Transfer from:",
-           "x": 26,
-           "y": 11,
-         },
-         {
-           "text": "cosmos1kky4yzth",
-           "x": 18,
-           "y": 11,
-         },
-         {
-           "text": "6gdrm8ga5zlfwha",
-           "x": 18,
-           "y": 11,
-         },
-         {
-           "text": "v33yr7hl87jycah",
-           "x": 22,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Transfer to:",
-           "x": 34,
-           "y": 11,
-         },
-         {
-           "text": "cosmosvaloper1k",
-           "x": 19,
-           "y": 11,
-         },
-         {
-           "text": "n3wugetjuy4zetl",
-           "x": 20,
-           "y": 11,
-         },
-         {
-           "text": "q6wadchfhvu3x74",
-           "x": 15,
-           "y": 11,
-         },
-         {
-           "text": "0ae6z6x",
-           "x": 44,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Amount:",
-           "x": 42,
-           "y": 11,
-         },
-         {
-           "text": "10",
-           "x": 58,
-           "y": 11,
-         },
-         {
-           "text": "Denom:",
-           "x": 44,
-           "y": 11,
-         },
-         {
-           "text": "atom",
-           "x": 51,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Sign Hash?",
-           "x": 36,
-           "y": 11,
-         },
-         {
-           "text": "1786E003E1DCE76D388108803846C1F0B4827A48BDF39F52C2D9506AF05903D2",
-           "x": -49,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "With PKH",
-           "x": 40,
-           "y": 11,
-         },
-         {
-           "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
-           "x": -50,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-       ]
-
-       ));
+[
+  {
+    "text": "Value:",
+    "x": 48,
+    "y": 11,
+  },
+  {
+    "text": "1000000",
+    "x": 43,
+    "y": 11,
+  },
+  {
+    "text": "Confirm",
+    "x": 43,
+    "y": 11,
+  },
+  {
+    "text": "Transfer from:",
+    "x": 26,
+    "y": 11,
+  },
+  {
+    "text": "db987ccfa2a71b2",
+    "x": 19,
+    "y": 11,
+  },
+  {
+    "text": "ec9a56c88c77a7c",
+    "x": 21,
+    "y": 11,
+  },
+  {
+    "text": "f66d01d8ba",
+    "x": 33,
+    "y": 11,
+  },
+  {
+    "text": "Confirm",
+    "x": 43,
+    "y": 11,
+  },
+  {
+    "text": "Transfer to:",
+    "x": 34,
+    "y": 11,
+  },
+  {
+    "text": "db987ccfa2a71b2",
+    "x": 19,
+    "y": 11,
+  },
+  {
+    "text": "ec9a56c88c77a7c",
+    "x": 21,
+    "y": 11,
+  },
+  {
+    "text": "f66d01d8ba",
+    "x": 33,
+    "y": 11,
+  },
+  {
+    "text": "Confirm",
+    "x": 43,
+    "y": 11,
+  },
+  {
+    "text": "Sign Hash?",
+    "x": 36,
+    "y": 11,
+  },
+  {
+    "text": "D9779BB631C0BA7A991D5E6166B6419F5557CB423FD137079121986607856D92",
+    "x": -47,
+    "y": 11,
+  },
+  {
+    "text": "Confirm",
+    "x": 43,
+    "y": 11,
+  },
+  {
+    "text": "With PKH",
+    "x": 40,
+    "y": 11,
+  },
+  {
+    "text": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+    "x": -47,
+    "y": 11,
+  },
+  {
+    "text": "Confirm",
+    "x": 43,
+    "y": 11,
+  },
+]
+     ));
   it.only("can sign a simple unjail",
      testTransaction(
        "0/0",
        JSON.stringify(exampleUnjail),
        [
-           {
-               "text": "Sign Hash?",
-               "x": 36,
-               "y": 11,
-           },
-           {
-               "text": "2E4A55FC71AA15D9C3CE02CCC03F3E4C50E00C6D298A5C8E6AB26D9A193A5450",
-               "x": -49,
-               "y": 11,
-           },
-           {
-               "text": "Confirm",
-               "x": 43,
-               "y": 11,
-           },
-           {
-               "text": "With PKH",
-               "x": 40,
-               "y": 11,
-           },
-           {
-               "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
-               "x": -50,
-               "y": 11,
-           },
-           {
-               "text": "Confirm",
-               "x": 43,
-               "y": 11,
-           }
-       ]));
-
-  it.only("can sign a simple stake",
-     testTransaction(
-       "0/0",
-       JSON.stringify(exampleStake),
-       [
-         {
-           "text": "Stake with public key:",
-           "x": 8,
-           "y": 11,
-         },
-         {
-           "text": "publicKey1",
-           "x": 36,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Chain:",
-           "x": 48,
-           "y": 11,
-         },
-         {
-           "text": "chain1",
-           "x": 47,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Chain:",
-           "x": 48,
-           "y": 11,
-         },
-         {
-           "text": "chain2",
-           "x": 47,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Value:",
-           "x": 48,
-           "y": 11,
-         },
-         {
-           "text": "35",
-           "x": 58,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Service url:",
-           "x": 36,
-           "y": 11,
-         },
-         {
-           "text": "serviceurl1",
-           "x": 37,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
          {
            "text": "Sign Hash?",
            "x": 36,
            "y": 11,
          },
          {
-           "text": "E88C1414CD6E4E3F79FBFAD3FC60E41D77B88517304A828901E27FD6D6D89890",
-           "x": -47,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "With PKH",
-           "x": 40,
-           "y": 11,
-         },
-         {
-           "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
-           "x": -50,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-       ]
-     ));
-
-  it.only("can sign a simple unstake",
-     testTransaction(
-       "0/0",
-       JSON.stringify(exampleUnstake),
-       [
-         {
-           "text": "Transfer from:",
-           "x": 26,
-           "y": 11,
-         },
-         {
-           "text": "cosmos1kky4yzth",
-           "x": 18,
-           "y": 11,
-         },
-         {
-           "text": "6gdrm8ga5zlfwha",
-           "x": 18,
-           "y": 11,
-         },
-         {
-           "text": "v33yr7hl87jycah",
-           "x": 22,
-           "y": 11,
-         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         },
-         {
-           "text": "Sign Hash?",
-           "x": 36,
-           "y": 11,
-         },
-         {
-           "text": "707610613DA68A78AFBCEC4F8D256FEBFC1B262FACD3260CBD3EC52B145EDF59",
+           "text": "FF11A8FD314B73EE4EB15D7097F2CAB8E0A4896427E5384254A47B3F1AB022FD",
            "x": -48,
            "y": 11,
          },
@@ -561,8 +352,146 @@ describe("Signing tests", function() {
            "y": 11,
          },
          {
-           "text": "pkh-929B536E11497F4EF50703A22680528E1785AEA757D9D3C29A5D4CDCBA9E02BF",
-           "x": -50,
+           "text": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+           "x": -47,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+       ]
+       ));
+
+  it.only("can sign a simple stake",
+     testTransaction(
+       "0/0",
+       JSON.stringify(exampleStake),
+       [
+         {
+           "text": "Chain:",
+           "x": 48,
+           "y": 11,
+         },
+         {
+           "text": "0034",
+           "x": 51,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Type: ",
+           "x": 48,
+           "y": 11,
+         },
+         {
+           "text": "crypto/ed25519_",
+           "x": 22,
+           "y": 11,
+         },
+         {
+           "text": "public_key",
+           "x": 37,
+           "y": 11,
+         },
+         {
+           "text": "Value: ",
+           "x": 47,
+           "y": 11,
+         },
+         {
+           "text": "6b62a590bab42ea",
+           "x": 17,
+           "y": 11,
+         },
+         {
+           "text": "01383d3209fa719",
+           "x": 19,
+           "y": 11,
+         },
+         {
+           "text": "254977fb83624fb",
+           "x": 17,
+           "y": 11,
+         },
+         {
+           "text": "d6755d102264ba1",
+           "x": 17,
+           "y": 11,
+         },
+         {
+           "text": "adc0",
+           "x": 52,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Service url:",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "https://service",
+           "x": 28,
+           "y": 11,
+         },
+         {
+           "text": "URI.com:3000",
+           "x": 29,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Value:",
+           "x": 48,
+           "y": 11,
+         },
+         {
+           "text": "1000000",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Sign Hash?",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "9BF2A5EAAECA8A5FAD5C2C4CA0C2D3FFEABC28A2AF2FE337343136DBEFF4437F",
+           "x": -48,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "With PKH",
+           "x": 40,
+           "y": 11,
+         },
+         {
+           "text": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+           "x": -47,
            "y": 11,
          },
          {
@@ -572,6 +501,69 @@ describe("Signing tests", function() {
          },
        ]
 
+     ));
+
+  it.only("can sign a simple unstake",
+     testTransaction(
+       "0/0",
+       JSON.stringify(exampleUnstake),
+       [
+         {
+           "text": "Transfer from:",
+           "x": 26,
+           "y": 11,
+         },
+         {
+           "text": "db987ccfa2a71b2",
+           "x": 19,
+           "y": 11,
+         },
+         {
+           "text": "ec9a56c88c77a7c",
+           "x": 21,
+           "y": 11,
+         },
+         {
+           "text": "f66d01d8ba",
+           "x": 33,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "Sign Hash?",
+           "x": 36,
+           "y": 11,
+         },
+         {
+           "text": "BAF8E9CB74DF4DBD4B28E1A6B77A472E371C8ABC091EC606A5810A944F8F3851",
+           "x": -49,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+         {
+           "text": "With PKH",
+           "x": 40,
+           "y": 11,
+         },
+         {
+           "text": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+           "x": -47,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+       ]
 
      ));
 });
