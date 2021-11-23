@@ -67,29 +67,30 @@ describe('basic tests', () => {
     ]);
   });
   
-  it('provides a public key', async () => {
+  it.only('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Kda) => {
       console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
       console.log("Reached Pubkey Got");
-      expect(rv.publicKey).to.equal("046f760e57383e3b5900f7c23b78a424e74bebbe9b7b46316da7c0b4b9c2c9301c0c076310eda30506141dd47c2d0a8a1d7ca2542482926ae23b781546193b9616");
+      expect(rv.publicKey).to.equal("026f760e57383e3b5900f7c23b78a424e74bebbe9b7b46316da7c0b4b9c2c9301c");
       return;
-    }, [
-        {
-          "text": "Provide Public Key",
-          "x": 16,
-          "y": 11
-        },
-        {
-          "text": "pkh-CBB24246905B6BA63DB45BE62EDAEA0BEC58166BF39F9492CD199D5479686B2",
-          "x": -48,
-          "y": 11
-        },
-        {
-          "text": "Confirm",
-          "x": 43,
-          "y": 11
-        }
+    },
+    [
+      {
+        "text": "Provide Public Key",
+        "x": 16,
+        "y": 11,
+      },
+      {
+        "text": "pkh-09CB550E56C3B91B1AB9F7836288641BC99A3C2B647470768B86C8D85863480F",
+        "x": -49,
+        "y": 11,
+      },
+      {
+        "text": "Confirm",
+        "x": 43,
+        "y": 11,
+      },
     ]);
   });
 
