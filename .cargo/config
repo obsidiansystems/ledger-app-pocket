@@ -1,6 +1,7 @@
 [unstable]
 # Inconvenient due to the test suite; we should avoid this if possible.
 # build-std = ["core", "panic_abort", "std","alloc","proc_macro"]
+build-std = ["core"]
 configurable-env = true
 per-package-target = true
 
