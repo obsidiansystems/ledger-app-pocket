@@ -52,7 +52,6 @@ pub fn detecdsa_sign(
 
 pub fn get_pubkey(path: &[u32]) -> Result<[u8; 33], SyscallError> {
     let raw_key = bip32_derive_secp256k1(path)?;
-    write!(DBG, "\n\nraw_key: {:?}\n\n", raw_key);
     let mut ec_k = nanos_sdk::ecc::ec_init_key(CurvesId::Secp256k1, &raw_key)?;
     let uncompressed_pk = nanos_sdk::ecc::ec_get_pubkey(CurvesId::Secp256k1, &mut ec_k)?;
     Ok(compress_public_key(uncompressed_pk))

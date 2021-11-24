@@ -18,13 +18,10 @@ pub type GetAddressImplT =
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), |path: &ArrayVec<u32, 10>, destination| {
-        write!(DBG, "\n\npath: {:?}\n\n", path);
         let key = get_pubkey(path).ok()?;
-        write!(DBG, "\n\nkey: {:?}\n\n", key);
         let mut rv = ArrayVec::<u8, 260>::new();
       rv.try_extend_from_slice(&[33]).ok()?;
         rv.try_extend_from_slice(&key).ok()?;
-        write!(DBG, "\n\nrv: {:?}\n\n", rv);
 
         // At this point we have the value to send to the host; but there's a bit more to do to
         // ask permission from the user.
@@ -35,7 +32,6 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
         write!(pmpt, "{}", pkh).ok()?;
 
         if !ui::MessageValidator::new(&["Provide Public Key", &pmpt], &[&"Confirm"], &[]).ask() {
-            write!(DBG, "\n\n\nUser rejected\n\n");
             trace!("User rejected\n");
             None
         } else {
