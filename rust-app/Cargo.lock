@@ -631,7 +631,7 @@ dependencies = [
 [[package]]
 name = "ledger-parser-combinators"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=json-parser#fc3053f943c21033c0397bbeb72f8e3338195137"
+source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=json-parser-with-explicit-return#b15fcc68d52f59b5c29af89b500e74824631987c"
 dependencies = [
  "arrayvec",
  "bstringify",
