@@ -40,7 +40,7 @@ describe('basic tests', () => {
     await Axios.delete("http://localhost:5000/events");
   });
 
-  it.only('provides a public key', async () => {
+  it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (kda : Kda) => {
       console.log("Started pubkey get");
@@ -67,7 +67,7 @@ describe('basic tests', () => {
     ]);
   });
   
-  it.only('provides a public key', async () => {
+  it('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Kda) => {
       console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
@@ -94,7 +94,7 @@ describe('basic tests', () => {
     ]);
   });
 
-  it('runs a test', async () => { 
+  it('runs a test', async () => {
     
     await setAcceptAutomationRules();
     await Axios.delete("http://localhost:5000/events");
@@ -106,7 +106,7 @@ describe('basic tests', () => {
    
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
 
-    expect(rv.publicKey).to.equal("04e96341109fdba54691303553ee95b371d9745410f1090055fb7c0aa9e564445483f78cb81526e27ab7869fcd996eb8bd39add229b41f9e30bccccdc00a9d6c4c");
+    expect(rv.publicKey).to.equal("02e96341109fdba54691303553ee95b371d9745410f1090055fb7c0aa9e5644454");
     expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => a["text"] != "W e l c o m e")).to.deep.equal([
         {
           "text": "Provide Public Key",
@@ -114,8 +114,8 @@ describe('basic tests', () => {
           "y": 11
         },
         {
-          "text": "pkh-929B536E11497F4EF573A22680528E1785AEA757D9D3C29A5D4CDCBA9E2BF",
-          "x": -50,
+          "text": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+          "x": -47,
           "y": 11
         },
         {
@@ -225,7 +225,7 @@ let exampleUnstake =
   }
 
 describe("Signing tests", function() {
-  it.only("can sign a simple transfer",
+  it("can sign a simple transfer",
      testTransaction(
        "0/0",
        JSON.stringify(exampleSend),
@@ -327,7 +327,7 @@ describe("Signing tests", function() {
   },
 ]
      ));
-  it.only("can sign a simple unjail",
+  it("can sign a simple unjail",
      testTransaction(
        "0/0",
        JSON.stringify(exampleUnjail),
@@ -365,7 +365,7 @@ describe("Signing tests", function() {
        ]
        ));
 
-  it.only("can sign a simple stake",
+  it("can sign a simple stake",
      testTransaction(
        "0/0",
        JSON.stringify(exampleStake),
@@ -504,7 +504,7 @@ describe("Signing tests", function() {
 
      ));
 
-  it.only("can sign a simple unstake",
+  it("can sign a simple unstake",
      testTransaction(
        "0/0",
        JSON.stringify(exampleUnstake),
