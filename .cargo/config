@@ -1,9 +1,6 @@
 [unstable]
-# Inconvenient due to the test suite; we should avoid this if possible.
-# build-std = ["core", "panic_abort", "std","alloc","proc_macro"]
 build-std = ["core"]
 configurable-env = true
-per-package-target = true
 
 [target.thumbv6m-none-eabi]
 rustflags = [ 
@@ -11,25 +8,23 @@ rustflags = [
   "-C", "link-arg=-Tscript.ld",
   "-Z", "emit-stack-sizes",
   "--cfg", "target_os=\"nanos\"",
-  # "-C", "opt-level=3",
-  "-C", "opt-level=1",
+  "-C", "opt-level=3",
   "-C", "link-arg=--target=thumbv6m-none-eabi",
   "-C", "passes=ledger-ropi",
   "--cfg", "target_os=\"nanos\"",
   "--emit=llvm-ir"
 ]
 linker = "armv6m-unknown-none-eabi-clang"
-runner = "speculos -k 2.0"
+runner = "./speculos-wrapper -k 2.0"
 
 [build]
 target = "thumbv6m-none-eabi"
 
 [alias]
+tt = "test --features extra_debug"
 br = "build --release"
 stackcheck = "stack-sizes --release --bin rust-app --target=thumbv6m-none-eabi"
 unit = "test --features=speculos -Z build-std=core --lib"
-integ = "test --target=x86_64-unknown-linux-gnu --test=integration"
-integ-build = "test --target=x86_64-unknown-linux-gnu --test=integration --no-run"
 
 [env]
 RUST_TEST_THREADS="1"

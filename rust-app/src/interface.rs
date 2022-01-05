@@ -62,7 +62,7 @@ define_json_struct! { UnstakeValue 16 {
 
 pub struct MessageSchema;
 
-define_json_struct! { KadenaCmd 16 {
+define_json_struct! { PoktCmd 16 {
   chain_id: JsonString,
   entropy: JsonString,
   fee: JsonArray<AmountTypeSchema>,
@@ -72,6 +72,6 @@ define_json_struct! { KadenaCmd 16 {
 
 // Payload for a signature request, content-agnostic.
 pub type SignParameters = (
-    LengthFallback<U32<{ Endianness::Little }>, Json<KadenaCmdSchema>>,
+    LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
     Bip32Key,
 );
