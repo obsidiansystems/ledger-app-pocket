@@ -32,4 +32,15 @@ rec {
 
   # For CI
   rootCrate = app.rootCrate.build;
+
+  tarSrc = pkgs.runCommandNoCC "tarSrc" { } ''
+    install -d $out/pokt/target/thumbv6m-none-eabi/release/
+    cp ${./tarball-default.nix} $out/pokt/default.nix
+    cp ${./rust-app/app.json} $out/pokt/app.json
+    cp ${./rust-app/crab.gif} $out/pokt/crab.gif
+    cp ${./rust-app/target/thumbv6m-none-eabi/release/app.hex} $out/pokt/target/thumbv6m-none-eabi/release/app.hex
+  '';
+  tarball = pkgs.runCommandNoCC "app-tarball.tar.gz" { } ''
+    tar -czvhf $out -C ${tarSrc} pokt
+  '';
 }
