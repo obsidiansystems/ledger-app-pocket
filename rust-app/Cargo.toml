@@ -4,7 +4,6 @@ version = "0.2.0"
 authors = ["jonored", "yhql"]
 edition = "2018"
 autobins = false
-target = "thumv6m-none-eabi"
 
 [dependencies]
 arrayvec = { version = "0.7.2", default-features = false }

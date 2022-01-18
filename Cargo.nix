@@ -201,7 +201,7 @@ rec {
         features = {
         };
       };
-      "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform#b3bc1db9c8a793bd20e76a4a19666f09a80c4e95)" = rec {
+      "ledger-log" = rec {
         crateName = "ledger-log";
         version = "0.1.0";
         edition = "2018";
@@ -232,37 +232,6 @@ rec {
         };
         resolvedDefaultFeatures = [ "log_debug" "log_error" "log_info" "log_trace" "log_warn" "speculos" ];
       };
-      "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform?branch=develop#b3bc1db9c8a793bd20e76a4a19666f09a80c4e95)" = rec {
-        crateName = "ledger-log";
-        version = "0.1.0";
-        edition = "2018";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/ledger-platform";
-          rev = "b3bc1db9c8a793bd20e76a4a19666f09a80c4e95";
-          sha256 = "1g0vmjw2bnjgm439a3373hajvkjnfq536x857w5ngdnfvm0687vf";
-        };
-        dependencies = [
-          {
-            name = "arrayvec";
-            packageId = "arrayvec";
-            usesDefaultFeatures = false;
-          }
-          {
-            name = "nanos_sdk";
-            packageId = "nanos_sdk";
-            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-          }
-        ];
-        features = {
-          "log_debug" = [ "log_info" ];
-          "log_info" = [ "log_warn" ];
-          "log_trace" = [ "log_debug" ];
-          "log_warn" = [ "log_error" ];
-          "speculos" = [ "nanos_sdk/speculos" ];
-        };
-        resolvedDefaultFeatures = [ "log_debug" "log_error" "log_info" "log_trace" "log_warn" ];
-      };
       "ledger-parser-combinators" = rec {
         crateName = "ledger-parser-combinators";
         version = "0.1.0";
@@ -270,8 +239,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-parser-combinators";
-          rev = "7f45c11b1705a98189d56787b83d8253320f33ed";
-          sha256 = "02qvj1zlcvwxxsmwgr28hgdn72l17272fg80f6lyxxpn86brgfra";
+          rev = "b1d270cfd010ddd087d423c12ebc54258c8c7ff6";
+          sha256 = "0dj24ssi167ab7023pdk2gzklidgwp0pkwncsgvcmhrc9bsvwvyj";
         };
         authors = [
           "Jonathan D.K. Gibbons <jonored@gmail.com>"
@@ -293,7 +262,7 @@ rec {
           }
           {
             name = "ledger-log";
-            packageId = "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform?branch=develop#b3bc1db9c8a793bd20e76a4a19666f09a80c4e95)";
+            packageId = "ledger-log";
             optional = true;
             features = [ "log_trace" ];
           }
@@ -474,7 +443,7 @@ rec {
           }
           {
             name = "ledger-log";
-            packageId = "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform#b3bc1db9c8a793bd20e76a4a19666f09a80c4e95)";
+            packageId = "ledger-log";
           }
           {
             name = "nanos_sdk";
@@ -530,7 +499,7 @@ rec {
           }
           {
             name = "ledger-log";
-            packageId = "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform#b3bc1db9c8a793bd20e76a4a19666f09a80c4e95)";
+            packageId = "ledger-log";
           }
           {
             name = "ledger-parser-combinators";
