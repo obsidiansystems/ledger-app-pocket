@@ -27,6 +27,8 @@ pub mod interface;
 pub mod utils;
 
 #[cfg(all(target_os = "nanos"))]
+pub mod ui;
+#[cfg(all(target_os = "nanos"))]
 pub mod crypto_helpers;
 #[cfg(all(target_os = "nanos"))]
 pub mod implementation;
@@ -37,13 +39,13 @@ use core::panic::PanicInfo;
 #[cfg(all(target_os = "nanos", test))]
 #[inline]
 #[cfg_attr(all(target_os = "nanos", test), panic_handler)]
-pub fn exiting_panic(info: &PanicInfo) -> ! {
+pub fn exiting_panic(_info: &PanicInfo) -> ! {
     //let mut comm = io::Comm::new();
     //comm.reply(io::StatusWords::Panic);
-    error!("Panicking: {:?}\n", info);
+    error!("Panicking: {:?}\n", _info);
     nanos_sdk::exit_app(1)
 }
 
-// Custom type used to implement tests
+///// Custom type used to implement tests
 //#[cfg(all(target_os = "nanos", test))]
 //use nanos_sdk::TestType;
