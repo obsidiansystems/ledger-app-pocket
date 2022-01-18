@@ -85,9 +85,9 @@ rec {
     crates = {
       "arrayvec" = rec {
         crateName = "arrayvec";
-        version = "0.7.1";
+        version = "0.7.2";
         edition = "2018";
-        sha256 = "1kcgsfp0ns0345g580ny7hhl9y9a6l3m0pykfa09p9pz65qw0kdy";
+        sha256 = "1mjl8jjqxpl0x7sm9cij61cppi7yi38cdrd1l8zjw7h7qxk2v9cd";
         authors = [
           "bluss"
         ];
@@ -201,7 +201,37 @@ rec {
         features = {
         };
       };
-      "ledger-log" = rec {
+      "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform?branch=jg-add-rust-libs#2ef7984dd64536bbe8038126b10251794620feae)" = rec {
+        crateName = "ledger-log";
+        version = "0.1.0";
+        edition = "2018";
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/obsidiansystems/ledger-platform";
+          rev = "2ef7984dd64536bbe8038126b10251794620feae";
+          sha256 = "19x6wwkqgbqmzy27bd0xbr3ln4ag9sf504xfw5hvwkynnbqyqg65";
+        };
+        dependencies = [
+          {
+            name = "arrayvec";
+            packageId = "arrayvec";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "nanos_sdk";
+            packageId = "nanos_sdk";
+            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+        ];
+        features = {
+          "log_debug" = [ "log_info" ];
+          "log_info" = [ "log_warn" ];
+          "log_trace" = [ "log_debug" ];
+          "log_warn" = [ "log_error" ];
+          "speculos" = [ "nanos_sdk/speculos" ];
+        };
+      };
+      "ledger-log 0.1.0 (path+file:///home/jcericson/src/pocket/ledger-app-pokt/rust-app/ledger-log)" = rec {
         crateName = "ledger-log";
         version = "0.1.0";
         edition = "2018";
@@ -234,8 +264,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-parser-combinators";
-          rev = "b15fcc68d52f59b5c29af89b500e74824631987c";
-          sha256 = "0m2mgnfpmiv6s21qz4w5gb1fzagmc896k2m14n5r6gb40kkrdlsg";
+          rev = "13436b56005037d309874827d3ed0a22463022f7";
+          sha256 = "10ns2zpphrz94k38aqwk4fln985qhzkbdv17labwfy9r2azxbv4k";
         };
         authors = [
           "Jonathan D.K. Gibbons <jonored@gmail.com>"
@@ -270,7 +300,9 @@ rec {
             packageId = "paste";
           }
         ];
-
+        features = {
+          "logging" = [ "ledger-log" ];
+        };
       };
       "log" = rec {
         crateName = "log";
@@ -411,6 +443,39 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
+      "prompts-ui" = rec {
+        crateName = "prompts-ui";
+        version = "0.1.0";
+        edition = "2018";
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/obsidiansystems/ledger-platform";
+          rev = "2ef7984dd64536bbe8038126b10251794620feae";
+          sha256 = "19x6wwkqgbqmzy27bd0xbr3ln4ag9sf504xfw5hvwkynnbqyqg65";
+        };
+        dependencies = [
+          {
+            name = "arrayvec";
+            packageId = "arrayvec";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "ledger-log";
+            packageId = "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform?branch=jg-add-rust-libs#2ef7984dd64536bbe8038126b10251794620feae)";
+          }
+          {
+            name = "nanos_sdk";
+            packageId = "nanos_sdk";
+          }
+          {
+            name = "nanos_ui";
+            packageId = "nanos_ui";
+          }
+        ];
+        features = {
+          "speculos" = [ "nanos_sdk/speculos" ];
+        };
+      };
       "quote" = rec {
         crateName = "quote";
         version = "1.0.9";
@@ -451,7 +516,7 @@ rec {
           }
           {
             name = "ledger-log";
-            packageId = "ledger-log";
+            packageId = "ledger-log 0.1.0 (path+file:///home/jcericson/src/pocket/ledger-app-pokt/rust-app/ledger-log)";
             features = [ "log_trace" ];
           }
           {
@@ -466,6 +531,11 @@ rec {
           {
             name = "nanos_ui";
             packageId = "nanos_ui";
+            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+          {
+            name = "prompts-ui";
+            packageId = "prompts-ui";
             target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
           }
         ];

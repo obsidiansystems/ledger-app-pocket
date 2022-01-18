@@ -1,321 +1,132 @@
 use crate::crypto_helpers::{detecdsa_sign, get_pkh, get_private_key, get_pubkey, Hasher};
 use crate::interface::*;
+use crate::*;
 use arrayvec::{ArrayString, ArrayVec};
 use core::fmt::Write;
-use ledger_log::*;
+use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
     Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
 };
 use ledger_parser_combinators::json::Json;
 use nanos_ui::ui;
+use prompts_ui::{write_scroller, final_accept_prompt};
+use core::str::from_utf8;
+use core::convert::TryFrom;
 
 use ledger_parser_combinators::define_json_struct_interp;
 use ledger_parser_combinators::json::*;
 use ledger_parser_combinators::json_interp::*;
 
-pub type GetAddressImplT =
-    Action<SubInterp<DefaultInterp>, fn(&ArrayVec<u32, 10>, &mut Option<ArrayVec<u8, 260>>) -> Option<()>>;
+// A couple type ascription functions to help the compiler along.
+const fn mkfn<A,B,C>(q: fn(&A,&mut B)->C) -> fn(&A,&mut B)->C {
+  q
+}
+const fn mkvfn<A,C>(q: fn(&A,&mut Option<()>)->C) -> fn(&A,&mut Option<()>)->C {
+  q
+}
+
+pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 260>>;
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
-    Action(SubInterp(DefaultInterp), |path: &ArrayVec<u32, 10>, destination| {
+    Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 260>>| -> Option<()> {
         let key = get_pubkey(path).ok()?;
-        let mut rv = ArrayVec::<u8, 260>::new();
-      rv.try_extend_from_slice(&[33]).ok()?;
-        rv.try_extend_from_slice(&key).ok()?;
-
-        // At this point we have the value to send to the host; but there's a bit more to do to
-        // ask permission from the user.
 
         let pkh = get_pkh(key);
 
-        let mut pmpt = ArrayString::<128>::new();
-        write!(pmpt, "{}", pkh).ok()?;
+        write_scroller("Provide Public Key", |w| Ok(write!(w, "{}", pkh)?))?;
 
-        if !ui::MessageValidator::new(&["Provide Public Key", &pmpt], &[&"Confirm"], &[]).ask() {
-            trace!("User rejected\n");
-            None
-        } else {
-            *destination = Some(rv);
-            Some(())
-        }
-    });
+        final_accept_prompt(&[])?;
 
-type CmdInterp = KadenaCmd<
-    DropInterp,
-    DropInterp,
-    DropInterp,
-    DropInterp,
-    Message<
-      SendMessageActionT,
-      DropInterp,
-      StakeMessageActionT,
-      UnstakeMessageActionT>>;
+        *destination=Some(ArrayVec::new());
+        destination.as_mut()?.try_push(u8::try_from(33).ok()?).ok()?;
+        destination.as_mut()?.try_extend_from_slice(&key).ok()?;
+        Some(())
+    }));
 
-type SendMessageActionT = SendValue<
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
->;
-
-type StakeMessageActionT = StakeValue<
-    SubInterp<Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>>,
-    Action<PublicKey<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
-                     fn(& PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>,
-                        &mut Option<()>) -> Option<()>>,
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>,
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
->;
-
-type UnstakeMessageActionT = UnstakeValue<
-    Action<JsonStringAccumulate<64>, fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
-    >;
-
-const NANOS_DISPLAY_LENGHT: usize = 15;
-
-const FROM_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
-                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+const FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
+                                  //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
-        | from_address, destination | {
-
-          let prompt = from_address
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Transfer from:").ok()?;
-          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
-        });
+        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
+          write_scroller("Transfer from", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+          *destination = Some(());
+          Some(())
+        }));
 
 const TO_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
                                   fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | to_address, destination | {
-
-          let prompt = to_address
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Transfer to:").ok()?;
-          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
+            write_scroller("Transfer To", |w| Ok(write!(w, "{}", from_utf8(to_address.as_slice())?)?))?;
+            *destination = Some(());
+            Some(())
         });
 
+/* This would be used to show fees; not currently used.
 const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
                                   fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>> =
   Action(AmountType{field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>},
         | AmountType{field_amount: amount, field_denom: denom}, destination | {
-
-          // let prompt =
-          //   .chunks(NANOS_DISPLAY_LENGHT)
-          //   .map(| chunk | core::str::from_utf8(chunk))
-          //   .collect::<Result<ArrayVec<&str, 5>, _>>()
-          //   .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Amount:").ok()?;
-          concatenated.try_push(core::str::from_utf8(amount.as_ref()?).ok()?).ok()?;
-          concatenated.try_push("Denom:").ok()?;
-          concatenated.try_push(core::str::from_utf8(denom.as_ref()?).ok()?).ok();
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
+          write_scroller("Amount:", |w| Ok(write!(w, "{} ({})", from_utf8(amount.as_ref()?)?, from_utf8(denom.as_ref()?)?)?))?;
+          *destination = Some(());
+          Some(())
         });
+*/
 
-const SEND_MESSAGE_ACTION: SendMessageActionT =
-  SendValue{field_amount: VALUE_ACTION,
+const SEND_MESSAGE_ACTION: impl JsonInterp<SendValueSchema, State: Debug> =
+  Preaction(|| { write_scroller("Send", |w| Ok(write!(w, "Transaction")?)) },
+  SendValueInterp{field_amount: VALUE_ACTION,
             field_from_address: FROM_ADDRESS_ACTION,
-            field_to_address: TO_ADDRESS_ACTION};
-
-const PUBLIC_KEY_ACTION: Action<JsonStringAccumulate<64>,
-                                fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
-  Action(JsonStringAccumulate::<64>,
-        | public_key, destination | {
-
-          let prompt = public_key
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Stake with public key:").ok()?;
-          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
-        });
+            field_to_address: TO_ADDRESS_ACTION});
 
 const CHAIN_ACTION: Action<JsonStringAccumulate<64>,
                            fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | chain, destination | {
-
-          let prompt = chain
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Chain:").ok()?;
-          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
+          write_scroller("Chain", |w| Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?))?;
+          *destination = Some(());
+          Some(())
         });
 
 const VALUE_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | value, destination | {
-
-          let prompt = value
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Value:").ok()?;
-          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
+          write_scroller("Value", |w| Ok(write!(w, "{}", from_utf8(value.as_ref())?)?))?;
+          *destination = Some(());
+          Some(())
         });
 
-const PUBLICKEY_ACTION: Action<PublicKey<JsonStringAccumulate<64>,
-                                         JsonStringAccumulate<64>>,
-                               fn(& PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>,
-                                  &mut Option<()>) -> Option<()>> =
-  Action(PublicKey{
+const PUBLICKEY_ACTION: impl JsonInterp<PublicKeySchema, State: Debug> =
+  Action(PublicKeyInterp {
     field_type: JsonStringAccumulate::<64>,
     field_value:JsonStringAccumulate::<64>},
-        | PublicKey{field_type: ty, field_value: val}, destination | {
-
-          let ty_rendered = ty.as_ref()?
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let val_rendered = val.as_ref()?
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Type: ").ok()?;
-          concatenated.try_extend_from_slice(&ty_rendered[..]).ok()?;
-          concatenated.try_push("Value: ").ok()?;
-          concatenated.try_extend_from_slice(&val_rendered[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
-        });
+        mkfn(| PublicKey{field_type: ty, field_value: val}: &PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, destination | {
+            write_scroller("Public Key", |w| Ok(write!(w, "{} ({})", from_utf8(val.as_ref()?)?, from_utf8(ty.as_ref()?)?)?))?;
+            *destination = Some(());
+            Some(())
+        }));
 
 const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | service_url, destination | {
-
-          let prompt = service_url
-            .chunks(NANOS_DISPLAY_LENGHT)
-            .map(| chunk | core::str::from_utf8(chunk))
-            .collect::<Result<ArrayVec<&str, 5>, _>>()
-            .ok()?;
-
-          let mut concatenated = ArrayVec::<_, 10>::new();
-
-          concatenated.try_push("Service url:").ok()?;
-          concatenated.try_extend_from_slice(&prompt[..]).ok()?;
-
-          if !ui::MessageValidator::new(&concatenated[..], &[&"Confirm"], &[&"Reject"]).ask() {
-              None
-          } else {
-              *destination = Some(());
-              Some(())
-          }
+          write_scroller("Service URL", |w| Ok(write!(w, "{}", from_utf8(service_url)?)?))?;
+          *destination = Some(());
+          Some(())
         });
 
-const STAKE_MESSAGE_ACTION: StakeMessageActionT =
-  StakeValue{
+const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
+  Preaction(|| { write_scroller("Stake", |w| Ok(write!(w, "Transaction")?)) }, StakeValueInterp{
     field_chains: SubInterp(CHAIN_ACTION),
     field_public_key: PUBLICKEY_ACTION,
     field_service_url: SERVICE_URL_ACTION,
-    field_value: VALUE_ACTION};
+    field_value: VALUE_ACTION});
 
-const UNSTAKE_MESSAGE_ACTION: UnstakeMessageActionT =
-  UnstakeValue{field_validator_address: FROM_ADDRESS_ACTION};
+const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> =
+  Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
+  UnstakeValueInterp{field_validator_address: FROM_ADDRESS_ACTION});
 
-pub type SignImplT = Action<
-    (
-        Action<
-            ObserveLengthedBytes<
-                Hasher,
-                fn(&mut Hasher, &[u8]),
-                Json<CmdInterp>
-            >,
-            fn(
-                &(
-                    Option<<CmdInterp as JsonInterp<KadenaCmdSchema>>::Returning>,
-                    Hasher,
-                ),
-                &mut Option<[u8; 32]>
-            ) -> Option<()>,
-        >,
-        Action<
-            SubInterp<DefaultInterp>,
-            fn(&ArrayVec<u32, 10>, &mut Option<nanos_sdk::bindings::cx_ecfp_private_key_t>) -> Option<()>,
-        >,
-    ),
-    fn(&(Option<[u8; 32]>, Option<nanos_sdk::bindings::cx_ecfp_private_key_t>), &mut Option<ArrayVec<u8, 260>>) -> Option<()>,
->;
+pub type SignImplT = impl InterpParser<SignParameters, Returning = ArrayVec<u8, 260>>;
 
 pub const SIGN_IMPL: SignImplT = Action(
     (
@@ -324,7 +135,7 @@ pub const SIGN_IMPL: SignImplT = Action(
             ObserveLengthedBytes(
                 Hasher::new,
                 Hasher::update,
-                Json(KadenaCmd {
+                Json(PoktCmdInterp {
                     field_chain_id: DropInterp,
                     field_entropy: DropInterp,
                     field_fee: DropInterp,
@@ -337,48 +148,37 @@ pub const SIGN_IMPL: SignImplT = Action(
                 true,
             ),
             // Ask the user if they accept the transaction body's hash
-            |(_, hash): &(_, Hasher), destination| {
+            mkfn(|(_, hash): &(_, Hasher), destination: &mut Option<[u8; 32]>| {
                 let the_hash = hash.clone().finalize();
-
-                let mut pmpt = ArrayString::<128>::new();
-                write!(pmpt, "{}", the_hash).ok()?;
-
-                if !ui::MessageValidator::new(&["Sign Hash?", &pmpt], &[&"Confirm"], &[&"Reject"]).ask() {
-                    None
-                } else {
-                    *destination = Some(the_hash.0.into());
-                    Some(())
-                }
-            },
+                write_scroller("Sign Hash?", |w| Ok(write!(w, "{}", the_hash)?))?;
+                *destination = Some(the_hash.0.into());
+                Some(())
+            }),
         ),
         Action(
             SubInterp(DefaultInterp),
             // And ask the user if this is the key the meant to sign with:
-            |path: &ArrayVec<u32, 10>, destination| {
+            mkfn(|path: &ArrayVec<u32, 10>, destination| {
                 let privkey = get_private_key(path).ok()?;
                 let pubkey = get_pubkey(path).ok()?; // Redoing work here; fix.
                 let pkh = get_pkh(pubkey);
 
-                let mut pmpt = ArrayString::<128>::new();
-                write!(pmpt, "{}", pkh).ok()?;
+                write_scroller("With PKH", |w| Ok(write!(w, "{}", pkh)?))?;
 
-                if !ui::MessageValidator::new(&["With PKH", &pmpt], &[&"Confirm"], &[&"Reject"]).ask() {
-                    None
-                } else {
-                    *destination = Some(privkey);
-                    Some(())
-                }
-            },
+                *destination = Some(privkey);
+                Some(())
+            }),
         ),
     ),
-    |(hash, key): &(Option<[u8; 32]>, _), destination: &mut Option<ArrayVec<u8, 260>>| {
+    mkfn(|(hash, key): &(Option<[u8; 32]>, Option<_>), destination: &mut Option<ArrayVec<u8, 260>>| {
         // By the time we get here, we've approved and just need to do the signature.
+        final_accept_prompt(&[])?;
         let sig = detecdsa_sign(hash.as_ref()?, key.as_ref()?)?;
         let mut rv = ArrayVec::<u8, 260>::new();
         rv.try_extend_from_slice(&sig).ok()?;
         *destination = Some(rv);
         Some(())
-    },
+    }),
 );
 
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU
@@ -390,58 +190,16 @@ pub enum ParsersState {
     SignState(<SignImplT as InterpParser<SignParameters>>::State),
 }
 
-define_json_struct_interp! { Meta 16 {
-    chainId: JsonString,
-    sender: JsonString,
-    gasLimit: JsonNumber,
-    gasPrice: JsonNumber,
-    ttl: JsonNumber,
-    creationTime: JsonNumber
-}}
-define_json_struct_interp! { Signer 16 {
-    scheme: JsonString,
-    pubKey: JsonString,
-    addr: JsonString,
-    caps: JsonArray<JsonString>
-}}
 
-// This should just be called Amount, but we have a name collition between
-// field names and type names
-define_json_struct_interp! { AmountType 16 {
-  amount: JsonString,
-  denom: JsonString
-}}
-
-define_json_struct_interp! { Fee 16 {
-  amount: JsonArray<AmountTypeSchema>,
-  gas: JsonString
-}}
-
-define_json_struct_interp! { SendValue 16 {
-  amount: JsonString,
-  from_address: JsonString,
-  to_address: JsonString
-}}
-
-define_json_struct_interp! { UnjailValue 16 {
-  address: JsonString
-}}
-
-define_json_struct_interp! { PublicKey 16 {
-  type: JsonString,
-  value: JsonString
-}}
-
-define_json_struct_interp! { StakeValue 16 {
-  chains: JsonArray<JsonString>,
-  public_key: PublicKeySchema,
-  service_url: JsonString,
-  value: JsonString
-}}
-
-define_json_struct_interp! { UnstakeValue 20 {
-  validator_address: JsonString
-}}
+meta_definition!{}
+signer_definition!{}
+amount_type_definition!{}
+fee_definition!{}
+send_value_definition!{}
+unjail_value_definition!{}
+public_key_definition!{}
+stake_value_definition!{}
+unstake_value_definition!{}
 
 #[derive(Copy, Clone, Debug)]
 pub enum MessageType {
@@ -482,6 +240,13 @@ pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, U
   End,
 }
 
+fn init_str<const N: usize>() -> <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State {
+    <JsonStringAccumulate<N> as JsonInterp<JsonString>>::init(&JsonStringAccumulate)
+}
+fn call_str<'a, const N: usize>(ss: &mut <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State, token: JsonToken<'a>, dest: &mut Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>) -> Result<(), Option<OOB>> {
+    <JsonStringAccumulate<N> as JsonInterp<JsonString>>::parse(&JsonStringAccumulate, ss, token, dest)
+}
+
 pub enum MessageReturn<
     SendMessageReturn,
     UnjailMessageReturn,
@@ -491,6 +256,17 @@ pub enum MessageReturn<
   UnjailMessageReturn(Option<UnjailMessageReturn>),
   StakeMessageReturn(Option<StakeMessageReturn>),
   UnstakeMessageReturn(Option<UnstakeMessageReturn>)
+}
+
+impl JsonInterp<MessageSchema> for DropInterp {
+    type State = <DropInterp as JsonInterp<JsonAny>>::State;
+    type Returning = <DropInterp as JsonInterp<JsonAny>>::Returning;
+    fn init(&self) -> Self::State {
+        <DropInterp as JsonInterp<JsonAny>>::init(&DropInterp)
+    }
+    fn parse<'a>(&self, state: &mut Self::State, token: JsonToken<'a>, destination: &mut Option<Self::Returning>) -> Result<(), Option<OOB>> {
+        <DropInterp as JsonInterp<JsonAny>>::parse(&DropInterp, state, token, destination)
+    }
 }
 
 impl <SendInterp: JsonInterp<SendValueSchema>,
@@ -522,10 +298,10 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
                -> Result<(), Option<OOB>> {
     match state {
       MessageState::Start if token == JsonToken::BeginObject => {
-        set_from_thunk(state, ||MessageState::TypeLabel(JsonStringAccumulate.init(), None));
+        set_from_thunk(state, ||MessageState::TypeLabel(init_str::<4>(), None));
       }
       MessageState::TypeLabel(ref mut temp_string_state, ref mut temp_string_return) => {
-        JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
+        call_str::<4>(temp_string_state, token, temp_string_return)?;
         if temp_string_return.as_ref().unwrap().as_slice() == b"type" {
           set_from_thunk(state, ||MessageState::KeySep1);
         } else {
@@ -533,10 +309,10 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
         }
       }
       MessageState::KeySep1 if token == JsonToken::NameSeparator => {
-        set_from_thunk(state, ||MessageState::Type(JsonStringAccumulate.init(), None));
+        set_from_thunk(state, ||MessageState::Type(init_str::<64>(), None));
       }
       MessageState::Type(ref mut temp_string_state, ref mut temp_string_return) => {
-        JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
+        call_str::<64>(temp_string_state, token, temp_string_return)?;
         match temp_string_return.as_ref().unwrap().as_slice() {
           b"pos/Send" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::SendMessage));
@@ -555,10 +331,10 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
       }
       MessageState::ValueSep(msg_type) if token == JsonToken::ValueSeparator => {
         let new_msg_type = *msg_type;
-        set_from_thunk(state, ||MessageState::ValueLabel(new_msg_type, JsonStringAccumulate.init(), None));
+        set_from_thunk(state, ||MessageState::ValueLabel(new_msg_type, init_str::<5>(), None));
       }
       MessageState::ValueLabel(msg_type, temp_string_state, temp_string_return) => {
-        JsonStringAccumulate.parse(temp_string_state, token, temp_string_return)?;
+        call_str::<5>(temp_string_state, token, temp_string_return)?;
         if temp_string_return.as_ref().unwrap().as_slice() == b"value" {
           let new_msg_type = *msg_type;
           set_from_thunk(state, ||MessageState::KeySep2(new_msg_type));
@@ -643,13 +419,7 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
   }
 }
 
-define_json_struct_interp! { KadenaCmd 16 {
-  chain_id: JsonString,
-  entropy: JsonString,
-  fee: JsonArray<AmountTypeSchema>,
-  memo: JsonString,
-  msg: MessageSchema
-}}
+pokt_cmd_definition!{}
 
 #[inline(never)]
 pub fn get_get_address_state(
@@ -692,3 +462,4 @@ pub fn get_sign_state(
         }
     }
 }
+

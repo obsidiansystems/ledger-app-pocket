@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "arrayvec"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be4dc07131ffa69b8072d35f5007352af944213cde02545e2103680baed38fcd"
+checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "async-attributes"
@@ -629,9 +629,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ledger-log"
+version = "0.1.0"
+source = "git+https://github.com/obsidiansystems/ledger-platform?branch=jg-add-rust-libs#2ef7984dd64536bbe8038126b10251794620feae"
+dependencies = [
+ "arrayvec",
+ "nanos_sdk",
+]
+
+[[package]]
 name = "ledger-parser-combinators"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=json-parser-with-explicit-return#b15fcc68d52f59b5c29af89b500e74824631987c"
+source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=jg-fix-more-excessive-memory-use#13436b56005037d309874827d3ed0a22463022f7"
 dependencies = [
  "arrayvec",
  "bstringify",
@@ -884,6 +893,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "prompts-ui"
+version = "0.1.0"
+source = "git+https://github.com/obsidiansystems/ledger-platform?branch=jg-add-rust-libs#2ef7984dd64536bbe8038126b10251794620feae"
+dependencies = [
+ "arrayvec",
+ "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform?branch=jg-add-rust-libs)",
+ "nanos_sdk",
+ "nanos_ui",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -952,11 +972,12 @@ dependencies = [
  "hyper",
  "lazy_static",
  "ledger-apdu",
- "ledger-log",
+ "ledger-log 0.1.0",
  "ledger-parser-combinators",
  "nanos_sdk",
  "nanos_ui",
  "os-sync",
+ "prompts-ui",
  "speculos-api",
  "testmacro",
  "tokio",
