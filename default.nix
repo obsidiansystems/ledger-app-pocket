@@ -63,4 +63,16 @@ rec {
   tarball = pkgs.runCommandNoCC "app-tarball.tar.gz" { } ''
     tar -czvhf $out -C ${tarSrc} rust-app
   '';
+
+  pocket-core = pkgs.buildGoModule {
+    name = "pocket-core";
+    src = pkgs.fetchFromGitHub {
+      owner = "pokt-network";
+      repo = "pocket-core";
+      rev = "27edab249a2a370c2b084b96daeda084261fcd0d";
+      sha256 = "1gqpp16bxjcm2v27yxgsz7wa4l1mqagici76npg30z8fr7l66xa4";
+    };
+    vendorSha256 = "175absl4bz3ps7pr9g1s7spznw33lgqw0w0lvpyy4i99pq242idz";
+    doCheck = false;
+  };
 }
