@@ -14,6 +14,7 @@ ledger-log = { git = "https://github.com/obsidiansystems/ledger-platform" }
 # speculos logging and change log level.
 [features]
 default = [ ]
+# Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable speculos logging and change log level.
 speculos = [ "nanos_sdk/speculos", "ledger-log/speculos", "ledger-log/log_error", "ledger-parser-combinators/logging" ]
 extra_debug = ["ledger-log/log_trace"]
 
@@ -25,6 +26,9 @@ prompts-ui = { git = "https://github.com/obsidiansystems/ledger-platform" }
 [target.thumbv6m-none-eabi.dev-dependencies.nanos_sdk]
 git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git"
 features = [ "speculos" ]
+
+[dev-dependencies]
+testmacro = { git = "https://github.com/yhql/testmacro" }
 
 [[bin]]
 name = "rust-app"
