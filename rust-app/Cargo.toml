@@ -26,21 +26,6 @@ prompts-ui = { git = "https://github.com/obsidiansystems/ledger-platform" }
 git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git"
 features = [ "speculos" ]
 
-[dev-dependencies]
-testmacro = { git = "https://github.com/yhql/testmacro"}
-
-[target.x86_64-unknown-linux-gnu.dev-dependencies]
-ledger-apdu = { git = "https://github.com/zondax/ledger-rs.git" }
-speculos-api = { path = "speculos-api" }
-tokio = { version = "1", features = ["full"] } # features = ["full"] }
-tokio-retry = "0.3.0"
-hyper = { version = "0.14.10", features = ["client", "http1", "http2", "tcp"] }
-hex = "0.4.3"
-async-std = { version = "1.9.0", features = ["attributes", "unstable"] }
-futures = "0.3.16"
-lazy_static = "1.4.0"
-os-sync = "0.3.3"
-
 [[bin]]
 name = "rust-app"
 test = false
