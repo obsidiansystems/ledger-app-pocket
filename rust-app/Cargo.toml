@@ -1,4 +1,4 @@
-package]
+[package]
 name = "pocket"
 version = "0.2.0"
 authors = ["jonored", "yhql"]
