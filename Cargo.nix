@@ -368,6 +368,66 @@ rec {
         ];
 
       };
+      "pocket" = rec {
+        crateName = "pocket";
+        version = "0.2.0";
+        edition = "2018";
+        crateBin = [
+          { name = "pocket"; path = "bin-src/main.rs"; }
+        ];
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./rust-app; };
+        authors = [
+          "jonored"
+          "yhql"
+        ];
+        dependencies = [
+          {
+            name = "arrayvec";
+            packageId = "arrayvec";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "ledger-log";
+            packageId = "ledger-log";
+          }
+          {
+            name = "ledger-parser-combinators";
+            packageId = "ledger-parser-combinators";
+          }
+          {
+            name = "nanos_sdk";
+            packageId = "nanos_sdk";
+            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+          {
+            name = "nanos_ui";
+            packageId = "nanos_ui";
+            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+          {
+            name = "prompts-ui";
+            packageId = "prompts-ui";
+            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+        ];
+        devDependencies = [
+          {
+            name = "nanos_sdk";
+            packageId = "nanos_sdk";
+            target = {target, features}: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+            features = [ "speculos" ];
+          }
+          {
+            name = "testmacro";
+            packageId = "testmacro";
+          }
+        ];
+        features = {
+          "extra_debug" = [ "ledger-log/log_trace" ];
+          "speculos" = [ "nanos_sdk/speculos" "ledger-log/speculos" "ledger-log/log_error" "ledger-parser-combinators/logging" ];
+        };
+        resolvedDefaultFeatures = [ "default" "extra_debug" "speculos" ];
+      };
       "proc-macro2" = rec {
         crateName = "proc-macro2";
         version = "1.0.36";
@@ -441,66 +501,6 @@ rec {
           "proc-macro" = [ "proc-macro2/proc-macro" ];
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
-      };
-      "pocket" = rec {
-        crateName = "pocket";
-        version = "0.2.0";
-        edition = "2018";
-        crateBin = [
-          { name = "pocket"; path = "bin-src/main.rs"; }
-        ];
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./rust-app; };
-        authors = [
-          "jonored"
-          "yhql"
-        ];
-        dependencies = [
-          {
-            name = "arrayvec";
-            packageId = "arrayvec";
-            usesDefaultFeatures = false;
-          }
-          {
-            name = "ledger-log";
-            packageId = "ledger-log";
-          }
-          {
-            name = "ledger-parser-combinators";
-            packageId = "ledger-parser-combinators";
-          }
-          {
-            name = "nanos_sdk";
-            packageId = "nanos_sdk";
-            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-          }
-          {
-            name = "nanos_ui";
-            packageId = "nanos_ui";
-            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-          }
-          {
-            name = "prompts-ui";
-            packageId = "prompts-ui";
-            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-          }
-        ];
-        devDependencies = [
-          {
-            name = "nanos_sdk";
-            packageId = "nanos_sdk";
-            target = {target, features}: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-            features = [ "speculos" ];
-          }
-          {
-            name = "testmacro";
-            packageId = "testmacro";
-          }
-        ];
-        features = {
-          "extra_debug" = [ "ledger-log/log_trace" ];
-          "speculos" = [ "nanos_sdk/speculos" "ledger-log/speculos" "ledger-log/log_error" "ledger-parser-combinators/logging" ];
-        };
-        resolvedDefaultFeatures = [ "default" "extra_debug" "speculos" ];
       };
       "syn" = rec {
         crateName = "syn";

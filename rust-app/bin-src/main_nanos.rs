@@ -1,7 +1,7 @@
-use rust_app::crypto_helpers::*;
-use rust_app::implementation::*;
-use rust_app::interface::*;
-use rust_app::utils;
+use pocket::crypto_helpers::*;
+use pocket::implementation::*;
+use pocket::interface::*;
+use pocket::utils;
 
 use core::str::from_utf8;
 use nanos_sdk::io;
@@ -52,7 +52,7 @@ fn menu_example() {
 }
 
 use ledger_parser_combinators::interp_parser::OOB;
-use rust_app::*;
+use pocket::*;
 
 #[cfg(not(test))]
 #[no_mangle]
