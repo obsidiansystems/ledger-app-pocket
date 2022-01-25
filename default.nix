@@ -12,7 +12,7 @@ rec {
     buildRustCrateForPkgs = pkgs: let
       fun = (buildRustCrateForPkgsLedger pkgs).override {
         defaultCrateOverrides = pkgs.defaultCrateOverrides // {
-          rust-app = attrs: let
+          pocket = attrs: let
             sdk = lib.findFirst (p: lib.hasPrefix "rust_nanos_sdk" p.name) (builtins.throw "no sdk!") attrs.dependencies;
           in {
             preHook = ledger-platform.gccLibsPreHook;
@@ -52,21 +52,21 @@ rec {
     mkdir src
     touch src/main.rs
 
-    cargo-ledger --use-prebuilt ${rootCrate}/bin/rust-app --hex-next-to-json
+    cargo-ledger --use-prebuilt ${rootCrate}/bin/pocket --hex-next-to-json
 
-    mkdir -p $out/rust-app
-    cp app.json app.hex $out/rust-app
-    cp ${./tarball-default.nix} $out/rust-app/default.nix
-    cp ${./rust-app/crab.gif} $out/rust-app/crab.gif
+    mkdir -p $out/pocket
+    cp app.json app.hex $out/pocket
+    cp ${./tarball-default.nix} $out/pocket/default.nix
+    cp ${./rust-app/pocket.gif} $out/pocket/pocket.gif
   '');
 
   tarball = pkgs.runCommandNoCC "app-tarball.tar.gz" { } ''
-    tar -czvhf $out -C ${tarSrc} rust-app
+    tar -czvhf $out -C ${tarSrc} pocket
   '';
 
   testPackage = (import ./ts-tests/override.nix { inherit pkgs; }).package;
 
-  runTests = { appExe ? rootCrate + "/bin/rust-app" }: pkgs.runCommandNoCC "run-tests" {
+  runTests = { appExe ? rootCrate + "/bin/pocket" }: pkgs.runCommandNoCC "run-tests" {
     nativeBuildInputs = [
       pkgs.wget ledger-platform.speculos.speculos pkgs.coreutils testPackage pkgs.nodejs-12_x
     ];

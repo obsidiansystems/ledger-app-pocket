@@ -31,7 +31,7 @@ rec {
   #
 
   rootCrate = rec {
-    packageId = "rust-app";
+    packageId = "pocket";
 
     # Use this attribute to refer to the derivation building your root crate package.
     # You can override the features with rootCrate.build.override { features = [ "default" "feature1" ... ]; }.
@@ -47,10 +47,10 @@ rec {
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
-    "rust-app" = rec {
-      packageId = "rust-app";
+    "pocket" = rec {
+      packageId = "pocket";
       build = internal.buildRustCrateWithFeatures {
-        packageId = "rust-app";
+        packageId = "pocket";
       };
 
       # Debug support which might change between releases.
@@ -442,12 +442,12 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
-      "rust-app" = rec {
-        crateName = "rust-app";
+      "pocket" = rec {
+        crateName = "pocket";
         version = "0.2.0";
         edition = "2018";
         crateBin = [
-          { name = "rust-app"; path = "bin-src/main.rs"; }
+          { name = "pocket"; path = "bin-src/main.rs"; }
         ];
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./rust-app; };
         authors = [
