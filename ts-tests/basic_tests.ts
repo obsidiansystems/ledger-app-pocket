@@ -97,7 +97,7 @@ describe('basic tests', () => {
   await sendCommandAndAccept(async (kda : Pokt) => {
       console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
-      console.log("Reached Pubkey Got");
+      console.log("Reached Pubkey Got, " + JSON.stringify(rv));
       expect(rv.publicKey).to.equal("026f760e57383e3b5900f7c23b78a424e74bebbe9b7b46316da7c0b4b9c2c9301c");
       return;
     },
@@ -118,6 +118,7 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
          async (kda : Pokt) => {
            console.log("Started pubkey get");
            let rv = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+           expect(rv.signature.length).to.equal(128);
          }, prompts);
      }
 }
@@ -312,6 +313,28 @@ describe("Signing tests", function() {
      testTransaction(
        "0/0",
        JSON.stringify(exampleUnstake),
-       []
+       [
+        {
+          "header": "Unstake",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "Transfer from",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "header": "Sign Hash?",
+          "prompt": "BAF8E9CB74DF4DBD4B28E1A6B77A472E371C8ABC091EC606A5810A944F8F3851"
+        },
+        {
+          "header": "With PKH",
+          "prompt": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7"
+        },
+        {
+          "text": "Confirm",
+          "x": 43,
+          "y": 11
+        }
+       ]
      ));
 });

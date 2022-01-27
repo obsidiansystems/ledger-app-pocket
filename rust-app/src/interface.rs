@@ -56,7 +56,7 @@ define_json_struct! { StakeValue 16 {
   value: JsonString
 }}
 
-define_json_struct! { UnstakeValue 16 {
+define_json_struct! { UnstakeValue 17 {
   validator_address: JsonString
 }}
 
