@@ -71,8 +71,6 @@ pub struct PKH([u8; 20]);
 
 #[allow(dead_code)]
 pub fn get_pkh(key: [u8; 33]) -> PKH {
-    let mut public_key_hash = PKH::default();
-    let mut ripemd = cx_ripemd160_t::default();
     let mut temp = [0; 32];
     unsafe {
         cx_hash_sha256(
@@ -81,8 +79,14 @@ pub fn get_pkh(key: [u8; 33]) -> PKH {
             temp.as_mut_ptr(),
             temp.len() as u32,
         );
+    }
+    let mut ripemd = cx_ripemd160_t::default();
+    unsafe {
         cx_ripemd160_init_no_throw(&mut ripemd as *mut cx_ripemd160_t);
         cx_hash_update(&mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t, temp.as_ptr(), temp.len() as u32);
+    }
+    let mut public_key_hash = PKH::default();
+    unsafe {
         cx_hash_final(&mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t, public_key_hash.0[..].as_mut_ptr());
     }
     public_key_hash
