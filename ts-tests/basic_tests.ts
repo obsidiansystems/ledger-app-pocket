@@ -5,7 +5,7 @@ import Axios from 'axios';
 import Transport from "./common";
 import Pokt from "hw-app-pokt";
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pokt 0.2.0"]
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.3.0"]
 
 let setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
