@@ -5,7 +5,7 @@ import Axios from 'axios';
 import Transport from "./common";
 import Pokt from "hw-app-pokt";
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.3.0"]
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.3"]
 
 let setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
@@ -84,7 +84,7 @@ describe('basic tests', () => {
       expect(rv.publicKey).to.equal("026f760e57383e3b5900f7c23b78a424e74bebbe9b7b46316da7c0b4b9c2c9301c");
       return;
     }, [
-      { "header": "Provide Public Key", "prompt": "pkh-09CB550E56C3B91B1AB9F7836288641BC99A3C2B647470768B86C8D85863480F" },
+      { "header": "Provide Public Key", "prompt": "For Address     ABF20C51EFFB2152DFE06C2F7B96138CABD69AD1" },
       {
         "text": "Confirm",
         "x": 43,
@@ -102,7 +102,7 @@ describe('basic tests', () => {
       return;
     },
     [
-      { "header": "Provide Public Key", "prompt": "pkh-09CB550E56C3B91B1AB9F7836288641BC99A3C2B647470768B86C8D85863480F" },
+      { "header": "Provide Public Key", "prompt": "For Address     ABF20C51EFFB2152DFE06C2F7B96138CABD69AD1" },
       {
         "text": "Confirm",
         "x": 43,
@@ -234,8 +234,8 @@ describe("Signing tests", function() {
         "prompt": "D9779BB631C0BA7A991D5E6166B6419F5557CB423FD137079121986607856D92",
          },
          {
-        "header": "With PKH",
-        "prompt": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+        "header": "For Account",
+        "prompt": "2E27FC80E710265D4CD47A4A44D3C1AE4F88DAAA"
          },
          {
            "text": "Confirm",
@@ -254,8 +254,8 @@ describe("Signing tests", function() {
         "prompt": "FF11A8FD314B73EE4EB15D7097F2CAB8E0A4896427E5384254A47B3F1AB022FD",
          },
          {
-        "header": "With PKH",
-        "prompt": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+         "header": "For Account",
+         "prompt": "2E27FC80E710265D4CD47A4A44D3C1AE4F88DAAA"
          },
          {
            "text": "Confirm",
@@ -295,8 +295,8 @@ describe("Signing tests", function() {
         "prompt": "9BF2A5EAAECA8A5FAD5C2C4CA0C2D3FFEABC28A2AF2FE337343136DBEFF4437F",
          },
          {
-        "header": "With PKH",
-        "prompt": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7",
+        "header": "For Account",
+        "prompt": "2E27FC80E710265D4CD47A4A44D3C1AE4F88DAAA"
          },
          {
            "text": "Confirm",
@@ -325,8 +325,8 @@ describe("Signing tests", function() {
           "prompt": "BAF8E9CB74DF4DBD4B28E1A6B77A472E371C8ABC091EC606A5810A944F8F3851"
         },
         {
-          "header": "With PKH",
-          "prompt": "pkh-493E8E5DBDF933EDD1495A4E304EC8B8155312BBBE66A1783A03DF9F6B5500C7"
+          "header": "For Account",
+          "prompt": "2E27FC80E710265D4CD47A4A44D3C1AE4F88DAAA"
         },
         {
           "text": "Confirm",

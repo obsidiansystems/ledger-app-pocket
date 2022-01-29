@@ -33,7 +33,7 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
 
         let pkh = get_pkh(key);
 
-        write_scroller("Provide Public Key", |w| Ok(write!(w, "{}", pkh)?))?;
+        write_scroller("Provide Public Key", |w| Ok(write!(w, "For Address     {}", pkh)?))?;
 
         final_accept_prompt(&[])?;
 
@@ -163,7 +163,7 @@ pub const SIGN_IMPL: SignImplT = Action(
                 let pubkey = get_pubkey(path).ok()?; // Redoing work here; fix.
                 let pkh = get_pkh(pubkey);
 
-                write_scroller("With PKH", |w| Ok(write!(w, "{}", pkh)?))?;
+                write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
 
                 *destination = Some(privkey);
                 Some(())
