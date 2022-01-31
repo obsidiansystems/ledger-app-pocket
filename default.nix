@@ -68,7 +68,7 @@ rec {
 
   runTests = { appExe ? rootCrate + "/bin/pocket" }: pkgs.runCommandNoCC "run-tests" {
     nativeBuildInputs = [
-      pkgs.wget ledger-platform.speculos.speculos pkgs.coreutils testPackage pkgs.nodejs-12_x
+      pkgs.wget ledger-platform.speculos.speculos pkgs.coreutils testPackage pkgs.nodejs-14_x
     ];
   } ''
     RUST_APP=${rootCrate}/bin/*
