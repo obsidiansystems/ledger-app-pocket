@@ -149,7 +149,7 @@ pub const SIGN_IMPL: SignImplT = Action(
             ),
             // Ask the user if they accept the transaction body's hash
             mkfn(|(_, hash): &(_, Hasher), destination: &mut Option<[u8; 32]>| {
-                let the_hash = hash.clone().finalize();
+                let the_hash = hash.clone().finalize().ok()?;
                 write_scroller("Sign Hash?", |w| Ok(write!(w, "{}", the_hash)?))?;
                 *destination = Some(the_hash.0.into());
                 Some(())

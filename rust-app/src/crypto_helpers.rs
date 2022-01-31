@@ -144,32 +144,28 @@ impl fmt::Display for HexSlice<'_> {
 pub struct Hasher(cx_sha256_s);
 
 impl Hasher {
-    pub fn new() -> Hasher {
+    pub fn new() -> Result<Hasher, SyscallError> {
         let mut rv = cx_sha256_s::default();
-        unsafe { cx_sha256_init_no_throw(&mut rv) };
-        Self(rv)
+        call_c_api_function!(cx_sha256_init_no_throw(&mut rv))?;
+        Ok(Self(rv))
     }
 
-    pub fn update(&mut self, bytes: &[u8]) {
-        unsafe {
-            info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
-            cx_hash_update(
-                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
-                bytes.as_ptr(),
-                bytes.len() as u32,
-            );
-        }
+    pub fn update(&mut self, bytes: &[u8]) -> Result<(), SyscallError> {
+        info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
+        call_c_api_function!(cx_hash_update(
+            &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+            bytes.as_ptr(),
+            bytes.len() as u32,
+        ))
     }
 
-    pub fn finalize(&mut self) -> Hash {
+    pub fn finalize(&mut self) -> Result<Hash, SyscallError> {
         let mut rv = <[u8; 32]>::default();
-        unsafe {
-            cx_hash_final(
-                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
-                rv.as_mut_ptr(),
-            )
-        };
-        Hash(rv)
+        call_c_api_function!(cx_hash_final(
+            &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+            rv.as_mut_ptr(),
+        ))?;
+        Ok(Hash(rv))
     }
 }
 
