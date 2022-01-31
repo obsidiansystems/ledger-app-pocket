@@ -31,7 +31,7 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
         let key = get_pubkey(path).ok()?;
 
-        let pkh = get_pkh(key);
+        let pkh = get_pkh(key).ok()?;
 
         write_scroller("Provide Public Key", |w| Ok(write!(w, "For Address     {}", pkh)?))?;
 
@@ -161,7 +161,7 @@ pub const SIGN_IMPL: SignImplT = Action(
             mkfn(|path: &ArrayVec<u32, 10>, destination| {
                 let privkey = get_private_key(path).ok()?;
                 let pubkey = get_pubkey(path).ok()?; // Redoing work here; fix.
-                let pkh = get_pkh(pubkey);
+                let pkh = get_pkh(pubkey).ok()?;
 
                 write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
 

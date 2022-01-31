@@ -16,6 +16,21 @@ pub fn bip32_derive_secp256k1(path: &[u32]) -> Result<[u8; 32], SyscallError> {
     Ok(raw_key)
 }
 
+macro_rules! call_c_api_function {
+    ($($call:tt)*) => {
+        {
+            let err = unsafe {
+                $($call)*
+            };
+            if err != 0 {
+                Err(SyscallError::from(err))
+            } else {
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Helper function that signs with ECDSA in deterministic nonce,
 /// using SHA256
 #[allow(dead_code)]
@@ -37,7 +52,9 @@ pub fn detecdsa_sign(
                                           &mut s, &mut s_len as *mut usize as *mut u32);
 
         // Did the decoding work?
-        assert!(flag == 1);
+        if flag != 1 {
+            return None;
+        }
 
         let padding1 = 32 - r_len;
         let padding2 = 32 - s_len;
@@ -70,10 +87,10 @@ pub fn get_private_key(
 pub struct PKH([u8; 20]);
 
 #[allow(dead_code)]
-pub fn get_pkh(key: [u8; 33]) -> PKH {
+pub fn get_pkh(key: [u8; 33]) -> Result<PKH, SyscallError> {
     let mut temp = [0; 32];
     unsafe {
-        cx_hash_sha256(
+        let _len: size_t = cx_hash_sha256(
             key.as_ptr(),
             33,
             temp.as_mut_ptr(),
@@ -81,15 +98,17 @@ pub fn get_pkh(key: [u8; 33]) -> PKH {
         );
     }
     let mut ripemd = cx_ripemd160_t::default();
-    unsafe {
-        cx_ripemd160_init_no_throw(&mut ripemd as *mut cx_ripemd160_t);
-        cx_hash_update(&mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t, temp.as_ptr(), temp.len() as u32);
-    }
+    call_c_api_function!(cx_ripemd160_init_no_throw(
+        &mut ripemd as *mut cx_ripemd160_t))?;
+    call_c_api_function!(cx_hash_update(
+        &mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t,
+        temp.as_ptr(),
+        temp.len() as u32))?;
     let mut public_key_hash = PKH::default();
-    unsafe {
-        cx_hash_final(&mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t, public_key_hash.0[..].as_mut_ptr());
-    }
-    public_key_hash
+    call_c_api_function!(cx_hash_final(
+        &mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t,
+        public_key_hash.0[..].as_mut_ptr()))?;
+    Ok(public_key_hash)
 }
 
 impl Default for PKH {
