@@ -7,7 +7,7 @@ use nanos_sdk::io::SyscallError;
 
 use ledger_log::*;
 
-pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
+pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'/0'/0/0");
 
 /// Helper function that derives the seed over secp256k1
 pub fn bip32_derive_secp256k1(path: &[u32]) -> Result<[u8; 32], SyscallError> {
