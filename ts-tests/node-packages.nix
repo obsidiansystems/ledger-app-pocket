@@ -2776,22 +2776,22 @@ let
         sha512 = "EC2utToWl4RKfs5zd36Mxq7nzHHBuomZboI0yYL6Y0RmBgT7Sgkq4rQ0ezFTYoIsSs7Tm9SJe+o2FcAg6GBhGA==";
       };
     };
-    "hw-app-obsidian-common-git+http://github.com/obsidiansystems/hw-app-obsidian-common#9fd33f6218f34c0e3a7da96b63656a2b3ae76e95" = {
+    "hw-app-obsidian-common-git+https://git@github.com/obsidiansystems/hw-app-obsidian-common.git#9fd33f6218f34c0e3a7da96b63656a2b3ae76e95" = {
       name = "hw-app-obsidian-common";
       packageName = "hw-app-obsidian-common";
       version = "0.0.1";
       src = fetchgit {
-        url = "http://github.com/obsidiansystems/hw-app-obsidian-common";
+        url = "https://git@github.com/obsidiansystems/hw-app-obsidian-common.git";
         rev = "9fd33f6218f34c0e3a7da96b63656a2b3ae76e95";
         sha256 = "1f376864ec95fbbe1a8c121f61254578f784e972c1ed7d920e8b6f642b801808";
       };
     };
-    "hw-app-pokt-git+ssh://git@github.com/obsidiansystems/hw-app-pokt.git#cd9843156b2639b4cd4024c69fec41192f93bc43" = {
+    "hw-app-pokt-git+https://git@github.com/obsidiansystems/hw-app-pokt.git#cd9843156b2639b4cd4024c69fec41192f93bc43" = {
       name = "hw-app-pokt";
       packageName = "hw-app-pokt";
       version = "0.0.0";
       src = fetchgit {
-        url = "ssh://git@github.com/obsidiansystems/hw-app-pokt.git";
+        url = "https://git@github.com/obsidiansystems/hw-app-pokt.git";
         rev = "cd9843156b2639b4cd4024c69fec41192f93bc43";
         sha256 = "8ddfe159d2b4bbce5b9fe2f10f02d288d04d1929745ffb8f12f55470a8bd5ef8";
       };
@@ -7164,8 +7164,8 @@ let
       sources."html-void-elements-1.0.5"
       sources."http-parser-js-0.5.5"
       sources."http2-client-1.3.5"
-      sources."hw-app-obsidian-common-git+http://github.com/obsidiansystems/hw-app-obsidian-common#9fd33f6218f34c0e3a7da96b63656a2b3ae76e95"
-      sources."hw-app-pokt-git+ssh://git@github.com/obsidiansystems/hw-app-pokt.git#cd9843156b2639b4cd4024c69fec41192f93bc43"
+      sources."hw-app-obsidian-common-git+https://git@github.com/obsidiansystems/hw-app-obsidian-common.git#9fd33f6218f34c0e3a7da96b63656a2b3ae76e95"
+      sources."hw-app-pokt-git+https://git@github.com/obsidiansystems/hw-app-pokt.git#cd9843156b2639b4cd4024c69fec41192f93bc43"
       sources."indent-string-4.0.0"
       sources."inflight-1.0.6"
       sources."inherits-2.0.4"
