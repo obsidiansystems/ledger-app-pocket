@@ -1,14 +1,13 @@
-use crate::crypto_helpers::{detecdsa_sign, get_pkh, get_private_key, get_pubkey, Hasher};
+use crate::crypto_helpers::{eddsa_sign, get_pkh, get_private_key, get_pubkey, Hasher};
 use crate::interface::*;
 use crate::*;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
     Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
 };
 use ledger_parser_combinators::json::Json;
-use nanos_ui::ui;
 use prompts_ui::{write_scroller, final_accept_prompt};
 use core::str::from_utf8;
 use core::convert::TryFrom;
@@ -31,15 +30,15 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
         let key = get_pubkey(path).ok()?;
 
-        let pkh = get_pkh(key).ok()?;
+        let pkh = get_pkh(key);
 
         write_scroller("Provide Public Key", |w| Ok(write!(w, "For Address     {}", pkh)?))?;
 
         final_accept_prompt(&[])?;
 
         let rv = destination.insert(ArrayVec::new());
-        rv.try_push(u8::try_from(key.len()).ok()?).ok()?;
-        rv.try_extend_from_slice(&key).ok()?;
+        rv.try_push(u8::try_from(key.W.len()).ok()?).ok()?;
+        rv.try_extend_from_slice(&key.W).ok()?;
         Some(())
     }));
 
@@ -161,7 +160,7 @@ pub const SIGN_IMPL: SignImplT = Action(
             mkfn(|path: &ArrayVec<u32, 10>, destination| {
                 let privkey = get_private_key(path).ok()?;
                 let pubkey = get_pubkey(path).ok()?; // Redoing work here; fix.
-                let pkh = get_pkh(pubkey).ok()?;
+                let pkh = get_pkh(pubkey);
 
                 write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
 
@@ -173,9 +172,9 @@ pub const SIGN_IMPL: SignImplT = Action(
     mkfn(|(hash, key): &(Option<[u8; 32]>, Option<_>), destination: &mut Option<ArrayVec<u8, 128>>| {
         // By the time we get here, we've approved and just need to do the signature.
         final_accept_prompt(&[])?;
-        let sig = detecdsa_sign(hash.as_ref()?, key.as_ref()?)?;
+        let sig = eddsa_sign(hash.as_ref()?, key.as_ref()?)?;
         let rv = destination.insert(ArrayVec::new());
-        rv.try_extend_from_slice(&sig).ok()?;
+        rv.try_extend_from_slice(&sig.0).ok()?;
         Some(())
     }),
 );

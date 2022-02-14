@@ -2,11 +2,8 @@ use pocket::implementation::*;
 use pocket::interface::*;
 use prompts_ui::RootMenu;
 use ledger_parser_combinators::interp_parser::set_from_thunk;
-use pocket::utils;
 
-use core::str::from_utf8;
 use nanos_sdk::io;
-use nanos_ui::ui;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 
