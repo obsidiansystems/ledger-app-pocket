@@ -370,7 +370,7 @@ rec {
       };
       "pocket" = rec {
         crateName = "pocket";
-        version = "0.2.0";
+        version = "0.0.3";
         edition = "2018";
         crateBin = [
           { name = "pocket"; path = "bin-src/main.rs"; }
@@ -408,6 +408,11 @@ rec {
             name = "prompts-ui";
             packageId = "prompts-ui";
             target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+          {
+            name = "zeroize";
+            packageId = "zeroize";
+            usesDefaultFeatures = false;
           }
         ];
         devDependencies = [
@@ -599,6 +604,19 @@ rec {
           "Sergio Benitez <sb@sergio.bz>"
         ];
 
+      };
+      "zeroize" = rec {
+        crateName = "zeroize";
+        version = "1.5.2";
+        edition = "2018";
+        sha256 = "01k0xmqd7l3yqzdfii7c5gxvdrb6m7bgi8l5q87f17n3cc08g23w";
+        authors = [
+          "The RustCrypto Project Developers"
+        ];
+        features = {
+          "default" = [ "alloc" ];
+          "derive" = [ "zeroize_derive" ];
+        };
       };
     };
 
