@@ -1,20 +1,34 @@
 use crate::info;
 use core::default::Default;
+use core::option::NoneError;
 use core::fmt;
 use nanos_sdk::bindings::*;
-use nanos_sdk::ecc::{CurvesId};
 use nanos_sdk::io::SyscallError;
-
+use zeroize::{DefaultIsZeroes, Zeroizing};
+use core::ops::{Deref,DerefMut};
+use arrayvec::CapacityError;
 use ledger_log::*;
 
 pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
 
-/// Helper function that derives the seed over secp256k1
-pub fn bip32_derive_secp256k1(path: &[u32]) -> Result<[u8; 32], SyscallError> {
+/// Helper function that derives the seed over Ed25519
+pub fn bip32_derive_eddsa(path: &[u32]) -> Result<[u8; 32], SyscallError> {
     let mut raw_key = [0u8; 32];
-    nanos_sdk::ecc::bip32_derive(CurvesId::Secp256k1, path, &mut raw_key)?;
+    trace!("Calling os_perso_derive_node_bip32 with path {:?}", path);
+    unsafe {
+        os_perso_derive_node_bip32(
+            CX_CURVE_Ed25519,
+            path.as_ptr(),
+            path.len() as u32,
+            raw_key.as_mut_ptr(),
+            core::ptr::null_mut()
+        )
+    };
+    trace!("Success");
     Ok(raw_key)
 }
+
+pub struct EdDSASig(pub [u8; 64]);
 
 macro_rules! call_c_api_function {
     ($($call:tt)*) => {
@@ -31,54 +45,124 @@ macro_rules! call_c_api_function {
     }
 }
 
-/// Helper function that signs with ECDSA in deterministic nonce,
-/// using SHA256
-#[allow(dead_code)]
-pub fn detecdsa_sign(
+#[inline(never)]
+pub fn eddsa_sign(
     m: &[u8],
     ec_k: &cx_ecfp_private_key_t,
-) -> Option<[u8;64]> {
-    let (signature, length) = nanos_sdk::ecc::ecdsa_sign(ec_k, CX_RND_RFC6979 | CX_LAST, CX_SHA256, m)?;
-    let mut r: *const u8 = core::ptr::null();
-    let mut r_len: usize = 0;
-    let mut s: *const u8 = core::ptr::null();
-    let mut s_len: usize = 0;
+) -> Option<EdDSASig> {
+    let mut sig:[u8;64]=[0; 64];
+    trace!("Signing");
+    call_c_api_function!(
+         cx_eddsa_sign_no_throw(
+            ec_k,
+            CX_SHA512,
+            m.as_ptr(),
+            m.len() as u32,
+            sig.as_mut_ptr(),
+            sig.len() as u32)
+    ).ok()?;
+    trace!("Signed");
+    Some(EdDSASig(sig))
+}
 
-    let mut result_buffer: [u8;64] = [0;64];
+#[inline(always)]
+pub fn get_pubkey_from_privkey(ec_k: &mut nanos_sdk::bindings::cx_ecfp_private_key_t, pubkey: &mut nanos_sdk::bindings::cx_ecfp_public_key_t) -> Result<(), SyscallError> {
+    info!("Calling generate_pair_no_throw");
+    call_c_api_function!(cx_ecfp_generate_pair_no_throw(CX_CURVE_Ed25519, pubkey, ec_k, true))?;
+    info!("Calling compress_point_no_throw");
+    call_c_api_function!(cx_edwards_compress_point_no_throw(CX_CURVE_Ed25519, pubkey.W.as_mut_ptr(), pubkey.W_len))?;
+    pubkey.W_len = 33;
+    Ok(())
+}
 
-    unsafe {
-        let flag = cx_ecfp_decode_sig_der(signature.as_ptr(), length, 73,
-                                          &mut r, &mut r_len as *mut usize as *mut u32,
-                                          &mut s, &mut s_len as *mut usize as *mut u32);
+#[derive(Default,Copy,Clone)]
+// Would like to use ZeroizeOnDrop here, but the zeroize_derive crate doesn't build. We also would
+// need Zeroize on cx_ecfp_private_key_t instead of using DefaultIsZeroes; we can't implement both
+// Drop and Copy.
+struct PrivateKey(nanos_sdk::bindings::cx_ecfp_private_key_t);
+impl DefaultIsZeroes for PrivateKey {}
+impl Deref for PrivateKey {
+  type Target = nanos_sdk::bindings::cx_ecfp_private_key_t;
+  fn deref(&self) -> &Self::Target {
+      &self.0
+  }
+}
+impl DerefMut for PrivateKey {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+      &mut self.0
+  }
+}
 
-        // Did the decoding work?
-        if flag != 1 {
-            return None;
-        }
+pub enum CryptographyError {
+  NoneError,
+  SyscallError(SyscallError),
+  CapacityError(CapacityError)
+}
 
-        let padding1 = 32 - r_len;
-        let padding2 = 32 - s_len;
-
-        result_buffer[padding1..32].clone_from_slice(core::slice::from_raw_parts(r, r_len));
-        result_buffer[32+padding2..64].clone_from_slice(core::slice::from_raw_parts(s, s_len));
+impl From<SyscallError> for CryptographyError {
+    fn from(e: SyscallError) -> Self {
+        CryptographyError::SyscallError(e)
     }
-
-    Some(result_buffer)
+}
+impl From<CapacityError> for CryptographyError {
+    fn from(e: CapacityError) -> Self {
+        CryptographyError::CapacityError(e)
+    }
+}
+impl From<NoneError> for CryptographyError {
+    fn from(_: NoneError) -> Self {
+        CryptographyError::NoneError
+    }
 }
 
-pub fn get_pubkey(path: &[u32]) -> Result<[u8; 33], SyscallError> {
-    let raw_key = bip32_derive_secp256k1(path)?;
-    let mut ec_k = nanos_sdk::ecc::ec_init_key(CurvesId::Secp256k1, &raw_key)?;
-    let uncompressed_pk = nanos_sdk::ecc::ec_get_pubkey(CurvesId::Secp256k1, &mut ec_k)?;
-    Ok(compress_public_key(uncompressed_pk))
-}
-
-#[allow(dead_code)]
-pub fn get_private_key(
+// #[inline(always)]
+pub fn with_private_key<A>(
     path: &[u32],
-) -> Result<nanos_sdk::bindings::cx_ecfp_private_key_t, SyscallError> {
-    let raw_key = bip32_derive_secp256k1(path)?;
-    nanos_sdk::ecc::ec_init_key(CurvesId::Secp256k1, &raw_key)
+    f: impl FnOnce(&mut nanos_sdk::bindings::cx_ecfp_private_key_t) -> Result<A, CryptographyError>
+) -> Result<A, CryptographyError> {
+    info!("Deriving path");
+    let raw_key = bip32_derive_eddsa(path)?;
+    let mut ec_k : Zeroizing<PrivateKey> = Default::default();
+    info!("Generating key");
+    call_c_api_function!(cx_ecfp_init_private_key_no_throw(
+            CX_CURVE_Ed25519,
+            raw_key.as_ptr(),
+            raw_key.len() as u32,
+            (&mut ec_k).deref_mut().deref_mut() as *mut nanos_sdk::bindings::cx_ecfp_private_key_t
+        ))?;
+    info!("Key generated");
+    f(&mut ec_k as &mut nanos_sdk::bindings::cx_ecfp_private_key_t)
+}
+
+pub fn with_public_keys<A>(
+  path: &[u32],
+  f: impl FnOnce(&nanos_sdk::bindings::cx_ecfp_public_key_t, &PKH) -> Result<A, CryptographyError>
+) -> Result<A, CryptographyError> {
+    let mut pubkey = Default::default();
+    with_private_key(path, |ec_k| {
+        info!("Getting private key");
+        get_pubkey_from_privkey(ec_k, &mut pubkey).ok()?;
+        Ok(())
+    })?;
+    let pkh = get_pkh(&pubkey)?;
+    f(&pubkey, &pkh)
+}
+
+pub fn with_keys<A>(
+  path: &[u32],
+  f: impl FnOnce(&nanos_sdk::bindings::cx_ecfp_private_key_t, &nanos_sdk::bindings::cx_ecfp_public_key_t, &PKH) -> Result<A, CryptographyError>
+) -> Result<A, CryptographyError> {
+    let mut pubkey = Default::default();
+    with_private_key(path, |ec_k| {
+        info!("Getting private key");
+        get_pubkey_from_privkey(ec_k, &mut pubkey)?;
+        let pkh = get_pkh(&pubkey)?;
+        f(ec_k, &pubkey, &pkh)
+    })
+}
+
+pub fn public_key_bytes(key: &nanos_sdk::bindings::cx_ecfp_public_key_t) -> &[u8] {
+    &key.W[1..33]
 }
 
 // Public Key Hash type; update this to match the target chain's notion of an address and how to
@@ -87,34 +171,20 @@ pub fn get_private_key(
 pub struct PKH([u8; 20]);
 
 #[allow(dead_code)]
-pub fn get_pkh(key: [u8; 33]) -> Result<PKH, SyscallError> {
-    let mut temp = [0; 32];
+pub fn get_pkh(key: &nanos_sdk::bindings::cx_ecfp_public_key_t) -> Result<PKH, SyscallError> {
+    let mut public_key_hash = [0; 32];
+    let key_bytes = public_key_bytes(key);
     unsafe {
         let _len: size_t = cx_hash_sha256(
-            key.as_ptr(),
-            33,
-            temp.as_mut_ptr(),
-            temp.len() as u32,
+            key_bytes.as_ptr(),
+            key_bytes.len() as u32,
+            public_key_hash.as_mut_ptr(),
+            public_key_hash.len() as u32,
         );
     }
-    let mut ripemd = cx_ripemd160_t::default();
-    call_c_api_function!(cx_ripemd160_init_no_throw(
-        &mut ripemd as *mut cx_ripemd160_t))?;
-    call_c_api_function!(cx_hash_update(
-        &mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t,
-        temp.as_ptr(),
-        temp.len() as u32))?;
-    let mut public_key_hash = PKH::default();
-    call_c_api_function!(cx_hash_final(
-        &mut ripemd as *mut cx_ripemd160_t as *mut cx_hash_t,
-        public_key_hash.0[..].as_mut_ptr()))?;
-    Ok(public_key_hash)
-}
-
-impl Default for PKH {
-    fn default() -> PKH {
-        PKH(<[u8; 20]>::default())
-    }
+    let mut rv=PKH([0; 20]);
+    rv.0.clone_from_slice(&public_key_hash[0..20]);
+    Ok(rv)
 }
 
 impl fmt::Display for PKH {
@@ -192,10 +262,3 @@ extern "C" {
       ) -> u32;
 }
 
-fn compress_public_key(uncompressed: nanos_sdk::bindings::cx_ecfp_public_key_t) -> [u8;33] {
-    let mut compressed: [u8; 33] = [0; 33];
-
-    compressed[0] = if uncompressed.W[64] & 1 == 1 { 0x03 } else { 0x02 }; // "Compress" public key in place
-    compressed[1..33].copy_from_slice(&uncompressed.W[1..33]);
-    compressed
-}
