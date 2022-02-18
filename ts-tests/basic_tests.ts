@@ -81,10 +81,10 @@ describe('basic tests', () => {
       console.log("Started pubkey get");
       let rv = await pokt.getPublicKey("0");
       console.log("Reached Pubkey Got");
-      expect(rv.publicKey).to.equal("028118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
+      expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     }, [
-      { "header": "Provide Public Key", "prompt": "For Address     9DDEDAC3410B47473CD1A43B461B4B2F6C8BEC88" },
+      { "header": "Provide Public Key", "prompt": "For Address     7F916B907886913C6DD7AB62681FC52140AFBC84" },
       {
         "text": "Confirm",
         "x": 43,
@@ -98,11 +98,11 @@ describe('basic tests', () => {
       console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
       console.log("Reached Pubkey Got, " + JSON.stringify(rv));
-      expect(rv.publicKey).to.equal("028118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
+      expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     },
     [
-      { "header": "Provide Public Key", "prompt": "For Address     9DDEDAC3410B47473CD1A43B461B4B2F6C8BEC88" },
+      { "header": "Provide Public Key", "prompt": "For Address     7F916B907886913C6DD7AB62681FC52140AFBC84" },
       {
         "text": "Confirm",
         "x": 43,
@@ -235,7 +235,7 @@ describe("Signing tests", function() {
          },
          {
         "header": "For Account",
-        "prompt": "D92DFAF05365A103D6608C4F2E8937FCAE0031FF"
+        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
          },
          {
            "text": "Confirm",
@@ -255,7 +255,7 @@ describe("Signing tests", function() {
          },
          {
          "header": "For Account",
-         "prompt": "D92DFAF05365A103D6608C4F2E8937FCAE0031FF"
+         "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
          },
          {
            "text": "Confirm",
@@ -296,7 +296,7 @@ describe("Signing tests", function() {
          },
          {
         "header": "For Account",
-        "prompt": "D92DFAF05365A103D6608C4F2E8937FCAE0031FF"
+        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
          },
          {
            "text": "Confirm",
@@ -326,7 +326,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "D92DFAF05365A103D6608C4F2E8937FCAE0031FF"
+          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
         },
         {
           "text": "Confirm",

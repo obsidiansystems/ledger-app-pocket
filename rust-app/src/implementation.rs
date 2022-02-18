@@ -1,4 +1,4 @@
-use crate::crypto_helpers::{eddsa_sign, get_pkh, get_private_key, get_pubkey, Hasher};
+use crate::crypto_helpers::{eddsa_sign, with_public_keys, with_keys, Hasher, public_key_bytes};
 use crate::interface::*;
 use crate::*;
 use arrayvec::ArrayVec;
@@ -28,18 +28,18 @@ pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
-        let key = get_pubkey(path).ok()?;
-
-        let pkh = get_pkh(key);
+        with_public_keys(path, |key: &_, pkh: &_| {
 
         write_scroller("Provide Public Key", |w| Ok(write!(w, "For Address     {}", pkh)?))?;
 
         final_accept_prompt(&[])?;
 
+        let key_bytes = public_key_bytes(key);
         let rv = destination.insert(ArrayVec::new());
-        rv.try_push(u8::try_from(key.W.len()).ok()?).ok()?;
-        rv.try_extend_from_slice(&key.W).ok()?;
-        Some(())
+        rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;
+        rv.try_extend_from_slice(key_bytes).ok()?;
+        Ok(())
+        }).ok()
     }));
 
 const FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
@@ -158,23 +158,24 @@ pub const SIGN_IMPL: SignImplT = Action(
             SubInterp(DefaultInterp),
             // And ask the user if this is the key the meant to sign with:
             mkfn(|path: &ArrayVec<u32, 10>, destination| {
-                let privkey = get_private_key(path).ok()?;
-                let pubkey = get_pubkey(path).ok()?; // Redoing work here; fix.
-                let pkh = get_pkh(pubkey);
-
-                write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
-
-                *destination = Some(privkey);
+                with_public_keys(path, |_, pkh| {
+                    write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
+                    *destination = Some(path.clone());
+                    Ok(())
+                }).ok()?;
                 Some(())
             }),
         ),
     ),
-    mkfn(|(hash, key): &(Option<[u8; 32]>, Option<_>), destination: &mut Option<ArrayVec<u8, 128>>| {
+    mkfn(|(hash, path): &(Option<[u8; 32]>, Option<ArrayVec<u32,10>>), destination: &mut Option<ArrayVec<u8, 128>>| {
         // By the time we get here, we've approved and just need to do the signature.
         final_accept_prompt(&[])?;
-        let sig = eddsa_sign(hash.as_ref()?, key.as_ref()?)?;
-        let rv = destination.insert(ArrayVec::new());
-        rv.try_extend_from_slice(&sig.0).ok()?;
+        with_keys(path.as_ref()?, |privkey, _pubkey, _pkh| {
+            let sig = eddsa_sign(hash.as_ref()?, privkey)?;
+            let rv = destination.insert(ArrayVec::new());
+            rv.try_extend_from_slice(&sig.0).ok()?;
+            Ok(())
+        }).ok()?;
         Some(())
     }),
 );
