@@ -185,8 +185,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-platform";
-          rev = "b3bc1db9c8a793bd20e76a4a19666f09a80c4e95";
-          sha256 = "1g0vmjw2bnjgm439a3373hajvkjnfq536x857w5ngdnfvm0687vf";
+          rev = "7fbbc41e6c5d1883f3b00932cef628e320757045";
+          sha256 = "0ngk5y3pk0p3hm978nr6p5mvilp0mz90r6c3g0pb3flvfcxgjrxj";
         };
         dependencies = [
           {
@@ -291,8 +291,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-nanos-sdk.git";
-          rev = "1b0d1a688713ffbf3956ebe9971584a79aec5560";
-          sha256 = "09a7xyzdcr9n7m2gisirg7n8vqqg53i4rk92q293fw9ri5vrpj3d";
+          rev = "5a497619322d8ae03f9cf034bf67ecaf855e1655";
+          sha256 = "1z8599dn67sayl17c27qk97y94z323pm738548k9zmnmhlmkh0wx";
         };
         authors = [
           "yhql"
@@ -460,8 +460,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-platform";
-          rev = "b3bc1db9c8a793bd20e76a4a19666f09a80c4e95";
-          sha256 = "1g0vmjw2bnjgm439a3373hajvkjnfq536x857w5ngdnfvm0687vf";
+          rev = "7fbbc41e6c5d1883f3b00932cef628e320757045";
+          sha256 = "0ngk5y3pk0p3hm978nr6p5mvilp0mz90r6c3g0pb3flvfcxgjrxj";
         };
         dependencies = [
           {
