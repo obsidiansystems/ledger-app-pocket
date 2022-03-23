@@ -1,11 +1,11 @@
-use crate::crypto_helpers::{eddsa_sign, with_public_keys, with_keys, Hasher, public_key_bytes};
+use crate::crypto_helpers::{eddsa_sign, with_public_keys, with_keys, Hasher, Ed25519, public_key_bytes};
 use crate::interface::*;
 use crate::*;
 use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
-    Action, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
+    Action, Bind, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
 };
 use ledger_parser_combinators::json::Json;
 use prompts_ui::{write_scroller, final_accept_prompt};
@@ -21,6 +21,9 @@ const fn mkfn<A,B,C>(q: fn(&A,&mut B)->C) -> fn(&A,&mut B)->C {
   q
 }
 const fn mkvfn<A,C>(q: fn(&A,&mut Option<()>)->C) -> fn(&A,&mut Option<()>)->C {
+  q
+}
+const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
   q
 }
 
@@ -125,60 +128,70 @@ const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> 
   Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
   UnstakeValueInterp{field_validator_address: FROM_ADDRESS_ACTION});
 
-pub type SignImplT = impl InterpParser<SignParameters, Returning = ArrayVec<u8, 128>>;
+pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8,128>>;
 
-pub const SIGN_IMPL: SignImplT = Action(
-    (
-        Action(
-            // Calculate the hash of the transaction
-            ObserveLengthedBytes(
-                Hasher::new,
-                Hasher::update,
-                Json(PoktCmdInterp {
-                    field_chain_id: DropInterp,
-                    field_entropy: DropInterp,
-                    field_fee: DropInterp,
-                    field_memo: DropInterp,
-                    field_msg: Message {send_message: SEND_MESSAGE_ACTION,
-                                        unjail_message: DropInterp,
-                                        stake_message: STAKE_MESSAGE_ACTION,
-                                        unstake_message: UNSTAKE_MESSAGE_ACTION},
-                }),
-                true,
-            ),
-            // Ask the user if they accept the transaction body's hash
-            mkfn(|(_, hash): &(_, Hasher), destination: &mut Option<[u8; 32]>| {
-                let the_hash = hash.clone().finalize();
-                write_scroller("Sign Hash?", |w| Ok(write!(w, "{}", the_hash)?))?;
-                *destination = Some(the_hash.0.into());
-                Some(())
-            }),
-        ),
-        Action(
-            SubInterp(DefaultInterp),
-            // And ask the user if this is the key the meant to sign with:
-            mkfn(|path: &ArrayVec<u32, 10>, destination| {
-                with_public_keys(path, |_, pkh| {
-                    write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
-                    *destination = Some(path.clone());
-                    Ok(())
-                }).ok()?;
-                Some(())
-            }),
-        ),
-    ),
-    mkfn(|(hash, path): &(Option<[u8; 32]>, Option<ArrayVec<u32,10>>), destination: &mut Option<ArrayVec<u8, 128>>| {
-        // By the time we get here, we've approved and just need to do the signature.
-        final_accept_prompt(&[])?;
-        with_keys(path.as_ref()?, |privkey, _pubkey, _pkh| {
-            let sig = eddsa_sign(hash.as_ref()?, privkey)?;
-            let rv = destination.insert(ArrayVec::new());
-            rv.try_extend_from_slice(&sig.0).ok()?;
-            Ok(())
-        }).ok()?;
-        Some(())
-    }),
-);
+pub const SIGN_IMPL: SignImplT =
+    Bind (
+      Action(
+          SubInterp(DefaultInterp),
+          // And ask the user if this is the key the meant to sign with:
+          mkfn(|path: &ArrayVec<u32, 10>, destination| {
+              with_public_keys(path, |_, pkh| {
+                  write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
+                  *destination = Some(path.clone());
+                  Ok(())
+              }).ok()?;
+              Some(())
+          }),
+      ),
+      mkbindfn(|path : &ArrayVec<u32,10> | {
+        with_keys(path, |privkey, _pubkey, _pkh| {
+          let edward = Ed25519::new(privkey).ok()?;
+          Ok (
+            Bind (
+              ObserveLengthedBytes(
+                move || edward,
+                Ed25519::update,
+                Action(
+                  Json(PoktCmdInterp {
+                      field_chain_id: DropInterp,
+                      field_entropy: DropInterp,
+                      field_fee: DropInterp,
+                      field_memo: DropInterp,
+                      field_msg: Message {send_message: SEND_MESSAGE_ACTION,
+                                          unjail_message: DropInterp,
+                                          stake_message: STAKE_MESSAGE_ACTION,
+                                          unstake_message: UNSTAKE_MESSAGE_ACTION},
+                  }),
+                  mkvfn(| _, ret | {
+                    *ret = Some(());
+                    Some(())
+                  })
+                ),
+                true),
+              mkbindfn(| (_, initial_edward) : &(Option<()>, Ed25519) | {
+                // Switch to second pass for Ed25519, requires that we stream the message again.
+                let initial_edward_2 = initial_edward.clone();
+                Some(
+                  Action(
+                    (SubInterp(DropInterp),
+                      ObserveLengthedBytes(
+                        move || initial_edward_2,
+                        Ed25519::update,
+                        Json(DropInterp),
+                        true)),
+                    mkfn(| (result, final_edward), destination : &mut Option<ArrayVec<u8,128>> | {
+                      final_accept_prompt(&[])?;
+                      Some(())
+                    })
+                  )
+                )
+              }
+            )
+          )
+        )
+      }).ok()
+    }));
 
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU
 // must have a field here.
@@ -186,7 +199,7 @@ pub const SIGN_IMPL: SignImplT = Action(
 pub enum ParsersState {
     NoState,
     GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::State),
-    SignState(<SignImplT as InterpParser<SignParameters>>::State),
+    SignState(<SignImplT as InterpParser<DoubledSignParameters>>::State),
 }
 
 pub fn reset_parsers_state(state: &mut ParsersState) {
@@ -447,12 +460,12 @@ pub fn get_get_address_state(
 #[inline(never)]
 pub fn get_sign_state(
     s: &mut ParsersState,
-) -> &mut <SignImplT as InterpParser<SignParameters>>::State {
+) -> &mut <SignImplT as InterpParser<DoubledSignParameters>>::State {
     match s {
         ParsersState::SignState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
-            *s = ParsersState::SignState(<SignImplT as InterpParser<SignParameters>>::init(
+            *s = ParsersState::SignState(<SignImplT as InterpParser<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
             ));
         }

@@ -2,7 +2,7 @@ use pocket::implementation::*;
 use pocket::interface::*;
 use prompts_ui::RootMenu;
 use ledger_parser_combinators::interp_parser::set_from_thunk;
-
+use crypto_helpers::Ed25519;
 use nanos_sdk::io;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -21,33 +21,42 @@ extern "C" fn sample_main() {
 
     info!("Pocket app {}", env!("CARGO_PKG_VERSION"));
 
-    loop {
-        // Draw some 'welcome' screen
-        match states {
-            ParsersState::NoState => idle_menu.show(),
-            _ => busy_menu.show(),
-        }
+    let // Draw some 'welcome' screen
+        menu = |states : &ParsersState, idle : & mut RootMenu<2>, busy : & mut RootMenu<2>| {
+            match states {
+                ParsersState::NoState => idle.show(),
+                _ => busy.show(),
+            }
+        };
 
+    menu(&states, & mut idle_menu, & mut busy_menu);
+    loop {
         info!("Fetching next event.");
         // Wait for either a specific button push to exit the app
         // or an APDU command
         match comm.next_event() {
-            io::Event::Command(ins) => match handle_apdu(&mut comm, ins, &mut states) {
-                Ok(()) => comm.reply_ok(),
-                Err(sw) => comm.reply(sw),
-            },
-            io::Event::Button(btn) => match states {
-                ParsersState::NoState => {match idle_menu.update(btn) {
-                    Some(1) => { info!("Exiting app at user direction via root menu"); nanos_sdk::exit_app(0) },
-                    _ => (),
-                } }
-                _ => { match busy_menu.update(btn) {
-                    Some(1) => { info!("Resetting at user direction via busy menu"); set_from_thunk(&mut states, || ParsersState::NoState); }
-                    _ => (),
-                } }
-            },
+            io::Event::Command(ins) => {
+                match handle_apdu(&mut comm, ins, &mut states) {
+                    Ok(()) => comm.reply_ok(),
+                    Err(sw) => comm.reply(sw),
+                };
+                menu(&states, & mut idle_menu, & mut busy_menu);
+            }
+            io::Event::Button(btn) => {
+                match states {
+                    ParsersState::NoState => {match idle_menu.update(btn) {
+                        Some(1) => { info!("Exiting app at user direction via root menu"); nanos_sdk::exit_app(0) },
+                        _ => (),
+                    } }
+                    _ => { match busy_menu.update(btn) {
+                        Some(1) => { info!("Resetting at user direction via busy menu"); set_from_thunk(&mut states, || ParsersState::NoState); }
+                        _ => (),
+                    } }
+                };
+                menu(&states, & mut idle_menu, & mut busy_menu);
+            }
             io::Event::Ticker => {
-                trace!("Ignoring ticker event");
+                //trace!("Ignoring ticker event");
             },
         }
     }
@@ -130,6 +139,56 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A>(
     }
 }
 
+fn run_parser_apdu_signing<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A>(
+    states: &mut ParsersState,
+    get_state: fn(&mut ParsersState) -> &mut <P as InterpParser<A>>::State,
+    parser: &P,
+    comm: &mut io::Comm,
+) -> Result<(), Reply> {
+    let cursor: &[u8] = comm.get_data()?;
+
+    loop {
+        trace!("Parsing APDU input: {:?}\n", cursor);
+        let mut parse_destination = None;
+        let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor, &mut parse_destination);
+        trace!("Parser result: {:?}\n", parse_rv);
+        trace!("Parse destination: {:?}\n", parse_destination);
+        match parse_rv {
+            // Explicit rejection; reset the parser. Possibly send error message to host?
+            Err((Some(OOB::Reject), _)) => {
+                reset_parsers_state(states);
+                break Err(io::StatusWords::Unknown.into());
+            }
+            // Deliberately no catch-all on the Err((Some case; we'll get error messages if we
+            // add to OOB's out-of-band actions and forget to implement them.
+            //
+            // Finished the chunk with no further actions pending, but not done.
+            Err((None, [])) => break Ok(()),
+            // Didn't consume the whole chunk; reset and error message.
+            Err((None, _)) => {
+                reset_parsers_state(states);
+                break Err(io::StatusWords::Unknown.into());
+            }
+            // Consumed the whole chunk and parser finished; send response.
+            Ok([]) => {
+                trace!("Parser finished, resetting state\n");
+                match parse_destination.as_ref() {
+                    Some(rv) => comm.append(&rv[..]),
+                    None => break Err(io::StatusWords::Unknown.into()),
+                }
+                // Parse finished; reset.
+                reset_parsers_state(states);
+                break Ok(());
+            }
+            // Parse ended before the chunk did; reset.
+            Ok(_) => {
+                reset_parsers_state(states);
+                break Err(io::StatusWords::Unknown.into());
+            }
+        }
+    }
+}
+
 // fn handle_apdu<P: for<'a> FnMut(ParserTag, &'a [u8]) -> RX<'a, ArrayVec<u8, 260> > >(comm: &mut io::Comm, ins: Ins, parser: &mut P) -> Result<(), Reply> {
 #[inline(never)]
 fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState) -> Result<(), Reply> {
@@ -147,7 +206,7 @@ fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState) -> Resu
             run_parser_apdu::<_, Bip32Key>(parser, get_get_address_state, &GET_ADDRESS_IMPL, comm)?
         }
         Ins::Sign => {
-            run_parser_apdu::<_, SignParameters>(parser, get_sign_state, &SIGN_IMPL, comm)?
+            run_parser_apdu_signing::<_, DoubledSignParameters>(parser, get_sign_state, &SIGN_IMPL, comm)?
         }
         Ins::GetVersionStr => {
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());

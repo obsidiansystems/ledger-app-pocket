@@ -262,3 +262,36 @@ extern "C" {
       ) -> u32;
 }
 
+
+#[derive(Clone, Copy)]
+pub struct Ed25519(cx_sha256_s);
+
+impl Ed25519 {
+    pub fn new(key : &nanos_sdk::bindings::cx_ecfp_private_key_t) -> Result<Ed25519,()> {
+        let mut rv = cx_sha256_s::default();
+        unsafe { cx_sha256_init_no_throw(&mut rv) };
+        Ok(Self(rv))
+    }
+
+    pub fn update(&mut self, bytes: &[u8]) {
+        unsafe {
+            info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
+            cx_hash_update(
+                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+                bytes.as_ptr(),
+                bytes.len() as u32,
+            );
+        }
+    }
+
+    pub fn finalize(&mut self) -> Hash {
+        let mut rv = <[u8; 32]>::default();
+        unsafe {
+            cx_hash_final(
+                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+                rv.as_mut_ptr(),
+            )
+        };
+        Hash(rv)
+    }
+}
