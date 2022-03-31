@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "ledger-platform",
-  "branch": "develop",
+  "branch": "wip-new-protocol",
   "private": false,
-  "rev": "3913a3027e99fc03aaaa1964897994f3ff65ac7a",
-  "sha256": "0477c0zjv25qbqc9bsjzdw1hfqcv71cvqg07gfbix1ds65slaq71"
+  "rev": "f2e31153e0236608137db271c5825223fad5ee77",
+  "sha256": "1z6ayjh9s0bngva6hagr8cgmilf6qz3lqw5hl4gg5972lbi38zxa"
 }
