@@ -51,6 +51,7 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 
     let transport = await Transport.open("http://localhost:5000/apdu");
     let kda = new Pokt(transport);
+    kda.sendChunks = kda.sendWithBlocks;
     
     //await new Promise(resolve => setTimeout(resolve, 100));
     

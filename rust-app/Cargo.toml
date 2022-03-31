@@ -7,7 +7,7 @@ autobins = false
 
 [dependencies]
 arrayvec = { version = "0.7.2", default-features = false }
-ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", rev = "e6b9a41964c902997f2f13d44b64c2de1373f7bc" }
+ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch="debugging-stack" }
 ledger-log = { git = "https://github.com/obsidiansystems/ledger-platform" }
 zeroize = { version = "1.5.2", default-features = false }
 
@@ -37,6 +37,7 @@ test = false
 path = "bin-src/main.rs"
 
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk.git".nanos_sdk]
+# path = "./ledger-nanos-sdk"
 git = "https://github.com/obsidiansystems/ledger-nanos-sdk.git"
 branch = "use-ambient-compiler-and-target"
 

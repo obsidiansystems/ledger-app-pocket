@@ -7,7 +7,7 @@ case $3 in
     #armv6m-unknown-none-eabi-objdump --all-headers $3
     export RUST_APP="$(speculos --apdu-port 5555 --api-port 5556 -k 2.0 "$@" --display headless |& grep EXE: | cut -d' ' -f2)"
     echo RUST APP IS: $RUST_APP
-    #speculos -k 2.0 $RUST_APP --display headless &
+    speculos -k 2.0 $RUST_APP --display headless &
     SPECULOS=$!
     until wget -O/dev/null -o/dev/null http://localhost:5000/; do sleep 0.1; done;
     cd ../ts-tests;
