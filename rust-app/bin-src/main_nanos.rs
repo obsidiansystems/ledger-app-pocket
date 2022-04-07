@@ -1,9 +1,9 @@
 use pocket::implementation::*;
 use pocket::interface::*;
 use prompts_ui::RootMenu;
-use core::convert::TryFrom;
-use ledger_parser_combinators::interp_parser::set_from_thunk;
-use crypto_helpers::Ed25519;
+use core::convert::{TryFrom, TryInto};
+use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
+use crypto_helpers::{Ed25519, Hash, Hasher};
 use nanos_sdk::io;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -14,7 +14,6 @@ use pocket::*;
 #[cfg(not(test))]
 #[no_mangle]
 extern "C" fn sample_main() {
-    ledger_parser_combinators::interp_parser::print_sp();
     let mut comm = io::Comm::new();
     let mut states = ParsersState::NoState;
     let mut block_state = BlockState::default();
@@ -100,79 +99,20 @@ use nanos_sdk::io::Reply;
 
 use ledger_parser_combinators::interp_parser::InterpParser;
 
-#[inline(never)]
-fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A>(
-    states: &mut ParsersState,
-    get_state: fn(&mut ParsersState) -> &mut <P as InterpParser<A>>::State,
-    parser: &P,
-    comm: &mut io::Comm,
-) -> Result<(), Reply> {
-    let cursor: &[u8] = comm.get_data()?;
-
-    loop {
-        trace!("Parsing APDU input: {:?}\n", cursor);
-        let mut parse_destination = None;
-        let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor, &mut parse_destination);
-        trace!("Parser result: {:?}\n", parse_rv);
-        trace!("Parse destination: {:?}\n", parse_destination);
-        match parse_rv {
-            // Explicit rejection; reset the parser. Possibly send error message to host?
-            Err((Some(OOB::Reject), _)) => {
-                reset_parsers_state(states);
-                break Err(io::StatusWords::Unknown.into());
-            }
-            // Deliberately no catch-all on the Err((Some case; we'll get error messages if we
-            // add to OOB's out-of-band actions and forget to implement them.
-            //
-            // Finished the chunk with no further actions pending, but not done.
-            Err((None, [])) => break Ok(()),
-            // Didn't consume the whole chunk; reset and error message.
-            Err((None, _)) => {
-                reset_parsers_state(states);
-                break Err(io::StatusWords::Unknown.into());
-            }
-            // Consumed the whole chunk and parser finished; send response.
-            Ok([]) => {
-                trace!("Parser finished, resetting state\n");
-                match parse_destination.as_ref() {
-                    Some(rv) => comm.append(&rv[..]),
-                    None => break Err(io::StatusWords::Unknown.into()),
-                }
-                // Parse finished; reset.
-                reset_parsers_state(states);
-                break Ok(());
-            }
-            // Parse ended before the chunk did; reset.
-            Ok(_) => {
-                reset_parsers_state(states);
-                break Err(io::StatusWords::Unknown.into());
-            }
-        }
-    }
-}
 const HASH_LEN: usize = 32;
 type SHA256 = [u8; HASH_LEN];
 
-enum BlockStateEnum {
-    FirstPassPath,
-    FirstPassTxn,
-    SecondPassTxn,
-    SecondPassPath
-}
-impl Default for BlockStateEnum {
-    fn default() -> BlockStateEnum {
-        BlockStateEnum::FirstPassPath
-    }
-}
+const MAX_PARAMS: usize = 2;
 
 // Replace with a proper implementation later; this is just to get enough to do the two-pass for
 // Ed25519.
 #[derive(Default)]
 struct BlockState {
+    params: ArrayVec<SHA256, MAX_PARAMS>,
     txn_head: SHA256,
     path_head: SHA256,
     requested_block: SHA256,
-    state: BlockStateEnum,
+    state: usize,
 }
 
 #[repr(u8)]
@@ -208,11 +148,66 @@ impl TryFrom<u8> for HostToLedgerCmd {
     }
 }
 
+/*
+trait BlockyAdapterScheme {
+    const first_param : usize;
+    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<SHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply>;
+}
+
+enum SignStateEnum {
+    FirstPassPath,
+    FirstPassTxn,
+    SecondPassTxn,
+    SecondPassPath
+}
+
+impl Default for SignStateEnum {
+    fn default() -> SignStateEnum {
+        SignStateEnum::FirstPassPath
+    }
+}
+
+impl BlockyAdapterScheme for SignStateEnum {
+    const first_param: usize = 0;
+    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<SHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply> -> {
+        match self {
+            BlockStateEnum::FirstPassPath => {
+                *self = BlockStateEnum::FirstPassTxn;
+                Ok(&params[0])
+            }
+            BlockStateEnum::FirstPassTxn => {
+                *self = BlockStateEnum::SecondPassPath;
+                Ok(&params[1])
+            }
+            BlockStateEnum::SecondPassPath => {
+                *self = BlockStateEnum::SecondPassTxn;
+                Ok(&params[0])
+            }
+            BlockStateEnum::SecondPassTxn => {
+                return Err(io::StatusWords::Unknown.into());
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+struct OneParamOnceState;
+
+impl BlockyAdapterScheme for OneParamOnceState {
+    const first_param: usize = 0;
+    fn next_block(&mut self, &mut next_block_out : &[u8]) -> Result<&[u8], ()> {
+        Err(io::StatusWords::Unknown.into())
+    }
+}
+*/
+
 #[inline(never)]
-fn run_parser_apdu_signing<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A>(
+fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N: usize>(
     states: &mut ParsersState,
     get_state: fn(&mut ParsersState) -> &mut <P as InterpParser<A>>::State,
     block_state: &mut BlockState,
+    seq: &[usize; N],
     parser: &P,
     comm: &mut io::Comm,
 ) -> Result<(), Reply> {
@@ -225,22 +220,33 @@ fn run_parser_apdu_signing<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A>(
     trace!("Host cmd: {:?}", host_cmd);
     match host_cmd {
         HostToLedgerCmd::START => {
-            trace!("Block len: {}", block.len());
-            if block.len() < HASH_LEN*2+1 { return Err(io::StatusWords::Unknown.into()); }
-            trace!("Block len: {}", block.len());
-            block_state.txn_head.copy_from_slice(&block[1..1+HASH_LEN]);
-            block_state.path_head.copy_from_slice(&block[1+HASH_LEN..1+HASH_LEN*2]);
-            block_state.requested_block.copy_from_slice(&block_state.txn_head[..]);
-            block_state.state = BlockStateEnum::FirstPassPath;
+            block_state.params.clear();
+            for param in block[1..].chunks_exact(HASH_LEN) {
+                block_state.params.try_push(param.try_into().or(Err(io::StatusWords::Unknown))?).or(Err(io::StatusWords::Unknown))?;
+            }
+            trace!("Params: {:x?}", block_state.params);
+            block_state.state = 0;
+            if block_state.params.len() <= *seq.iter().max().unwrap() { return Err(io::StatusWords::Unknown.into()); }
+            block_state.requested_block.copy_from_slice(&block_state.params[seq[block_state.state]][..]);
             comm.append(&[LedgerToHostCmd::GET_CHUNK as u8]);
-            comm.append(&block_state.path_head);
+            comm.append(&block_state.requested_block);
             Ok(())
         }
         HostToLedgerCmd::GET_CHUNK_RESPONSE_SUCCESS => {
             if block.len() < HASH_LEN+1 { return Err(io::StatusWords::Unknown.into()); }
-            // TODO: Important: Verify the hash here!
-            //
-            //
+
+            // Check the hash, so the host can't lie.
+            call_me_maybe( || {
+                let mut hasher = Hasher::new();
+                hasher.update(&block[1..]);
+                let Hash(hashed) = hasher.finalize();
+                if hashed != block_state.requested_block {
+                    None
+                } else {
+                    Some(())
+                }
+            }).ok_or(io::StatusWords::Unknown)?;
+
             let next_block = &block[1..1+HASH_LEN];
             let cursor = &block[1+HASH_LEN..];
 
@@ -263,23 +269,10 @@ fn run_parser_apdu_signing<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A>(
                     trace!("Parser needs more; get more.");
                     // Request the next chunk of our input.
                     let our_next_block : &[u8] = if next_block == [0; 32] {
-                        match block_state.state {
-                            BlockStateEnum::FirstPassPath => {
-                                block_state.state = BlockStateEnum::FirstPassTxn;
-                                &block_state.txn_head
-                            }
-                            BlockStateEnum::FirstPassTxn => {
-                                block_state.state = BlockStateEnum::SecondPassPath;
-                                &block_state.path_head
-                            }
-                            BlockStateEnum::SecondPassPath => {
-                                block_state.state = BlockStateEnum::SecondPassTxn;
-                                &block_state.txn_head
-                            }
-                            BlockStateEnum::SecondPassTxn => {
-                                return Err(io::StatusWords::Unknown.into());
-                            }
-                        }
+                        block_state.state = block_state.state + 1;
+                        if block_state.state > seq.len() { return Err(io::StatusWords::Unknown.into()); }
+                        if block_state.params.len() <= seq[block_state.state] { return Err(io::StatusWords::Unknown.into()); }
+                        &block_state.params[seq[block_state.state]]
                     } else {
                         &next_block
                     };
@@ -337,10 +330,10 @@ fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState, block_s
             comm.append(b"Pocket");
         }
         Ins::GetPubkey => {
-            run_parser_apdu::<_, Bip32Key>(parser, get_get_address_state, &GET_ADDRESS_IMPL, comm)?
+            run_parser_apdu(parser, get_get_address_state, block_state, &[0], &GET_ADDRESS_IMPL, comm)?
         }
         Ins::Sign => {
-            run_parser_apdu_signing::<_, DoubledSignParameters>(parser, get_sign_state, block_state, &SIGN_IMPL, comm)?
+            run_parser_apdu(parser, get_sign_state, block_state, &SIGN_SEQ, &SIGN_IMPL, comm)?
         }
         Ins::GetVersionStr => {
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());

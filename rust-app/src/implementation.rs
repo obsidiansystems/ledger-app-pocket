@@ -130,12 +130,15 @@ const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> 
 
 pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8,128>>;
 
+pub const SIGN_SEQ: [usize; 3] = [1, 0, 0];
+
 pub const SIGN_IMPL: SignImplT =
     Bind (
       Action(
           SubInterp(DefaultInterp),
           // And ask the user if this is the key the meant to sign with:
           mkfn(|path: &ArrayVec<u32, 10>, destination| {
+              write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
               with_public_keys(path, |_, pkh| {
                   write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
                   *destination = Some(path.clone());
@@ -174,14 +177,14 @@ pub const SIGN_IMPL: SignImplT =
                 let initial_edward_2 = initial_edward.clone();
                 Some(
                   Action(
-                    (SubInterp(DropInterp),
-                      ObserveLengthedBytes(
-                        move || initial_edward_2,
-                        Ed25519::update,
-                        Json(DropInterp),
-                        true)),
+                    ObserveLengthedBytes(
+                      move || initial_edward_2,
+                      Ed25519::update,
+                      Json(DropInterp),
+                      true),
                     mkfn(| (result, final_edward), destination : &mut Option<ArrayVec<u8,128>> | {
                       final_accept_prompt(&[])?;
+                      *destination=Some(ArrayVec::new());
                       Some(())
                     })
                   )
