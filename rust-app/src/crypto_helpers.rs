@@ -263,28 +263,98 @@ extern "C" {
 }
 
 
-#[derive(Clone, Copy)]
-pub struct Ed25519(cx_sha256_s);
+#[derive(Clone)]
+pub struct SHA512(cx_sha512_s);
 
-impl Ed25519 {
-    pub fn new(key : &nanos_sdk::bindings::cx_ecfp_private_key_t) -> Result<Ed25519,()> {
-        let mut rv = cx_sha256_s::default();
-        unsafe { cx_sha256_init_no_throw(&mut rv) };
-        Ok(Self(rv))
+impl SHA512 {
+    pub fn new() -> SHA512 {
+        let mut rv = cx_sha512_s::default();
+        unsafe { cx_sha512_init_no_throw(&mut rv) };
+        Self(rv)
+    }
+
+    pub fn clear(&mut self) {
+        unsafe { cx_sha512_init_no_throw(self) };
     }
 
     pub fn update(&mut self, bytes: &[u8]) {
         unsafe {
             info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
             cx_hash_update(
-                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
+                &mut self.0 as *mut cx_sha512_s as *mut cx_hash_t,
                 bytes.as_ptr(),
                 bytes.len() as u32,
             );
         }
     }
 
+    pub fn finalize(&mut self) -> [u8; 64] {
+        let mut rv = <[u8; 64]>::default();
+        unsafe {
+            cx_hash_final(
+                &mut self.0 as *mut cx_sha512_s as *mut cx_hash_t,
+                rv.as_mut_ptr(),
+            )
+        };
+        rv
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Ed25519 {
+    hash: SHA512,
+    path: ArrayVec<u32; 10>,
+    r: [u8; 32],
+}
+
+impl Ed25519 {
+    pub fn new(path : &ArrayVec<u32, 10>) -> Result<Ed25519,()> {
+        let mut hash = SHA512::new();
+
+        let nonce = with_private_key(path, |&key| {
+            hash.update(&key.d[0..key.d_len]);
+            let temp = hash.finalize();
+            hash.clear();
+            hash.update(temp[32..64]);
+            temp.zeroize();
+        });
+        
+        Ok(Self {
+            hash,
+            path.clone(),
+            Ed25519Step::Nonce
+        })
+    }
+
+    pub fn update(&mut self, bytes: &[u8]) {
+        self.hash.update(bytes);
+    }
+
+    pub fn done_with_r(&mut self) {
+        let r = self.hash.finalize();
+        r.reverse();
+        // make into a valid point?
+        /*call_c_api_function!(
+            cx_
+            ).ok()?; */
+        let r_point = ed25519_base;
+        call_c_api_function!(
+            cx_ecfp_scalar_mult_no_throw( CX_CURVE_Ed25519, r_point, r_point.len, r.as_mut_ptr(), r.len())
+            ).ok()?;
+        let big_r = [u8; 32];
+        call_c_api_function!(
+            cx_edwards_compress_point_no_throw( r_point, big_r.as_mut_ptr(), big_r.len() )
+        ).ok()?;
+        self.hash.clear();
+        self.hash.update(&big_r);
+
+        with_public_key(&self.path, |key| {
+            self.hash.update(key);
+        });
+    }
+
     pub fn finalize(&mut self) -> Hash {
+        let k = 
         let mut rv = <[u8; 32]>::default();
         unsafe {
             cx_hash_final(
