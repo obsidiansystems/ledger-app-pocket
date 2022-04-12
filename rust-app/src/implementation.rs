@@ -1,4 +1,4 @@
-use crate::crypto_helpers::{eddsa_sign, with_public_keys, with_keys, Hasher, Ed25519, public_key_bytes};
+use crate::crypto_helpers::{with_public_keys, Ed25519, public_key_bytes};
 use crate::interface::*;
 use crate::*;
 use arrayvec::ArrayVec;
@@ -148,8 +148,7 @@ pub const SIGN_IMPL: SignImplT =
           }),
       ),
       mkbindfn(|path : &ArrayVec<u32,10> | {
-        with_keys(path, |privkey, _pubkey, _pkh| {
-          let edward = Ed25519::new(privkey).ok()?;
+          let edward = Ed25519::new(path).ok()?;
           Ok (
             Bind (
               ObserveLengthedBytes(
@@ -193,7 +192,6 @@ pub const SIGN_IMPL: SignImplT =
             )
           )
         )
-      }).ok()
     }));
 
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU

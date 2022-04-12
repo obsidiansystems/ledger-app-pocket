@@ -6,7 +6,7 @@ use nanos_sdk::bindings::*;
 use nanos_sdk::io::SyscallError;
 use zeroize::{DefaultIsZeroes, Zeroizing};
 use core::ops::{Deref,DerefMut};
-use arrayvec::CapacityError;
+use arrayvec::{CapacityError,ArrayVec};
 use ledger_log::*;
 
 pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
@@ -274,7 +274,7 @@ impl SHA512 {
     }
 
     pub fn clear(&mut self) {
-        unsafe { cx_sha512_init_no_throw(self) };
+        unsafe { cx_sha512_init_no_throw(&mut self.0) };
     }
 
     pub fn update(&mut self, bytes: &[u8]) {
@@ -288,8 +288,8 @@ impl SHA512 {
         }
     }
 
-    pub fn finalize(&mut self) -> [u8; 64] {
-        let mut rv = <[u8; 64]>::default();
+    pub fn finalize(&mut self) -> Zeroizing<[u8; 64]> {
+        let mut rv = Zeroizing::new([0; 64]);
         unsafe {
             cx_hash_final(
                 &mut self.0 as *mut cx_sha512_s as *mut cx_hash_t,
@@ -300,29 +300,34 @@ impl SHA512 {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Ed25519 {
     hash: SHA512,
-    path: ArrayVec<u32; 10>,
+    path: ArrayVec<u32, 10>,
+    r_pre: [u8; 32],
     r: [u8; 32],
 }
+
+#[derive(Clone)]
+pub struct Ed25519Signature([u8; 64]);
 
 impl Ed25519 {
     pub fn new(path : &ArrayVec<u32, 10>) -> Result<Ed25519,()> {
         let mut hash = SHA512::new();
 
-        let nonce = with_private_key(path, |&key| {
-            hash.update(&key.d[0..key.d_len]);
-            let temp = hash.finalize();
+        let nonce = with_private_key(path, |&mut key| {
+            hash.update(&key.d[0..(key.d_len as usize)]);
+            let temp = Zeroizing::new(hash.finalize());
             hash.clear();
-            hash.update(temp[32..64]);
-            temp.zeroize();
+            hash.update(&temp[32..64]);
+            Ok(())
         });
         
         Ok(Self {
-            hash,
-            path.clone(),
-            Ed25519Step::Nonce
+            hash: hash,
+            path: path.clone(),
+            r_pre: [0; 32],
+            r: [0; 32]
         })
     }
 
@@ -331,37 +336,75 @@ impl Ed25519 {
     }
 
     pub fn done_with_r(&mut self) {
-        let r = self.hash.finalize();
-        r.reverse();
-        // make into a valid point?
-        /*call_c_api_function!(
-            cx_
-            ).ok()?; */
-        let r_point = ed25519_base;
-        call_c_api_function!(
-            cx_ecfp_scalar_mult_no_throw( CX_CURVE_Ed25519, r_point, r_point.len, r.as_mut_ptr(), r.len())
-            ).ok()?;
-        let big_r = [u8; 32];
-        call_c_api_function!(
-            cx_edwards_compress_point_no_throw( r_point, big_r.as_mut_ptr(), big_r.len() )
-        ).ok()?;
-        self.hash.clear();
-        self.hash.update(&big_r);
+        call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
+        self.r_pre = self.hash.finalize();
+        self.r_pre.reverse();
+        let r = CX_BN_FLAG_UNSET;
+        
+        // Make r_raw into a BN
+        call_c_api_function!( cx_bn_alloc_init(&r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len()) ).ok()?;
+        
+        let ed_P = cx_ecpoint_t::default();
+        // Get the generator for Ed25519's curve
+        call_c_api_function!( cx_ecdomain_generator_bn(CX_CURVE_Ed25519, ed_P) ).ok()?;
 
-        with_public_key(&self.path, |key| {
-            self.hash.update(key);
+        // Multiply r by generator, store in ed_P
+        call_c_api_function!( cx_ecpoint_rnd_scalarmul_bn(ed_P, r) );
+
+        let big_r : [u8;32] = [0; 32];
+        let mut sign;
+        
+        call_c_api_function!( cx_ecpoint_compress(ed_P, self.r, self.r.len(), sign) ).ok()?;
+        
+        call_c_api_function!( cx_bn_unlock() ).ok()?;
+       
+        self.r.reverse();
+        self.r[31] |= 0x80 * sign;
+
+        // Start calculating s.
+
+        self.hash.clear();
+        self.hash.update(&self.r);
+
+        with_public_keys(&self.path, |key, _| {
+            self.hash.update(&key.W[..key.W_len]);
         });
     }
 
-    pub fn finalize(&mut self) -> Hash {
-        let k = 
-        let mut rv = <[u8; 32]>::default();
-        unsafe {
-            cx_hash_final(
-                &mut self.0 as *mut cx_sha256_s as *mut cx_hash_t,
-                rv.as_mut_ptr(),
-            )
-        };
-        Hash(rv)
+    pub fn finalize(&mut self) -> Ed25519Signature {
+
+        call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
+        let k_raw = self.hash.finalize();
+
+        // Make k into a BN
+        let k;
+        call_c_api_function!( cx_bn_alloc_init(&k as *mut cx_bn_t, 64, k_raw.as_ptr(), k_raw.len()) ).ok()?;
+
+        let rv = with_private_key(&self.path, |key| {
+            call_c_api_function!( cx_bn_alloc_init(&k as *mut cx_bn_t, 64, self.r.as_ptr(), self.r.len()) ).ok()?;
+            let rv;
+            let ed25519_order;
+            call_c_api_function!( cx_ecdomain_parameter_bn( CX_CURVE_Ed25519, CX_CURVE_PARAM_Order, ed25519_order) ).ok()?;
+            call_c_api_function!( cx_bn_mod_mul(rv, key, k, ed25519_order) ).ok()?;
+            rv
+        });
+
+        let r;
+        call_c_api_function!( cx_bn_alloc_init(&r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len())).ok()?;
+
+        let s;
+        call_c_api_function!( cx_bn_mod_add(s, rv, r)).ok()?;
+        
+        let s_bytes = [0; 64];
+        call_c_api_function!(cx_bn_export(s, s_bytes.as_ptr(), s_bytes.len())).ok()?;
+
+        s_bytes.reverse();
+
+        let buf = [0; 64];
+
+        buf[..32].copy_from_slice(&self.r);
+        buf[32..].copy_from_slice(&s);
+
+        Ok(Ed25519Signature(buf))
     }
 }
