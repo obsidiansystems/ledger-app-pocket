@@ -209,7 +209,7 @@ let exampleUnstake = {
 };
 
 describe("Signing tests", function() {
-  it("can sign a simple transfer",
+  it.only("can sign a simple transfer",
      testTransaction(
        "0/0",
        JSON.stringify(exampleSend),

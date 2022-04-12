@@ -148,11 +148,12 @@ pub const SIGN_IMPL: SignImplT =
           }),
       ),
       mkbindfn(|path : &ArrayVec<u32,10> | {
+          trace!("Wat");
           let edward = Ed25519::new(path).ok()?;
-          Ok (
+          Some (
             Bind (
               ObserveLengthedBytes(
-                move || edward,
+                move || edward.clone(),
                 Ed25519::update,
                 Action(
                   Json(PoktCmdInterp {
@@ -173,17 +174,21 @@ pub const SIGN_IMPL: SignImplT =
                 true),
               mkbindfn(| (_, initial_edward) : &(Option<()>, Ed25519) | {
                 // Switch to second pass for Ed25519, requires that we stream the message again.
-                let initial_edward_2 = initial_edward.clone();
+                let mut initial_edward_2 = initial_edward.clone();
+                initial_edward_2.done_with_r().ok()?;
                 Some(
                   Action(
                     ObserveLengthedBytes(
-                      move || initial_edward_2,
+                      move || initial_edward_2.clone(),
                       Ed25519::update,
                       Json(DropInterp),
                       true),
-                    mkfn(| (result, final_edward), destination : &mut Option<ArrayVec<u8,128>> | {
+                    mkfn(| (_, final_edward): &(_, Ed25519), destination : &mut Option<ArrayVec<u8,128>> | {
                       final_accept_prompt(&[])?;
+                      let mut final_edward_copy = final_edward.clone();
+                      let sig = final_edward_copy.finalize();
                       *destination=Some(ArrayVec::new());
+                      destination.as_mut()?.copy_from_slice(&sig.ok()?.0);
                       Some(())
                     })
                   )

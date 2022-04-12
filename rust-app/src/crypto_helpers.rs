@@ -263,7 +263,7 @@ extern "C" {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct SHA512(cx_sha512_s);
 
 impl SHA512 {
@@ -304,106 +304,130 @@ impl SHA512 {
 pub struct Ed25519 {
     hash: SHA512,
     path: ArrayVec<u32, 10>,
-    r_pre: [u8; 32],
+    r_pre: Zeroizing<[u8; 64]>,
     r: [u8; 32],
 }
 
 #[derive(Clone)]
-pub struct Ed25519Signature([u8; 64]);
+pub struct Ed25519Signature(pub [u8; 64]);
 
 impl Ed25519 {
-    pub fn new(path : &ArrayVec<u32, 10>) -> Result<Ed25519,()> {
+    pub fn new(path : &ArrayVec<u32, 10>) -> Result<Ed25519,CryptographyError> {
         let mut hash = SHA512::new();
 
-        let nonce = with_private_key(path, |&mut key| {
+        trace!("Eh");
+        with_private_key(path, |&mut key| {
+        trace!("Eh");
             hash.update(&key.d[0..(key.d_len as usize)]);
-            let temp = Zeroizing::new(hash.finalize());
+        trace!("Eh");
+            let temp = hash.finalize();
+        trace!("Eh");
             hash.clear();
+        trace!("Eh");
             hash.update(&temp[32..64]);
+        trace!("Eh");
             Ok(())
-        });
+        }).ok()?;
         
         Ok(Self {
             hash: hash,
             path: path.clone(),
-            r_pre: [0; 32],
+            r_pre: Zeroizing::new([0; 64]),
             r: [0; 32]
         })
     }
 
     pub fn update(&mut self, bytes: &[u8]) {
+        trace!("Eh");
         self.hash.update(bytes);
     }
 
-    pub fn done_with_r(&mut self) {
+    pub fn done_with_r(&mut self) -> Result<(), CryptographyError> {
+        trace!("Eh");
         call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
+        trace!("Eh");
         self.r_pre = self.hash.finalize();
+        trace!("Eh");
         self.r_pre.reverse();
-        let r = CX_BN_FLAG_UNSET;
+        trace!("Eh");
+        let mut r = CX_BN_FLAG_UNSET;
         
         // Make r_raw into a BN
-        call_c_api_function!( cx_bn_alloc_init(&r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len()) ).ok()?;
+        call_c_api_function!( cx_bn_alloc_init(&mut r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len() as u32) ).ok()?;
         
-        let ed_P = cx_ecpoint_t::default();
+        let mut ed_P = cx_ecpoint_t::default();
         // Get the generator for Ed25519's curve
-        call_c_api_function!( cx_ecdomain_generator_bn(CX_CURVE_Ed25519, ed_P) ).ok()?;
+        call_c_api_function!( cx_ecdomain_generator_bn(CX_CURVE_Ed25519, &mut ed_P) ).ok()?;
 
         // Multiply r by generator, store in ed_P
-        call_c_api_function!( cx_ecpoint_rnd_scalarmul_bn(ed_P, r) );
+        call_c_api_function!( cx_ecpoint_rnd_scalarmul_bn(&mut ed_P, r) );
 
-        let big_r : [u8;32] = [0; 32];
-        let mut sign;
+        let mut sign = 0;
         
-        call_c_api_function!( cx_ecpoint_compress(ed_P, self.r, self.r.len(), sign) ).ok()?;
+        call_c_api_function!( cx_ecpoint_compress(&ed_P, self.r.as_mut_ptr(), self.r.len() as u32, &mut sign) ).ok()?;
         
         call_c_api_function!( cx_bn_unlock() ).ok()?;
        
         self.r.reverse();
-        self.r[31] |= 0x80 * sign;
+        self.r[31] |= if sign != 0 { 0x80 } else { 0x00 };
 
         // Start calculating s.
 
         self.hash.clear();
         self.hash.update(&self.r);
 
-        with_public_keys(&self.path, |key, _| {
-            self.hash.update(&key.W[..key.W_len]);
+        let path_tmp = self.path.clone();
+        with_public_keys(&path_tmp, |key, _| {
+            self.hash.update(&key.W[..key.W_len as usize]);
+            Ok(())
         });
+        Ok(())
     }
 
-    pub fn finalize(&mut self) -> Ed25519Signature {
+    pub fn finalize(&mut self) -> Result<Ed25519Signature, CryptographyError> {
 
         call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
         let k_raw = self.hash.finalize();
 
         // Make k into a BN
-        let k;
-        call_c_api_function!( cx_bn_alloc_init(&k as *mut cx_bn_t, 64, k_raw.as_ptr(), k_raw.len()) ).ok()?;
+        let mut k = CX_BN_FLAG_UNSET;
+        call_c_api_function!( cx_bn_alloc_init(&mut k as *mut cx_bn_t, 64, k_raw.as_ptr(), k_raw.len() as u32) ).ok()?;
+        let mut ed25519_order = CX_BN_FLAG_UNSET;
+        call_c_api_function!( cx_bn_alloc(&mut ed25519_order, 64) ).ok()?;
+        call_c_api_function!( cx_ecdomain_parameter_bn( CX_CURVE_Ed25519, CX_CURVE_PARAM_Order, ed25519_order) ).ok()?;
 
-        let rv = with_private_key(&self.path, |key| {
-            call_c_api_function!( cx_bn_alloc_init(&k as *mut cx_bn_t, 64, self.r.as_ptr(), self.r.len()) ).ok()?;
-            let rv;
-            let ed25519_order;
-            call_c_api_function!( cx_ecdomain_parameter_bn( CX_CURVE_Ed25519, CX_CURVE_PARAM_Order, ed25519_order) ).ok()?;
-            call_c_api_function!( cx_bn_mod_mul(rv, key, k, ed25519_order) ).ok()?;
-            rv
-        });
+        let path_temp = self.path.clone();
+        let rv = with_private_key(&path_temp, |key| {
+            call_c_api_function!( cx_bn_alloc_init(&mut k as *mut cx_bn_t, 64, self.r.as_ptr(), self.r.len() as u32) ).ok()?;
+            let mut rv = CX_BN_FLAG_UNSET;
+            self.hash.clear();
+            self.hash.update(&key.d[0..(key.d_len as usize)]);
+            let temp = self.hash.finalize();
+            let key_slice = &temp[0..32];
+            let mut key_bn = CX_BN_FLAG_UNSET;
+            call_c_api_function!( cx_bn_alloc_init(&mut key_bn as *mut cx_bn_t, 64, key_slice.as_ptr(), key_slice.len() as u32) ).ok()?;
+            self.hash.clear();
+            call_c_api_function!( cx_bn_alloc(&mut rv, 64) ).ok()?;
+            call_c_api_function!( cx_bn_mod_mul(rv, key_bn, k, ed25519_order) ).ok()?;
+            Ok(rv)
+        })?;
 
-        let r;
-        call_c_api_function!( cx_bn_alloc_init(&r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len())).ok()?;
+        let mut r = CX_BN_FLAG_UNSET;
+        call_c_api_function!( cx_bn_alloc_init(&mut r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len() as u32)).ok()?;
 
-        let s;
-        call_c_api_function!( cx_bn_mod_add(s, rv, r)).ok()?;
-        
-        let s_bytes = [0; 64];
-        call_c_api_function!(cx_bn_export(s, s_bytes.as_ptr(), s_bytes.len())).ok()?;
+        let mut s = CX_BN_FLAG_UNSET;
+        call_c_api_function!( cx_bn_alloc(&mut s, 64) ).ok()?;
+        call_c_api_function!( cx_bn_mod_add(s, rv, r, ed25519_order)).ok()?;
+
+        let mut s_bytes = [0; 64];
+        call_c_api_function!(cx_bn_export(s, s_bytes.as_mut_ptr(), s_bytes.len() as u32)).ok()?;
 
         s_bytes.reverse();
 
-        let buf = [0; 64];
+        let mut buf = [0; 64];
 
         buf[..32].copy_from_slice(&self.r);
-        buf[32..].copy_from_slice(&s);
+        buf[32..].copy_from_slice(&s_bytes);
 
         Ok(Ed25519Signature(buf))
     }
