@@ -307,6 +307,16 @@ pub struct Ed25519 {
     r_pre: Zeroizing<[u8; 64]>,
     r: [u8; 32],
 }
+impl Default for Ed25519 {
+    fn default() -> Ed25519 {
+        Ed25519 {
+            hash: SHA512::new(),
+            path: ArrayVec::default(),
+            r_pre: Zeroizing::new([0; 64]),
+            r: [0; 32]
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Ed25519Signature(pub [u8; 64]);

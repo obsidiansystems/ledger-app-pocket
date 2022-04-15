@@ -60,7 +60,7 @@ dependencies = [
 [[package]]
 name = "ledger-parser-combinators"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=add-bind-combinator#0bee06a904be87082188c0a7862345f398ebb9ac"
+source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=dyn-interp-parser#54430c7a23c48127cdf1cb1ec1e6db607e870f40"
 dependencies = [
  "arrayvec",
  "bstringify",

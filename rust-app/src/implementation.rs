@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
-    Action, Bind, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
+    Action, DynBind, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
 };
 use ledger_parser_combinators::json::Json;
 use prompts_ui::{write_scroller, final_accept_prompt};
@@ -17,7 +17,7 @@ use ledger_parser_combinators::json::*;
 use ledger_parser_combinators::json_interp::*;
 
 // A couple type ascription functions to help the compiler along.
-const fn mkfn<A,B,C>(q: fn(&A,&mut B)->C) -> fn(&A,&mut B)->C {
+const fn mkfn<A,B,C>(q: fn(&A,&mut B)->Option<C>) -> fn(&A,&mut B)->Option<C> {
   q
 }
 const fn mkvfn<A,C>(q: fn(&A,&mut Option<()>)->C) -> fn(&A,&mut Option<()>)->C {
@@ -133,7 +133,7 @@ pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayV
 pub const SIGN_SEQ: [usize; 3] = [1, 0, 0];
 
 pub const SIGN_IMPL: SignImplT =
-    Bind (
+    DynBind (
       Action(
           SubInterp(DefaultInterp),
           // And ask the user if this is the key the meant to sign with:
@@ -141,19 +141,15 @@ pub const SIGN_IMPL: SignImplT =
               write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
               with_public_keys(path, |_, pkh| {
                   write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
-                  *destination = Some(path.clone());
+                  *destination = Ed25519::new(path).ok();
                   Ok(())
               }).ok()?;
               Some(())
           }),
       ),
-      mkbindfn(|path : &ArrayVec<u32,10> | {
-          trace!("Wat");
-          let edward = Ed25519::new(path).ok()?;
-          Some (
-            Bind (
-              ObserveLengthedBytes(
-                move || edward.clone(),
+            DynBind (
+              Action(ObserveLengthedBytes(
+                || Ed25519::default(), // move || edward.clone(),
                 Ed25519::update,
                 Action(
                   Json(PoktCmdInterp {
@@ -172,14 +168,15 @@ pub const SIGN_IMPL: SignImplT =
                   })
                 ),
                 true),
-              mkbindfn(| (_, initial_edward) : &(Option<()>, Ed25519) | {
-                // Switch to second pass for Ed25519, requires that we stream the message again.
-                let mut initial_edward_2 = initial_edward.clone();
-                initial_edward_2.done_with_r().ok()?;
-                Some(
+                mkfn(| (_, initial_edward) : &(Option<()>, Ed25519), destination: &mut Option<Ed25519>| {
+                    *destination = Some(initial_edward.clone());
+                    destination.as_mut()?.done_with_r().ok()?;
+                    Some(())
+          })
+              ),
                   Action(
                     ObserveLengthedBytes(
-                      move || initial_edward_2.clone(),
+                        || Ed25519::default(), // move || edward.clone(),
                       Ed25519::update,
                       Json(DropInterp),
                       true),
@@ -192,12 +189,8 @@ pub const SIGN_IMPL: SignImplT =
                       Some(())
                     })
                   )
-                )
-              }
-            )
           )
-        )
-    }));
+    );
 
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU
 // must have a field here.
