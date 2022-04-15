@@ -22,6 +22,7 @@ extern "C" fn sample_main() {
     let mut busy_menu = RootMenu::new([ "Working...", "Cancel" ]);
 
     info!("Pocket app {}", env!("CARGO_PKG_VERSION"));
+    info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}\nEd25519: {}", core::mem::size_of::<io::Comm>(), core::mem::size_of::<ParsersState>(), core::mem::size_of::<BlockState>(), core::mem::size_of::<Ed25519>());
 
     let // Draw some 'welcome' screen
         menu = |states : &ParsersState, idle : & mut RootMenu<2>, busy : & mut RootMenu<2>| {

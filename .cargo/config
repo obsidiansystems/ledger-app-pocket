@@ -13,6 +13,7 @@ rustflags = [
   "-C", "embed-bitcode",
   "--emit=obj,llvm-ir",
   "--cfg", "target_os=\"nanos\"",
+  "-Z", "print-type-sizes",
 ]
 linker = "armv6m-unknown-none-eabi-clang"
 runner = "./speculos-wrapper -k 2.0"
