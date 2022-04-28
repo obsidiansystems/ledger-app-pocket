@@ -7,10 +7,10 @@ autobins = false
 
 [dependencies]
 arrayvec = { version = "0.7.2", default-features = false }
-ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch="dyn-interp-parser" }
+ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch="wip-pocket-stuff" }
 ledger-log = { git = "https://github.com/obsidiansystems/ledger-platform" }
 zeroize = { version = "1.5.2", default-features = false }
-
+enum-init = { path = "../../enum-init" }
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable
 # speculos logging and change log level.
 [features]

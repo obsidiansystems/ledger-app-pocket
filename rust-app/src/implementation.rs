@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
-    Action, DynBind, DefaultInterp, DropInterp, InterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk
+    Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynInterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult
 };
 use ledger_parser_combinators::json::Json;
 use prompts_ui::{write_scroller, final_accept_prompt};
@@ -16,16 +16,24 @@ use ledger_parser_combinators::define_json_struct_interp;
 use ledger_parser_combinators::json::*;
 use ledger_parser_combinators::json_interp::*;
 
+use enum_init::InPlaceInit;
+
 // A couple type ascription functions to help the compiler along.
 const fn mkfn<A,B,C>(q: fn(&A,&mut B)->Option<C>) -> fn(&A,&mut B)->Option<C> {
+  q
+}
+const fn mkmvfn<A,B,C>(q: fn(A,&mut B)->Option<C>) -> fn(A,&mut B)->Option<C> {
+  q
+}
+const fn mktfn<A,B,C, D>(q: fn(&A,&mut B, DynamicStackBox<D>)->Option<C>) -> fn(&A,&mut B, DynamicStackBox<D>)->Option<C> {
   q
 }
 const fn mkvfn<A,C>(q: fn(&A,&mut Option<()>)->C) -> fn(&A,&mut Option<()>)->C {
   q
 }
-const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
+/*const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
   q
-}
+}*/
 
 pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 128>>;
 
@@ -128,29 +136,113 @@ const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> 
   Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
   UnstakeValueInterp{field_validator_address: FROM_ADDRESS_ACTION});
 
+
+pub struct DynamicStackBoxSlot<S>(S, bool);
+pub struct DynamicStackBox<S>(*mut DynamicStackBoxSlot<S>);
+
+impl<S> DynamicStackBoxSlot<S> {
+    fn new(s: S) -> DynamicStackBoxSlot<S> {
+        DynamicStackBoxSlot(s, false)
+    }
+    fn to_box(&mut self) -> DynamicStackBox<S> {
+        if self.1 { panic!(); }
+        self.1 = true;
+        DynamicStackBox(self as *mut Self)
+    }
+}
+
+impl<S> Default for DynamicStackBox<S> {
+    fn default() -> Self {
+        DynamicStackBox(core::ptr::null_mut())
+    }
+}
+
+impl<S> Drop for DynamicStackBoxSlot<S> {
+    fn drop(&mut self) {
+        if self.1 { panic!("Some DynamicStackBox outlived it's backing storage."); }
+    }
+}
+
+impl<S> core::ops::Deref for DynamicStackBox<S> {
+    type Target = S;
+    fn deref(&self) -> &Self::Target {
+        unsafe {
+            let target = self.0.as_ref().expect("DynamicStackBox pointer must not be null");
+            if !target.1 { panic!(); }
+            &target.0
+        }
+    }
+}
+
+impl<S> core::ops::DerefMut for DynamicStackBox<S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
+            let target = self.0.as_mut().expect("DynamicStackBox pointer must not be null");
+            if !target.1 { panic!(); }
+            &mut target.0
+        }
+    }
+}
+
+impl<S> Drop for DynamicStackBox<S> {
+    fn drop(&mut self) {
+        unsafe {
+            let target = self.0.as_mut().expect("DynamicStackBox pointer must not be null");
+            if !target.1 { panic!(); }
+            target.1 = false;
+        }
+    }
+}
+
+pub struct WithStackBoxed<S>(S);
+
+/*fn with_stack_boxed<T,S>(S) {
+    WithStackBoxed(S, core::marker::PhantomData);
+}*/
+
+pub struct WithStackBoxedState<S, P>(S, DynamicStackBoxSlot<P>, bool);
+
+impl<Q: Default, T, S: DynInterpParser<T, Parameter = DynamicStackBox<Q>>> InterpParser<T> for WithStackBoxed<S> {
+    type State = WithStackBoxedState<S::State, Q>;
+    type Returning = S::Returning;
+    fn init(&self) -> Self::State {
+        let rv = WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false);
+        rv
+    }
+    fn parse<'a, 'b>(&self, state: &'b mut Self::State, chunk: &'a [u8], destination: &mut Option<Self::Returning>) -> ParseResult<'a> {
+        if ! state.2 {
+            self.0.init_param(state.1.to_box(), &mut state.0, destination);
+        }
+        state.2 = true;
+        self.0.parse(&mut state.0, chunk, destination)
+    }
+}
+
 pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8,128>>;
 
 pub const SIGN_SEQ: [usize; 3] = [1, 0, 0];
 
 pub const SIGN_IMPL: SignImplT =
-    DynBind (
+    WithStackBoxed(DynBind (
       Action(
           SubInterp(DefaultInterp),
           // And ask the user if this is the key the meant to sign with:
-          mkfn(|path: &ArrayVec<u32, 10>, destination| {
+          mktfn(|path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
               write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
               with_public_keys(path, |_, pkh| {
                   write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
-                  *destination = Ed25519::new(path).ok();
+                  ed.init(path).ok()?;
+                  // *destination = Some(ed);
+                  set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
                   Ok(())
               }).ok()?;
               Some(())
           }),
       ),
             DynBind (
-              Action(ObserveLengthedBytes(
-                || Ed25519::default(), // move || edward.clone(),
-                Ed25519::update,
+              MoveAction(ObserveLengthedBytes(
+                || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
+                |s : &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 Action(
                   Json(PoktCmdInterp {
                       field_chain_id: DropInterp,
@@ -168,42 +260,54 @@ pub const SIGN_IMPL: SignImplT =
                   })
                 ),
                 true),
-                mkfn(| (_, initial_edward) : &(Option<()>, Ed25519), destination: &mut Option<Ed25519>| {
-                    *destination = Some(initial_edward.clone());
+                mkmvfn(| (_, initial_edward) : (Option<()>, DynamicStackBox<Ed25519>), destination: &mut Option<DynamicStackBox<Ed25519>>| -> Option<()> {
+                    *destination = Some(initial_edward);
                     destination.as_mut()?.done_with_r().ok()?;
                     Some(())
           })
               ),
-                  Action(
+                  MoveAction(
                     ObserveLengthedBytes(
-                        || Ed25519::default(), // move || edward.clone(),
-                      Ed25519::update,
+                        || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
+                        |s : &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
+                      /*  || Ed25519::default(), // move || edward.clone(),
+                      Ed25519::update,*/
                       Json(DropInterp),
                       true),
-                    mkfn(| (_, final_edward): &(_, Ed25519), destination : &mut Option<ArrayVec<u8,128>> | {
+                    mkmvfn(| (_, mut final_edward): (_, DynamicStackBox<Ed25519>), destination : &mut Option<ArrayVec<u8,128>> | {
                       final_accept_prompt(&[])?;
-                      let mut final_edward_copy = final_edward.clone();
-                      let sig = final_edward_copy.finalize();
+                      // let mut final_edward_copy = final_edward.clone();
+                      let sig = final_edward.finalize();
                       *destination=Some(ArrayVec::new());
-                      destination.as_mut()?.copy_from_slice(&sig.ok()?.0);
+                      destination.as_mut()?.try_extend_from_slice(&sig.ok()?.0).ok()?;
                       Some(())
                     })
                   )
-          )
-    );
+    )));
 
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU
 // must have a field here.
 
-pub enum ParsersState {
+#[derive(InPlaceInit)]
+#[repr(u8)]
+pub enum ParsersStateInner<A, B> {
     NoState,
-    GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::State),
-    SignState(<SignImplT as InterpParser<DoubledSignParameters>>::State),
+    GetAddressState(A),
+    SignState(B),
+    /*GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::State),
+    SignState(<SignImplT as InterpParser<DoubledSignParameters>>::State),*/
 }
+
+pub type ParsersState = ParsersStateInner<<GetAddressImplT as InterpParser<Bip32Key>>::State, <SignImplT as InterpParser<DoubledSignParameters>>::State>;
 
 pub fn reset_parsers_state(state: &mut ParsersState) {
     *state = ParsersState::NoState;
 }
+/*
+pub fn not_a_real_fn() {
+    trace!("foo: {:?}",ParsersState_internal::ParsersStateTag::GetAddressState);
+}
+*/
 
 meta_definition!{}
 signer_definition!{}
@@ -464,15 +568,25 @@ pub fn get_sign_state(
         ParsersState::SignState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
+            unsafe { 
+                let s_ptr = s as *mut ParsersState;
+                core::ptr::drop_in_place(s_ptr);
+                // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
+                // fill it; we rely on init_in_place to not panic.
+                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| { <SignImplT as InterpParser<DoubledSignParameters>>::init_in_place(&SIGN_IMPL, a); });
+                trace!("Get_sign_stated");
+            }
+            /*
             *s = ParsersState::SignState(<SignImplT as InterpParser<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
-            ));
+            )); */
         }
     }
     match s {
         ParsersState::SignState(ref mut a) => a,
         _ => {
-            panic!("")
+            trace!("PANICKING");
+            panic!("DOOO PANIC")
         }
     }
 }

@@ -21,6 +21,8 @@ extern "C" fn sample_main() {
     let mut idle_menu = RootMenu::new([ concat!("Pocket ", env!("CARGO_PKG_VERSION")), "Exit" ]);
     let mut busy_menu = RootMenu::new([ "Working...", "Cancel" ]);
 
+    // not_a_real_fn();
+
     info!("Pocket app {}", env!("CARGO_PKG_VERSION"));
     info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}\nEd25519: {}", core::mem::size_of::<io::Comm>(), core::mem::size_of::<ParsersState>(), core::mem::size_of::<BlockState>(), core::mem::size_of::<Ed25519>());
 
@@ -253,7 +255,9 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
 
             trace!("Parsing APDU input: {:?}\n", cursor);
             let mut parse_destination = None;
-            let parse_rv = <P as InterpParser<A>>::parse(parser, get_state(states), cursor, &mut parse_destination);
+            let gs = get_state(states);
+            trace!("State got, calling parser");
+            let parse_rv = <P as InterpParser<A>>::parse(parser, gs, cursor, &mut parse_destination);
             trace!("Parser result: {:?}\n", parse_rv);
             trace!("Parse destination: {:?}\n", parse_destination);
             match parse_rv {

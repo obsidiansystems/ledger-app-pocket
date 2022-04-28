@@ -279,7 +279,7 @@ impl SHA512 {
 
     pub fn update(&mut self, bytes: &[u8]) {
         unsafe {
-            info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
+            // info!("HASHING: {}\n{:?}", HexSlice(bytes), core::str::from_utf8(bytes));
             cx_hash_update(
                 &mut self.0 as *mut cx_sha512_s as *mut cx_hash_t,
                 bytes.as_ptr(),
@@ -318,63 +318,61 @@ impl Default for Ed25519 {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Ed25519Signature(pub [u8; 64]);
 
 impl Ed25519 {
+    #[inline(never)]
     pub fn new(path : &ArrayVec<u32, 10>) -> Result<Ed25519,CryptographyError> {
-        let mut hash = SHA512::new();
+        let mut rv = Self::default();
+        rv.init(path)?;
+        Ok(rv)
+    }
+    #[inline(never)]
+    pub fn init(&mut self, path : &ArrayVec<u32, 10>) -> Result<(),CryptographyError> {
+        self.hash.clear();
 
-        trace!("Eh");
         with_private_key(path, |&mut key| {
-        trace!("Eh");
-            hash.update(&key.d[0..(key.d_len as usize)]);
-        trace!("Eh");
-            let temp = hash.finalize();
-        trace!("Eh");
-            hash.clear();
-        trace!("Eh");
-            hash.update(&temp[32..64]);
-        trace!("Eh");
+            self.hash.update(&key.d[0..(key.d_len as usize)]);
+            let temp = self.hash.finalize();
+            self.hash.clear();
+            self.hash.update(&temp[32..64]);
             Ok(())
         }).ok()?;
-        
-        Ok(Self {
-            hash: hash,
-            path: path.clone(),
-            r_pre: Zeroizing::new([0; 64]),
-            r: [0; 32]
-        })
+
+        self.path = path.clone();
+
+        self.r_pre = Zeroizing::new([0; 64]);
+        self.r = [0; 32];
+        Ok(())
     }
 
+    #[inline(never)]
     pub fn update(&mut self, bytes: &[u8]) {
-        trace!("Eh");
         self.hash.update(bytes);
     }
 
+    #[inline(never)]
     pub fn done_with_r(&mut self) -> Result<(), CryptographyError> {
-        trace!("Eh");
         call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
-        trace!("Eh");
         self.r_pre = self.hash.finalize();
-        trace!("Eh");
         self.r_pre.reverse();
-        trace!("Eh");
         let mut r = CX_BN_FLAG_UNSET;
         
         // Make r_raw into a BN
         call_c_api_function!( cx_bn_alloc_init(&mut r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len() as u32) ).ok()?;
         
-        let mut ed_P = cx_ecpoint_t::default();
+        let mut ed_p = cx_ecpoint_t::default();
         // Get the generator for Ed25519's curve
-        call_c_api_function!( cx_ecdomain_generator_bn(CX_CURVE_Ed25519, &mut ed_P) ).ok()?;
+        call_c_api_function!( cx_ecpoint_alloc(&mut ed_p as *mut cx_ecpoint_t, CX_CURVE_Ed25519) ).ok()?;
+        call_c_api_function!( cx_ecdomain_generator_bn(CX_CURVE_Ed25519, &mut ed_p) ).ok()?;
 
-        // Multiply r by generator, store in ed_P
-        call_c_api_function!( cx_ecpoint_rnd_scalarmul_bn(&mut ed_P, r) );
+        // Multiply r by generator, store in ed_p
+        call_c_api_function!( cx_ecpoint_rnd_scalarmul_bn(&mut ed_p, r) );
 
         let mut sign = 0;
         
-        call_c_api_function!( cx_ecpoint_compress(&ed_P, self.r.as_mut_ptr(), self.r.len() as u32, &mut sign) ).ok()?;
+        call_c_api_function!( cx_ecpoint_compress(&ed_p, self.r.as_mut_ptr(), self.r.len() as u32, &mut sign) ).ok()?;
         
         call_c_api_function!( cx_bn_unlock() ).ok()?;
        
@@ -394,6 +392,7 @@ impl Ed25519 {
         Ok(())
     }
 
+    #[inline(never)]
     pub fn finalize(&mut self) -> Result<Ed25519Signature, CryptographyError> {
 
         call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
@@ -437,7 +436,9 @@ impl Ed25519 {
         let mut buf = [0; 64];
 
         buf[..32].copy_from_slice(&self.r);
-        buf[32..].copy_from_slice(&s_bytes);
+
+        // Something is wrong here; this should be a 32-byte number...
+        buf[32..].copy_from_slice(&s_bytes[0..32]);
 
         Ok(Ed25519Signature(buf))
     }
