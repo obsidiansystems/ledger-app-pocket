@@ -59,16 +59,6 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 [[package]]
 name = "enum-init"
 version = "0.1.0"
-dependencies = [
- "Inflector",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "enum-init"
-version = "0.1.0"
 source = "git+https://github.com/obsidiansystems/enum-init#b5ebff944811c11538430b0b6d932730f5e0e80d"
 dependencies = [
  "Inflector",
@@ -113,7 +103,7 @@ source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branc
 dependencies = [
  "arrayvec",
  "bstringify",
- "enum-init 0.1.0 (git+https://github.com/obsidiansystems/enum-init)",
+ "enum-init",
  "generic-array",
  "ledger-log",
  "log",
@@ -183,7 +173,7 @@ name = "pocket"
 version = "0.0.3"
 dependencies = [
  "arrayvec",
- "enum-init 0.1.0",
+ "enum-init",
  "ledger-log",
  "ledger-parser-combinators",
  "nanos_sdk",
