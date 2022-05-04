@@ -148,7 +148,7 @@ dependencies = [
 [[package]]
 name = "nanos_sdk"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-nanos-sdk.git?branch=use-ambient-compiler-and-target#5a497619322d8ae03f9cf034bf67ecaf855e1655"
+source = "git+https://github.com/obsidiansystems/ledger-nanos-sdk.git?branch=use-ambient-compiler-and-target#1d358edd6cddbdcd4d6deb29f856b40e7e863c07"
 dependencies = [
  "cc",
  "cty",
