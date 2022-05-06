@@ -12,8 +12,11 @@ use ledger_log::*;
 pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
 
 /// Helper function that derives the seed over Ed25519
-pub fn bip32_derive_eddsa(path: &[u32]) -> Result<[u8; 32], SyscallError> {
-    let mut raw_key = [0u8; 32];
+pub fn bip32_derive_eddsa(path: &[u32]) -> Result<[u8; 64], SyscallError> {
+    // Note: os_perso_derive_node_bip32 appears to write 64 bytes for CX_CURVE_Ed25519, despite the
+    // private key for ed25519 being only 32 bytes. We still need to give it the space to write to,
+    // of course.
+    let mut raw_key = [0u8; 64];
     trace!("Calling os_perso_derive_node_bip32 with path {:?}", path);
     unsafe {
         os_perso_derive_node_bip32(
@@ -127,11 +130,11 @@ pub fn with_private_key<A>(
     call_c_api_function!(cx_ecfp_init_private_key_no_throw(
             CX_CURVE_Ed25519,
             raw_key.as_ptr(),
-            raw_key.len() as u32,
+            32, // raw_key is 64 bytes because of system call weirdness, but we only want 32.
             (&mut ec_k).deref_mut().deref_mut() as *mut nanos_sdk::bindings::cx_ecfp_private_key_t
-        ))?;
+        )).ok()?;
     info!("Key generated");
-    f(&mut ec_k as &mut nanos_sdk::bindings::cx_ecfp_private_key_t)
+    f(ec_k.deref_mut().deref_mut())
 }
 
 pub fn with_public_keys<A>(
