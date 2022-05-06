@@ -4,6 +4,7 @@ import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
 import Axios from 'axios';
 import Transport from "./common";
 import Pokt from "hw-app-pokt";
+import * as ed from 'noble-ed25519';
 
 let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.3"]
 
@@ -63,15 +64,14 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
     
     //await new Promise(resolve => setTimeout(resolve, 100));
 
+    if(err) throw(err);
 
     expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
     // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => a["text"] != "W e l c o m e")).to.deep.equal(prompts);
-    if(err) throw(err);
 }
 
 describe('basic tests', () => {
   afterEach( async function() {
-    console.log("Clearing settings");
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
     await Axios.delete("http://localhost:5000/events");
   });
@@ -79,9 +79,7 @@ describe('basic tests', () => {
   it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
-      console.log("Started pubkey get");
       let rv = await pokt.getPublicKey("0");
-      console.log("Reached Pubkey Got");
       expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     }, [
@@ -96,9 +94,7 @@ describe('basic tests', () => {
   
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Pokt) => {
-      console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
-      console.log("Reached Pubkey Got, " + JSON.stringify(rv));
       expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     },
@@ -115,11 +111,17 @@ describe('basic tests', () => {
 
 function testTransaction(path: string, txn: string, prompts: any[]) {
      return async () => {
-       await sendCommandAndAccept(
+       let sig = await sendCommandAndAccept(
          async (kda : Pokt) => {
-           console.log("Started pubkey get");
-           let rv = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
-           // expect(rv.signature.length).to.equal(128);
+
+           let pk = await kda.getPublicKey(path);
+
+           // We don't want the prompts from getPublicKey in our result
+           await Axios.delete("http://localhost:5000/events");
+
+           let sig = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+
+           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey)).to.equal(true);
          }, prompts);
      }
 }
@@ -209,7 +211,7 @@ let exampleUnstake = {
 };
 
 describe("Signing tests", function() {
-  it.only("can sign a simple transfer",
+  it("can sign a simple transfer",
      testTransaction(
        "0/0",
        JSON.stringify(exampleSend),
