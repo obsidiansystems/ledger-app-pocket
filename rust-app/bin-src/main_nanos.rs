@@ -2,7 +2,7 @@ use pocket::implementation::*;
 use prompts_ui::RootMenu;
 use core::convert::{TryFrom, TryInto};
 use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
-use crypto_helpers::{Ed25519, Hash, Hasher};
+use crypto_helpers::{Hash, Hasher};
 use nanos_sdk::io;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -23,7 +23,7 @@ extern "C" fn sample_main() {
     // not_a_real_fn();
 
     info!("Pocket app {}", env!("CARGO_PKG_VERSION"));
-    info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}\nEd25519: {}", core::mem::size_of::<io::Comm>(), core::mem::size_of::<ParsersState>(), core::mem::size_of::<BlockState>(), core::mem::size_of::<Ed25519>());
+    info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}", core::mem::size_of::<io::Comm>(), core::mem::size_of::<ParsersState>(), core::mem::size_of::<BlockState>());
 
     let // Draw some 'welcome' screen
         menu = |states : &ParsersState, idle : & mut RootMenu<2>, busy : & mut RootMenu<2>| {
@@ -118,20 +118,20 @@ struct BlockState {
 #[repr(u8)]
 #[derive(Copy, Clone)]
 enum LedgerToHostCmd {
-    RESULT_ACCUMULATING = 0,
-    RESULT_FINAL = 1,
-    GET_CHUNK = 2,
-    PUT_CHUNK = 3
+    // ResultAccumulating = 0, // Not used yet in this app.
+    ResultFinal = 1,
+    GetChunk = 2,
+    // PutChunk = 3
 }
 
 #[repr(u8)]
 #[derive(Debug)]
 enum HostToLedgerCmd {
     START = 0,
-    GET_CHUNK_RESPONSE_SUCCESS = 1,
-    GET_CHUNK_RESPONSE_FAILURE = 2,
-    PUT_CHUNK_RESPONSE = 3,
-    RESULT_ACCUMULATING_RESPONSE = 4
+    GetChunkResponseSuccess = 1,
+    GetChunkResponseFailure = 2,
+    PutChunkResponse = 3,
+    ResultAccumulatingResponse = 4
 }
 
 impl TryFrom<u8> for HostToLedgerCmd {
@@ -139,10 +139,10 @@ impl TryFrom<u8> for HostToLedgerCmd {
     fn try_from(a: u8) -> Result<HostToLedgerCmd, Reply> {
         match a {
             0 => Ok(HostToLedgerCmd::START),
-            1 => Ok(HostToLedgerCmd::GET_CHUNK_RESPONSE_SUCCESS),
-            2 => Ok(HostToLedgerCmd::GET_CHUNK_RESPONSE_FAILURE),
-            3 => Ok(HostToLedgerCmd::PUT_CHUNK_RESPONSE),
-            4 => Ok(HostToLedgerCmd::RESULT_ACCUMULATING_RESPONSE),
+            1 => Ok(HostToLedgerCmd::GetChunkResponseSuccess),
+            2 => Ok(HostToLedgerCmd::GetChunkResponseFailure),
+            3 => Ok(HostToLedgerCmd::PutChunkResponse),
+            4 => Ok(HostToLedgerCmd::ResultAccumulatingResponse),
             _ => Err(io::StatusWords::Unknown.into()),
         }
     }
@@ -230,11 +230,11 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
             block_state.state = 0;
             if block_state.params.len() <= *seq.iter().max().unwrap() { return Err(io::StatusWords::Unknown.into()); }
             block_state.requested_block.copy_from_slice(&block_state.params[seq[block_state.state]][..]);
-            comm.append(&[LedgerToHostCmd::GET_CHUNK as u8]);
+            comm.append(&[LedgerToHostCmd::GetChunk as u8]);
             comm.append(&block_state.requested_block);
             Ok(())
         }
-        HostToLedgerCmd::GET_CHUNK_RESPONSE_SUCCESS => {
+        HostToLedgerCmd::GetChunkResponseSuccess => {
             if block.len() < HASH_LEN+1 { return Err(io::StatusWords::Unknown.into()); }
 
             // Check the hash, so the host can't lie.
@@ -283,7 +283,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
                     trace!("Next block: {:x?}", our_next_block);
 
                     block_state.requested_block.copy_from_slice(our_next_block);
-                    comm.append(&[LedgerToHostCmd::GET_CHUNK as u8]);
+                    comm.append(&[LedgerToHostCmd::GetChunk as u8]);
                     comm.append(&block_state.requested_block);
                     trace!("Requesting next block from host");
                     return Ok(());
@@ -298,7 +298,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
                     trace!("Parser finished, resetting state\n");
                     match parse_destination.as_ref() {
                         Some(rv) => {
-                            comm.append(&[LedgerToHostCmd::RESULT_FINAL as u8]);
+                            comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
                             comm.append(&rv[..]);
                         }
                         None => return Err(io::StatusWords::Unknown.into()),
