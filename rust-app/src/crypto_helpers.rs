@@ -150,7 +150,7 @@ pub fn public_key_bytes(key: &nanos_sdk::bindings::cx_ecfp_public_key_t) -> &[u8
 // Public Key Hash type; update this to match the target chain's notion of an address and how to
 // format one.
 
-pub struct PKH([u8; 20]);
+pub struct PKH(pub [u8; 20]);
 
 #[allow(dead_code)]
 pub fn get_pkh(key: &nanos_sdk::bindings::cx_ecfp_public_key_t) -> Result<PKH, SyscallError> {

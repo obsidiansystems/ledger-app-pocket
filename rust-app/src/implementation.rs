@@ -49,6 +49,8 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
         let rv = destination.insert(ArrayVec::new());
         rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;
         rv.try_extend_from_slice(key_bytes).ok()?;
+        rv.try_push(u8::try_from(pkh.0.len()).ok()?).ok()?;
+        rv.try_extend_from_slice(&pkh.0).ok()?;
         Ok(())
         }).ok()
     }));
