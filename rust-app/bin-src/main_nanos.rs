@@ -1,5 +1,4 @@
 use pocket::implementation::*;
-use pocket::interface::*;
 use prompts_ui::RootMenu;
 use core::convert::{TryFrom, TryInto};
 use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
@@ -112,8 +111,6 @@ const MAX_PARAMS: usize = 2;
 #[derive(Default)]
 struct BlockState {
     params: ArrayVec<SHA256, MAX_PARAMS>,
-    txn_head: SHA256,
-    path_head: SHA256,
     requested_block: SHA256,
     state: usize,
 }
@@ -223,6 +220,8 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
     trace!("Host cmd: {:?}", host_cmd);
     match host_cmd {
         HostToLedgerCmd::START => {
+            *block_state = BlockState::default();
+            reset_parsers_state(states);
             block_state.params.clear();
             for param in block[1..].chunks_exact(HASH_LEN) {
                 block_state.params.try_push(param.try_into().or(Err(io::StatusWords::Unknown))?).or(Err(io::StatusWords::Unknown))?;
