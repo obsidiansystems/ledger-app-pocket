@@ -38,6 +38,7 @@ macro_rules! call_c_api_function {
                 $($call)*
             };
             if err != 0 {
+ //               error!("Syscall errored: {:?}", SyscallError::from(err));
                 Err(SyscallError::from(err))
             } else {
                 Ok(())
@@ -357,42 +358,56 @@ impl Ed25519 {
         let mut sign = 0;
         {
             let _lock = BnLock::lock();
+            trace!("done_with_r lock");
             let mut r = CX_BN_FLAG_UNSET;
             // call_c_api_function!( cx_bn_lock(32,0) ).ok()?;
+            trace!("ping");
             self.r_pre = self.hash.finalize();
             self.r_pre.reverse();
 
             // Make r_pre into a BN
             call_c_api_function!( cx_bn_alloc_init(&mut r as *mut cx_bn_t, 64, self.r_pre.as_ptr(), self.r_pre.len() as u32) ).ok()?;
+            trace!("ping");
 
             let mut ed_p = cx_ecpoint_t::default();
             // Get the generator for Ed25519's curve
             call_c_api_function!( cx_ecpoint_alloc(&mut ed_p as *mut cx_ecpoint_t, CX_CURVE_Ed25519) ).ok()?;
+            trace!("ping");
             call_c_api_function!( cx_ecdomain_generator_bn(CX_CURVE_Ed25519, &mut ed_p) ).ok()?;
+            trace!("ping");
 
             // Multiply r by generator, store in ed_p
-            call_c_api_function!( cx_ecpoint_rnd_scalarmul_bn(&mut ed_p, r) ).ok()?;
+            call_c_api_function!( cx_ecpoint_scalarmul_bn(&mut ed_p, r) ).ok()?;
+            trace!("ping");
 
             // and copy/compress it to self.r
             call_c_api_function!( cx_ecpoint_compress(&ed_p, self.r.as_mut_ptr(), self.r.len() as u32, &mut sign) ).ok()?;
+            trace!("ping");
         }
 
+            trace!("ping");
         // and do the mandated byte order and bit twiddling.
         self.r.reverse();
         self.r[31] |= if sign != 0 { 0x80 } else { 0x00 };
+            trace!("ping");
 
         // self.r matches the reference algorithm at this point.
 
         // Start calculating s.
 
         self.hash.clear();
+            trace!("ping");
         self.hash.update(&self.r);
+            trace!("ping");
 
         let path_tmp = self.path.clone();
+            trace!("ping");
         with_public_keys(&path_tmp, |key, _| {
             // Note: public key has a byte in front of it in W, from how the ledger's system call
             // works; it's not for ed25519.
+            trace!("ping");
             self.hash.update(&key.W[1..key.W_len as usize]);
+            trace!("ping");
             Ok(())
         }).ok()?;
         Ok(())
@@ -402,25 +417,27 @@ impl Ed25519 {
 
     #[inline(never)]
     pub fn finalize(&mut self) -> Result<Ed25519Signature, CryptographyError> {
-        let _lock = BnLock::lock();
-
-        let mut h_scalar = self.hash.finalize();
-
-        h_scalar.reverse();
-
-        // Make k into a BN
-        let mut h_scalar_bn = CX_BN_FLAG_UNSET;
-        call_c_api_function!( cx_bn_alloc_init(&mut h_scalar_bn as *mut cx_bn_t, 64, h_scalar.as_ptr(), h_scalar.len() as u32) ).ok()?;
-
-        // Get the group order
-        let mut ed25519_order = CX_BN_FLAG_UNSET;
-        call_c_api_function!( cx_bn_alloc(&mut ed25519_order, 64) ).ok()?;
-        call_c_api_function!( cx_ecdomain_parameter_bn( CX_CURVE_Ed25519, CX_CURVE_PARAM_Order, ed25519_order) ).ok()?;
-
+        
         // Need to make a variable for this.hash so that the closure doesn't capture all of self,
         // including self.path
         let hash_ref = &mut self.hash;
-        let h_a = with_private_key(&self.path, |key| {
+        let (h_a, _lock, ed25519_order) = with_private_key(&self.path, |key| {
+
+            let _lock = BnLock::lock();
+            trace!("finalize lock");
+
+            let mut h_scalar = hash_ref.finalize();
+
+            h_scalar.reverse();
+
+            // Make k into a BN
+            let mut h_scalar_bn = CX_BN_FLAG_UNSET;
+            call_c_api_function!( cx_bn_alloc_init(&mut h_scalar_bn as *mut cx_bn_t, 64, h_scalar.as_ptr(), h_scalar.len() as u32) ).ok()?;
+
+            // Get the group order
+            let mut ed25519_order = CX_BN_FLAG_UNSET;
+            call_c_api_function!( cx_bn_alloc(&mut ed25519_order, 64) ).ok()?;
+            call_c_api_function!( cx_ecdomain_parameter_bn( CX_CURVE_Ed25519, CX_CURVE_PARAM_Order, ed25519_order) ).ok()?;
 
             // Generate the hashed private key
             let mut rv = CX_BN_FLAG_UNSET;
@@ -450,7 +467,7 @@ impl Ed25519 {
             // Destroy the private key, so it doesn't leak from with_private_key even in the bn
             // area. temp will zeroize on drop already.
             call_c_api_function!( cx_bn_destroy(&mut key_bn) ).ok()?;
-            Ok(rv)
+            Ok((rv, _lock, ed25519_order))
         })?;
 
         // Reload the r value into the bn area
