@@ -1,9 +1,11 @@
+cargo-features = ["edition2021"]
 [package]
 name = "pocket"
 version = "0.0.3"
 authors = ["jonored", "yhql"]
-edition = "2018"
+edition = "2021"
 autobins = false
+resolver = "2"
 
 [dependencies]
 arrayvec = { version = "0.7.2", default-features = false }
@@ -44,6 +46,6 @@ branch = "use-ambient-compiler-and-target"
 [package.metadata.nanos]
 name = "Pocket"
 path = "44'/535348'"
-curve = "secp256k1"
+curve = "ed25519"
 flags = "0"
 icon = "pocket.gif"

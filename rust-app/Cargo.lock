@@ -90,7 +90,7 @@ dependencies = [
 [[package]]
 name = "ledger-log"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-platform#7fbbc41e6c5d1883f3b00932cef628e320757045"
+source = "git+https://github.com/obsidiansystems/ledger-platform#e028b6fdb01754240352dc4877dcb4862bdc42e7"
 dependencies = [
  "arrayvec",
  "nanos_sdk",
@@ -99,7 +99,7 @@ dependencies = [
 [[package]]
 name = "ledger-parser-combinators"
 version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=wip-pocket-stuff#9faaa62c8b64461011046cdc58a5dfe485fb8a18"
+source = "git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=wip-pocket-stuff#a483514ddc0fb76f1ae7a79bd497614d750c8b8b"
 dependencies = [
  "arrayvec",
  "bstringify",
