@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
-    Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynInterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult
+    Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult, Preaction, ParserCommon
 };
 use ledger_parser_combinators::json::Json;
 use prompts_ui::{write_scroller, final_accept_prompt};
@@ -204,13 +204,15 @@ pub struct WithStackBoxed<S>(S);
 
 pub struct WithStackBoxedState<S, P>(S, DynamicStackBoxSlot<P>, bool);
 
-impl<Q: Default, T, S: DynInterpParser<T, Parameter = DynamicStackBox<Q>>> InterpParser<T> for WithStackBoxed<S> {
+impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>>> ParserCommon<T> for WithStackBoxed<S> {
     type State = WithStackBoxedState<S::State, Q>;
     type Returning = S::Returning;
     fn init(&self) -> Self::State {
         let rv = WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false);
         rv
     }
+}
+impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>> + InterpParser<T>> InterpParser<T> for WithStackBoxed<S> {
     fn parse<'a, 'b>(&self, state: &'b mut Self::State, chunk: &'a [u8], destination: &mut Option<Self::Returning>) -> ParseResult<'a> {
         if ! state.2 {
             self.0.init_param(state.1.to_box(), &mut state.0, destination);
@@ -300,7 +302,7 @@ pub enum ParsersStateInner<A, B> {
     SignState(<SignImplT as InterpParser<DoubledSignParameters>>::State),*/
 }
 
-pub type ParsersState = ParsersStateInner<<GetAddressImplT as InterpParser<Bip32Key>>::State, <SignImplT as InterpParser<DoubledSignParameters>>::State>;
+pub type ParsersState = ParsersStateInner<<GetAddressImplT as ParserCommon<Bip32Key>>::State, <SignImplT as ParserCommon<DoubledSignParameters>>::State>;
 
 pub fn reset_parsers_state(state: &mut ParsersState) {
     *state = ParsersState::NoState;
@@ -331,18 +333,18 @@ pub enum MessageType {
 
 #[derive(Debug)]
 pub struct Message<
-  SendInterp: JsonInterp<SendValueSchema>,
-  UnjailInterp: JsonInterp<UnjailValueSchema>,
-  StakeInterp: JsonInterp<StakeValueSchema>,
-  UnstakeInterp: JsonInterp<UnstakeValueSchema>> {
+  SendInterp: ParserCommon<SendValueSchema>,
+  UnjailInterp: ParserCommon<UnjailValueSchema>,
+  StakeInterp: ParserCommon<StakeValueSchema>,
+  UnstakeInterp: ParserCommon<UnstakeValueSchema>> {
   pub send_message: SendInterp,
   pub unjail_message: UnjailInterp,
   pub stake_message: StakeInterp,
   pub unstake_message: UnstakeInterp
 }
 
-type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State;
-type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>;
+type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State;
+type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as ParserCommon<JsonString>>::Returning>;
 
 #[derive(Debug)]
 pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, UnstakeMessageState> {
@@ -360,10 +362,10 @@ pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, U
   End,
 }
 
-fn init_str<const N: usize>() -> <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State {
-    <JsonStringAccumulate<N> as JsonInterp<JsonString>>::init(&JsonStringAccumulate)
+fn init_str<const N: usize>() -> <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State {
+    <JsonStringAccumulate<N> as ParserCommon<JsonString>>::init(&JsonStringAccumulate)
 }
-fn call_str<'a, const N: usize>(ss: &mut <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State, token: JsonToken<'a>, dest: &mut Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>) -> Result<(), Option<OOB>> {
+fn call_str<'a, const N: usize>(ss: &mut <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State, token: JsonToken<'a>, dest: &mut Option<<JsonStringAccumulate<N> as ParserCommon<JsonString>>::Returning>) -> Result<(), Option<OOB>> {
     <JsonStringAccumulate<N> as JsonInterp<JsonString>>::parse(&JsonStringAccumulate, ss, token, dest)
 }
 
@@ -378,38 +380,52 @@ pub enum MessageReturn<
   UnstakeMessageReturn(Option<UnstakeMessageReturn>)
 }
 
-impl JsonInterp<MessageSchema> for DropInterp {
-    type State = <DropInterp as JsonInterp<JsonAny>>::State;
-    type Returning = <DropInterp as JsonInterp<JsonAny>>::Returning;
+impl ParserCommon<MessageSchema> for DropInterp {
+    type State = <DropInterp as ParserCommon<JsonAny>>::State;
+    type Returning = <DropInterp as ParserCommon<JsonAny>>::Returning;
     fn init(&self) -> Self::State {
-        <DropInterp as JsonInterp<JsonAny>>::init(&DropInterp)
+        <DropInterp as ParserCommon<JsonAny>>::init(&DropInterp)
     }
+}
+impl JsonInterp<MessageSchema> for DropInterp {
     fn parse<'a>(&self, state: &mut Self::State, token: JsonToken<'a>, destination: &mut Option<Self::Returning>) -> Result<(), Option<OOB>> {
         <DropInterp as JsonInterp<JsonAny>>::parse(&DropInterp, state, token, destination)
     }
+}
+
+impl <SendInterp: ParserCommon<SendValueSchema>,
+      UnjailInterp: ParserCommon<UnjailValueSchema>,
+      StakeInterp: ParserCommon<StakeValueSchema>,
+      UnstakeInterp: ParserCommon<UnstakeValueSchema>>
+  ParserCommon<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
+  where
+  <SendInterp as ParserCommon<SendValueSchema>>::State: core::fmt::Debug,
+  <UnjailInterp as ParserCommon<UnjailValueSchema>>::State: core::fmt::Debug,
+  <StakeInterp as ParserCommon<StakeValueSchema>>::State: core::fmt::Debug,
+  <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State: core::fmt::Debug {
+  type State = MessageState<<SendInterp as ParserCommon<SendValueSchema>>::State,
+                            <UnjailInterp as ParserCommon<UnjailValueSchema>>::State,
+                            <StakeInterp as ParserCommon<StakeValueSchema>>::State,
+                            <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State>;
+  type Returning = MessageReturn<<SendInterp as ParserCommon<SendValueSchema>>::Returning,
+                                 <UnjailInterp as ParserCommon<UnjailValueSchema>>::Returning,
+                                 <StakeInterp as ParserCommon<StakeValueSchema>>::Returning,
+                                 <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::Returning>;
+  fn init(&self) -> Self::State {
+    MessageState::Start
+  }
 }
 
 impl <SendInterp: JsonInterp<SendValueSchema>,
       UnjailInterp: JsonInterp<UnjailValueSchema>,
       StakeInterp: JsonInterp<StakeValueSchema>,
       UnstakeInterp: JsonInterp<UnstakeValueSchema>>
-  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
-  where
-  <SendInterp as JsonInterp<SendValueSchema>>::State: core::fmt::Debug,
-  <UnjailInterp as JsonInterp<UnjailValueSchema>>::State: core::fmt::Debug,
-  <StakeInterp as JsonInterp<StakeValueSchema>>::State: core::fmt::Debug,
-  <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::State: core::fmt::Debug {
-  type State = MessageState<<SendInterp as JsonInterp<SendValueSchema>>::State,
-                            <UnjailInterp as JsonInterp<UnjailValueSchema>>::State,
-                            <StakeInterp as JsonInterp<StakeValueSchema>>::State,
-                            <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::State>;
-  type Returning = MessageReturn<<SendInterp as JsonInterp<SendValueSchema>>::Returning,
-                                 <UnjailInterp as JsonInterp<UnjailValueSchema>>::Returning,
-                                 <StakeInterp as JsonInterp<StakeValueSchema>>::Returning,
-                                 <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::Returning>;
-  fn init(&self) -> Self::State {
-    MessageState::Start
-  }
+    JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
+where
+    <SendInterp as ParserCommon<SendValueSchema>>::State: core::fmt::Debug,
+<UnjailInterp as ParserCommon<UnjailValueSchema>>::State: core::fmt::Debug,
+<StakeInterp as ParserCommon<StakeValueSchema>>::State: core::fmt::Debug,
+<UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State: core::fmt::Debug {
   #[inline(never)]
   fn parse<'a>(&self,
                state: &mut Self::State,
@@ -544,12 +560,12 @@ pokt_cmd_definition!{}
 #[inline(never)]
 pub fn get_get_address_state(
     s: &mut ParsersState,
-) -> &mut <GetAddressImplT as InterpParser<Bip32Key>>::State {
+) -> &mut <GetAddressImplT as ParserCommon<Bip32Key>>::State {
     match s {
         ParsersState::GetAddressState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
-            *s = ParsersState::GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::init(
+            *s = ParsersState::GetAddressState(<GetAddressImplT as ParserCommon<Bip32Key>>::init(
                 &GET_ADDRESS_IMPL,
             ));
         }
@@ -565,7 +581,7 @@ pub fn get_get_address_state(
 #[inline(never)]
 pub fn get_sign_state(
     s: &mut ParsersState,
-) -> &mut <SignImplT as InterpParser<DoubledSignParameters>>::State {
+) -> &mut <SignImplT as ParserCommon<DoubledSignParameters>>::State {
     match s {
         ParsersState::SignState(_) => {}
         _ => {
@@ -575,7 +591,7 @@ pub fn get_sign_state(
                 core::ptr::drop_in_place(s_ptr);
                 // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
                 // fill it; we rely on init_in_place to not panic.
-                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| { <SignImplT as InterpParser<DoubledSignParameters>>::init_in_place(&SIGN_IMPL, a); });
+                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| { <SignImplT as ParserCommon<DoubledSignParameters>>::init_in_place(&SIGN_IMPL, a); });
                 trace!("Get_sign_stated");
             }
             /*

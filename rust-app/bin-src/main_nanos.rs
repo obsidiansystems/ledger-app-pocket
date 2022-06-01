@@ -99,7 +99,7 @@ impl From<u8> for Ins {
 use arrayvec::ArrayVec;
 use nanos_sdk::io::Reply;
 
-use ledger_parser_combinators::interp_parser::InterpParser;
+use ledger_parser_combinators::interp_parser::{InterpParser, ParserCommon};
 
 const HASH_LEN: usize = 32;
 type SHA256 = [u8; HASH_LEN];
@@ -205,7 +205,7 @@ impl BlockyAdapterScheme for OneParamOnceState {
 #[inline(never)]
 fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N: usize>(
     states: &mut ParsersState,
-    get_state: fn(&mut ParsersState) -> &mut <P as InterpParser<A>>::State,
+    get_state: fn(&mut ParsersState) -> &mut <P as ParserCommon<A>>::State,
     block_state: &mut BlockState,
     seq: &[usize; N],
     parser: &P,
