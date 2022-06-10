@@ -6,6 +6,7 @@ use nanos_sdk::bindings::*;
 use nanos_sdk::io::SyscallError;
 use zeroize::{DefaultIsZeroes, Zeroizing};
 use core::ops::{Deref,DerefMut};
+use core::pin::{Pin};
 use arrayvec::{CapacityError,ArrayVec};
 use ledger_log::*;
 
@@ -101,7 +102,7 @@ impl From<NoneError> for CryptographyError {
 // #[inline(always)]
 pub fn with_private_key<A>(
     path: &[u32],
-    f: impl FnOnce(&mut nanos_sdk::bindings::cx_ecfp_private_key_t) -> Result<A, CryptographyError>
+    f: impl FnOnce(Pin<&mut nanos_sdk::bindings::cx_ecfp_private_key_t>) -> Result<A, CryptographyError>
 ) -> Result<A, CryptographyError> {
     info!("Deriving path");
     let raw_key = bip32_derive_eddsa(path)?;
@@ -114,7 +115,7 @@ pub fn with_private_key<A>(
             (&mut ec_k).deref_mut().deref_mut() as *mut nanos_sdk::bindings::cx_ecfp_private_key_t
         )).ok()?;
     info!("Key generated");
-    f(ec_k.deref_mut().deref_mut())
+    f(Pin::new(ec_k.deref_mut().deref_mut()))
 }
 
 pub fn with_public_keys<A>(
@@ -124,25 +125,25 @@ pub fn with_public_keys<A>(
     let mut pubkey = Default::default();
     with_private_key(path, |ec_k| {
         info!("Getting private key");
-        get_pubkey_from_privkey(ec_k, &mut pubkey).ok()?;
+        get_pubkey_from_privkey(ec_k.get_mut(), &mut pubkey).ok()?;
         Ok(())
     })?;
     let pkh = get_pkh(&pubkey)?;
     f(&pubkey, &pkh)
 }
 
-pub fn with_keys<A>(
-  path: &[u32],
-  f: impl FnOnce(&nanos_sdk::bindings::cx_ecfp_private_key_t, &nanos_sdk::bindings::cx_ecfp_public_key_t, &PKH) -> Result<A, CryptographyError>
-) -> Result<A, CryptographyError> {
-    let mut pubkey = Default::default();
-    with_private_key(path, |ec_k| {
-        info!("Getting private key");
-        get_pubkey_from_privkey(ec_k, &mut pubkey)?;
-        let pkh = get_pkh(&pubkey)?;
-        f(ec_k, &pubkey, &pkh)
-    })
-}
+// pub fn with_keys<A>(
+//   path: &[u32],
+//   f: impl FnOnce(Pin<&nanos_sdk::bindings::cx_ecfp_private_key_t>, &nanos_sdk::bindings::cx_ecfp_public_key_t, &PKH) -> Result<A, CryptographyError>
+// ) -> Result<A, CryptographyError> {
+//     let mut pubkey = Default::default();
+//     with_private_key(path, |ec_k| {
+//         info!("Getting private key");
+//         get_pubkey_from_privkey(ec_k.get_mut(), &mut pubkey)?;
+//         let pkh = get_pkh(&pubkey)?;
+//         f(ec_k.into_ref(), &pubkey, &pkh)
+//     })
+// }
 
 pub fn public_key_bytes(key: &nanos_sdk::bindings::cx_ecfp_public_key_t) -> &[u8] {
     &key.W[1..33]
@@ -333,8 +334,11 @@ impl Ed25519 {
     pub fn init(&mut self, path : &ArrayVec<u32, 10>) -> Result<(),CryptographyError> {
         self.hash.clear();
 
-        with_private_key(path, |&mut key| {
-            self.hash.update(&key.d[0..(key.d_len as usize)]);
+        with_private_key(path, |key| {
+            unsafe {
+                let d = key.map_unchecked_mut(|k| &mut k.d[0..(k.d_len as usize)]);
+                self.hash.update(d.get_mut());
+            }
             let temp = self.hash.finalize();
             self.hash.clear();
             self.hash.update(&temp[32..64]);
