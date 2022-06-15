@@ -83,7 +83,7 @@ describe('basic tests', () => {
       expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     }, [
-      { "header": "Provide Public Key", "prompt": "For Address     7F916B907886913C6DD7AB62681FC52140AFBC84" },
+      { "header": "Provide Public Key", "prompt": "For Address     7f916b907886913c6dd7ab62681fc52140afbc84" },
       {
         "text": "Confirm",
         "x": 43,
@@ -99,7 +99,7 @@ describe('basic tests', () => {
       return;
     },
     [
-      { "header": "Provide Public Key", "prompt": "For Address     7F916B907886913C6DD7AB62681FC52140AFBC84" },
+      { "header": "Provide Public Key", "prompt": "For Address     7f916b907886913c6dd7ab62681fc52140afbc84" },
       {
         "text": "Confirm",
         "x": 43,
@@ -222,7 +222,7 @@ describe("Signing tests", function() {
          },
          {
         "header": "For Account",
-        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+        "prompt": "678c1a7a95cdca4812036cb4a2466f033973e962"
          },
          {
         "header": "Send",
@@ -257,7 +257,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+          "prompt": "678c1a7a95cdca4812036cb4a2466f033973e962"
         },
          {
            "text": "Confirm",
@@ -277,7 +277,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+          "prompt": "678c1a7a95cdca4812036cb4a2466f033973e962"
         },
          {
         "header": "Stake",
@@ -318,7 +318,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+          "prompt": "678c1a7a95cdca4812036cb4a2466f033973e962"
         },
         {
           "header": "Unstake",
