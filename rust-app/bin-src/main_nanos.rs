@@ -2,7 +2,7 @@ use pocket::implementation::*;
 use prompts_ui::RootMenu;
 use core::convert::{TryFrom, TryInto};
 use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
-use crypto_helpers::{Hash, Hasher};
+use ledger_crypto_helpers::hasher::{Hasher};
 use nanos_sdk::io;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -239,10 +239,10 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
 
             // Check the hash, so the host can't lie.
             call_me_maybe( || {
-                let mut hasher = Hasher::new();
+                let mut hasher = ledger_crypto_helpers::hasher::SHA256::new();
                 hasher.update(&block[1..]);
-                let Hash(hashed) = hasher.finalize();
-                if hashed != block_state.requested_block {
+                let hashed = hasher.finalize();
+                if hashed.0 != block_state.requested_block {
                     None
                 } else {
                     Some(())

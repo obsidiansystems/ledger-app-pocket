@@ -1,4 +1,5 @@
-use crate::crypto_helpers::{with_public_keys, Ed25519, public_key_bytes};
+use ledger_crypto_helpers::common::{with_public_keys, public_key_bytes,PKH};
+use ledger_crypto_helpers::ed25519::Ed25519;
 use crate::interface::*;
 use crate::*;
 use arrayvec::ArrayVec;
@@ -39,7 +40,7 @@ pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
-        with_public_keys(path, |key: &_, pkh: &_| {
+        with_public_keys(path, |key: &_, pkh: &PKH| {
 
         write_scroller("Provide Public Key", |w| Ok(write!(w, "For Address     {}", pkh)?))?;
 
@@ -233,7 +234,7 @@ pub const SIGN_IMPL: SignImplT =
           // And ask the user if this is the key the meant to sign with:
           mktfn(|path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
               write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
-              with_public_keys(path, |_, pkh| {
+              with_public_keys(path, |_, pkh: &PKH| {
                   write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
                   ed.init(path).ok()?;
                   // *destination = Some(ed);

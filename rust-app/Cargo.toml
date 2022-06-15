@@ -13,6 +13,7 @@ ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-p
 ledger-log = { git = "https://github.com/obsidiansystems/ledger-platform" }
 zeroize = { version = "1.5.2", default-features = false }
 enum-init = { git = "https://github.com/obsidiansystems/enum-init" }
+ledger-crypto-helpers = { git = "https://github.com/ea-nasir/ledger-crypto-helpers" }
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable
 # speculos logging and change log level.
 [features]
