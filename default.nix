@@ -71,6 +71,16 @@ rec {
     tar -czvhf $out -C ${tarSrc} pocket
   '';
 
+  loadApp = pkgs.writeScriptBin "load-app" ''
+  #!/usr/bin/env bash
+    cd ${tarSrc}/pocket
+    ${ledger-platform.ledgerctl}/bin/ledgerctl install -f ${tarSrc}/pocket/app.json
+  '';
+
+  appShell = pkgs.mkShell {
+    packages = [ loadApp ledger-platform.generic-cli ];
+  };
+
   testPackage = (import ./ts-tests/override.nix { inherit pkgs; }).package;
 
   testScript = pkgs.writeShellScriptBin "mocha-wrapper" ''

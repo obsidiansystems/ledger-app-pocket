@@ -1,7 +1,7 @@
 cargo-features = ["edition2021"]
 [package]
 name = "pocket"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["jonored", "yhql"]
 edition = "2021"
 autobins = false

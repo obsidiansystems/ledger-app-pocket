@@ -498,7 +498,7 @@ rec {
       };
       "pocket" = rec {
         crateName = "pocket";
-        version = "0.0.3";
+        version = "0.0.4";
         edition = "2018";
         crateBin = [
           { name = "pocket"; path = "bin-src/main.rs"; }
