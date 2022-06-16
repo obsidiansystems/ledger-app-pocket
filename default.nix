@@ -78,7 +78,7 @@ rec {
   '';
 
   appShell = pkgs.mkShell {
-    packages = [ loadApp ledger-platform.generic-cli ];
+    packages = [ loadApp ledger-platform.generic-cli pkgs.jq ];
   };
 
   testPackage = (import ./ts-tests/override.nix { inherit pkgs; }).package;
