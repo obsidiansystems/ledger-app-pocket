@@ -59,7 +59,7 @@ rec {
     mkdir src
     touch src/main.rs
 
-    cargo-ledger --use-prebuilt ${rootCrate}/bin/pocket --hex-next-to-json
+    RUSTC_BOOTSTRAP=1 cargo-ledger --use-prebuilt ${rootCrate}/bin/pocket --hex-next-to-json
 
     mkdir -p $out/pocket
     cp app.json app.hex $out/pocket
