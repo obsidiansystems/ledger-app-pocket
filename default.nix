@@ -117,10 +117,10 @@ rec {
     src = pkgs.fetchFromGitHub {
       owner = "pokt-network";
       repo = "pocket-core";
-      rev = "27edab249a2a370c2b084b96daeda084261fcd0d";
-      sha256 = "1gqpp16bxjcm2v27yxgsz7wa4l1mqagici76npg30z8fr7l66xa4";
+      rev = "98a12e0f1ecb98e40cd2012e081de842daf43e90";
+      sha256 = "0h6yl6rv8xkc81gzs1xs1gl6aw5k2xaz63avg0rxbj6nnl7qdr8l";
     };
-    vendorSha256 = "175absl4bz3ps7pr9g1s7spznw33lgqw0w0lvpyy4i99pq242idz";
+    vendorSha256 = "04rwxmmk2za27ylyxidd499bb2c0ssrishgnfnq7wm6f1b99vbs0";
     doCheck = false;
   };
 }
