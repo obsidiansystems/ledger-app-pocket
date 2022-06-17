@@ -64,6 +64,7 @@ rec {
     mkdir -p $out/pocket
     cp app.json app.hex $out/pocket
     cp ${./tarball-default.nix} $out/pocket/default.nix
+    cp ${./tarball-shell.nix} $out/pocket/shell.nix
     cp ${./rust-app/pocket.gif} $out/pocket/pocket.gif
   '');
 
@@ -78,7 +79,7 @@ rec {
   '';
 
   appShell = pkgs.mkShell {
-    packages = [ loadApp ledger-platform.generic-cli pkgs.jq ];
+    packages = [ loadApp ledger-platform.generic-cli pkgs.jq pocket-core pocket-cli-cmd-renamed ];
   };
 
   testPackage = (import ./ts-tests/override.nix { inherit pkgs; }).package;
@@ -130,7 +131,12 @@ rec {
       rev = "98a12e0f1ecb98e40cd2012e081de842daf43e90";
       sha256 = "0h6yl6rv8xkc81gzs1xs1gl6aw5k2xaz63avg0rxbj6nnl7qdr8l";
     };
+    patches = [ ./pocket-core.patch ];
     vendorSha256 = "04rwxmmk2za27ylyxidd499bb2c0ssrishgnfnq7wm6f1b99vbs0";
     doCheck = false;
   };
+  pocket-cli-cmd-renamed = pkgs.linkFarm "pocket-cmd" [ {
+    name = "bin/pocket";
+    path = "${pocket-core}/bin/pocket_core";
+  } ];
 }
