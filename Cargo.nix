@@ -83,6 +83,42 @@ rec {
     #   inject test dependencies into the build
 
     crates = {
+      "Inflector" = rec {
+        crateName = "Inflector";
+        version = "0.2.1";
+        edition = "2015";
+        sha256 = "0bviy0y94xnf9lqm8gq5vjrzjw11kvc7wscghxf5qqr2kn349vkl";type = [ "dylib" "rlib" ];
+        authors = [
+          "Josh Teeter<joshteeter@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "regex";
+            packageId = "regex";
+          }
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "aho-corasick" = rec {
+        crateName = "aho-corasick";
+        version = "0.5.3";
+        edition = "2015";
+        crateBin = [];
+        sha256 = "0rnvdmlajikq0i4zdy1p3pv699q6apvsxfc7av7byhppllp2r5ya";
+        libName = "aho_corasick";
+        authors = [
+          "Andrew Gallant <jamslam@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "memchr";
+            packageId = "memchr";
+          }
+        ];
+
+      };
       "arrayvec" = rec {
         crateName = "arrayvec";
         version = "0.7.2";
@@ -153,6 +189,39 @@ rec {
         ];
 
       };
+      "enum-init" = rec {
+        crateName = "enum-init";
+        version = "0.1.0";
+        edition = "2018";
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/obsidiansystems/enum-init";
+          rev = "a831c2fbbe00af926ae87c064bfe4da58d26777c";
+          sha256 = "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr";
+        };
+        procMacro = true;
+        dependencies = [
+          {
+            name = "Inflector";
+            packageId = "Inflector";
+            rename = "inflector";
+          }
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "syn";
+            packageId = "syn";
+            features = [ "full" ];
+          }
+        ];
+
+      };
       "generic-array" = rec {
         crateName = "generic-array";
         version = "0.14.5";
@@ -177,6 +246,29 @@ rec {
         ];
         features = {
         };
+      };
+      "kernel32-sys" = rec {
+        crateName = "kernel32-sys";
+        version = "0.2.2";
+        edition = "2015";
+        sha256 = "1389av0601a9yz8dvx5zha9vmkd6ik7ax0idpb032d28555n41vm";
+        libName = "kernel32";
+        authors = [
+          "Peter Atashian <retep998@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "winapi";
+            packageId = "winapi";
+          }
+        ];
+        buildDependencies = [
+          {
+            name = "winapi-build";
+            packageId = "winapi-build";
+          }
+        ];
+
       };
       "ledger-log" = rec {
         crateName = "ledger-log";
@@ -216,8 +308,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-parser-combinators";
-          rev = "b1d270cfd010ddd087d423c12ebc54258c8c7ff6";
-          sha256 = "0dj24ssi167ab7023pdk2gzklidgwp0pkwncsgvcmhrc9bsvwvyj";
+          rev = "9faaa62c8b64461011046cdc58a5dfe485fb8a18";
+          sha256 = "0r7yidjn2595svpf4wq25h9fk17adak7pdafff8pyzlm8nrzgbm8";
         };
         authors = [
           "Jonathan D.K. Gibbons <jonored@gmail.com>"
@@ -231,6 +323,10 @@ rec {
           {
             name = "bstringify";
             packageId = "bstringify";
+          }
+          {
+            name = "enum-init";
+            packageId = "enum-init";
           }
           {
             name = "generic-array";
@@ -263,6 +359,21 @@ rec {
         };
         resolvedDefaultFeatures = [ "ledger-log" "logging" ];
       };
+      "libc" = rec {
+        crateName = "libc";
+        version = "0.2.124";
+        edition = "2015";
+        sha256 = "0l0f1gvhxp9xpx5w5bd8aj55x8sg59idlqfiqsqpmwlqkpniz911";
+        authors = [
+          "The Rust Project Developers"
+        ];
+        features = {
+          "default" = [ "std" ];
+          "rustc-dep-of-std" = [ "align" "rustc-std-workspace-core" ];
+          "use_std" = [ "std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
+      };
       "log" = rec {
         crateName = "log";
         version = "0.4.14";
@@ -284,6 +395,23 @@ rec {
           "kv_unstable_sval" = [ "kv_unstable" "value-bag/sval" "sval" ];
         };
       };
+      "memchr" = rec {
+        crateName = "memchr";
+        version = "0.1.11";
+        edition = "2015";
+        sha256 = "084d85hjfa3xf5kwdms2mhbkh78m1gl2254cp5swcxj3a7xjkdnq";
+        authors = [
+          "Andrew Gallant <jamslam@gmail.com>"
+          "bluss"
+        ];
+        dependencies = [
+          {
+            name = "libc";
+            packageId = "libc";
+          }
+        ];
+
+      };
       "nanos_sdk" = rec {
         crateName = "nanos_sdk";
         version = "0.1.0";
@@ -291,8 +419,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/obsidiansystems/ledger-nanos-sdk.git";
-          rev = "5a497619322d8ae03f9cf034bf67ecaf855e1655";
-          sha256 = "1z8599dn67sayl17c27qk97y94z323pm738548k9zmnmhlmkh0wx";
+          rev = "1d358edd6cddbdcd4d6deb29f856b40e7e863c07";
+          sha256 = "1v5xz06vsd2ih6vl3qxill5w3k5gplbylqk3nw0jdvcwy0jx3v09";
         };
         authors = [
           "yhql"
@@ -370,7 +498,7 @@ rec {
       };
       "pocket" = rec {
         crateName = "pocket";
-        version = "0.0.3";
+        version = "0.0.4";
         edition = "2018";
         crateBin = [
           { name = "pocket"; path = "bin-src/main.rs"; }
@@ -385,6 +513,10 @@ rec {
             name = "arrayvec";
             packageId = "arrayvec";
             usesDefaultFeatures = false;
+          }
+          {
+            name = "enum-init";
+            packageId = "enum-init";
           }
           {
             name = "ledger-log";
@@ -435,9 +567,9 @@ rec {
       };
       "proc-macro2" = rec {
         crateName = "proc-macro2";
-        version = "1.0.36";
+        version = "1.0.37";
         edition = "2018";
-        sha256 = "0adh6gvs31x6pfwmygypmzrv1jc7kjq568vsqcfaxk7vhdc2sd67";
+        sha256 = "1ldg6l97xlr4dal4kmk0c4l8kn7nn8w1a17wd8hdlpwd8cc74xgc";
         authors = [
           "David Tolnay <dtolnay@gmail.com>"
           "Alex Crichton <alex@alexcrichton.com>"
@@ -451,7 +583,7 @@ rec {
         features = {
           "default" = [ "proc-macro" ];
         };
-        resolvedDefaultFeatures = [ "proc-macro" ];
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
       "prompts-ui" = rec {
         crateName = "prompts-ui";
@@ -488,9 +620,9 @@ rec {
       };
       "quote" = rec {
         crateName = "quote";
-        version = "1.0.14";
+        version = "1.0.18";
         edition = "2018";
-        sha256 = "0zf823y56wqwxkcp3rf3ik9zashpmx9700q0fmqz3np4gi281aj7";
+        sha256 = "1lca4xnwdc2sp76bf4n50kifmi5phhxr9520w623mfcksr7bbzm1";
         authors = [
           "David Tolnay <dtolnay@gmail.com>"
         ];
@@ -507,11 +639,55 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
+      "regex" = rec {
+        crateName = "regex";
+        version = "0.1.80";
+        edition = "2015";
+        sha256 = "0bs036h3vzc6pj5jj4vc909s9rppq7b808ic99qn0y6gm3karm2g";
+        authors = [
+          "The Rust Project Developers"
+        ];
+        dependencies = [
+          {
+            name = "aho-corasick";
+            packageId = "aho-corasick";
+          }
+          {
+            name = "memchr";
+            packageId = "memchr";
+          }
+          {
+            name = "regex-syntax";
+            packageId = "regex-syntax";
+          }
+          {
+            name = "thread_local";
+            packageId = "thread_local";
+          }
+          {
+            name = "utf8-ranges";
+            packageId = "utf8-ranges";
+          }
+        ];
+        features = {
+          "simd-accel" = [ "simd" ];
+        };
+      };
+      "regex-syntax" = rec {
+        crateName = "regex-syntax";
+        version = "0.3.9";
+        edition = "2015";
+        sha256 = "0ms9hgdhhsxw9w920i7gipydvagf100bb56jbs192rz86ln01v7r";
+        authors = [
+          "The Rust Project Developers"
+        ];
+
+      };
       "syn" = rec {
         crateName = "syn";
-        version = "1.0.85";
+        version = "1.0.91";
         edition = "2018";
-        sha256 = "1dszd62nvccsdiakqzhm4kgc2rpfhj1sc2fd31z844w9rlysr156";
+        sha256 = "0kflvi0r456s42n3z0d5snilsab2q9ns0dkwnwwg9vn84nwb50xn";
         authors = [
           "David Tolnay <dtolnay@gmail.com>"
         ];
@@ -567,6 +743,42 @@ rec {
         ];
 
       };
+      "thread-id" = rec {
+        crateName = "thread-id";
+        version = "2.0.0";
+        edition = "2015";
+        sha256 = "00zzs2bx1xw8aqm5plqqgr7bc2zz6zkqrdxq8vpiqb8hc2srslx9";
+        authors = [
+          "Ruud van Asseldonk <dev@veniogames.com>"
+        ];
+        dependencies = [
+          {
+            name = "kernel32-sys";
+            packageId = "kernel32-sys";
+          }
+          {
+            name = "libc";
+            packageId = "libc";
+          }
+        ];
+
+      };
+      "thread_local" = rec {
+        crateName = "thread_local";
+        version = "0.2.7";
+        edition = "2015";
+        sha256 = "1mgxikqvhpsic6xk7pan95lvgsky1sdxzw2w5m2l35pgrazxnxl5";
+        authors = [
+          "Amanieu d'Antras <amanieu@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "thread-id";
+            packageId = "thread-id";
+          }
+        ];
+
+      };
       "typenum" = rec {
         crateName = "typenum";
         version = "1.15.0";
@@ -595,6 +807,16 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
+      "utf8-ranges" = rec {
+        crateName = "utf8-ranges";
+        version = "0.1.3";
+        edition = "2015";
+        sha256 = "03xf604b2v51ag3jgzw92l97xnb10kw9zv948bhc7ja1ik017jm1";
+        authors = [
+          "Andrew Gallant <jamslam@gmail.com>"
+        ];
+
+      };
       "version_check" = rec {
         crateName = "version_check";
         version = "0.9.4";
@@ -602,6 +824,27 @@ rec {
         sha256 = "0gs8grwdlgh0xq660d7wr80x14vxbizmd8dbp29p2pdncx8lp1s9";
         authors = [
           "Sergio Benitez <sb@sergio.bz>"
+        ];
+
+      };
+      "winapi" = rec {
+        crateName = "winapi";
+        version = "0.2.8";
+        edition = "2015";
+        sha256 = "0yh816lh6lf56dpsgxy189c2ai1z3j8mw9si6izqb6wsjkbcjz8n";
+        authors = [
+          "Peter Atashian <retep998@gmail.com>"
+        ];
+
+      };
+      "winapi-build" = rec {
+        crateName = "winapi-build";
+        version = "0.1.1";
+        edition = "2015";
+        sha256 = "1g4rqsgjky0a7530qajn2bbfcrl2v0zb39idgdws9b1l7gp5wc9d";
+        libName = "build";
+        authors = [
+          "Peter Atashian <retep998@gmail.com>"
         ];
 
       };

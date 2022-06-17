@@ -1,0 +1,252 @@
+diff --git a/app/cmd/cli/util.go b/app/cmd/cli/util.go
+index a1f92439..3bcf35ac 100644
+--- a/app/cmd/cli/util.go
++++ b/app/cmd/cli/util.go
+@@ -1,7 +1,12 @@
+ package cli
+ 
+ import (
++	"encoding/hex"
++	"encoding/json"
+ 	"fmt"
++	"github.com/pokt-network/pocket-core/x/auth"
++	types2 "github.com/pokt-network/pocket-core/x/auth/types"
++	types3 "github.com/pokt-network/pocket-core/x/nodes/types"
+ 	"github.com/pokt-network/pocket-core/x/pocketcore/types"
+ 	"os"
+ 	"strconv"
+@@ -22,6 +27,8 @@ func init() {
+ 	utilCmd.AddCommand(completionCmd)
+ 	utilCmd.AddCommand(updateConfigsCmd)
+ 	utilCmd.AddCommand(printDefaultConfigCmd)
++	utilCmd.AddCommand(TxBytesJsonCmd)
++	utilCmd.AddCommand(MsgToHexString)
+ }
+ 
+ var utilCmd = &cobra.Command{
+@@ -158,6 +165,61 @@ var (
+ 	blocks bool
+ )
+ 
++// sendRawTxCmd represents the sendTx command
++
++var TxBytesJsonCmd = &cobra.Command{
++	Use:   "jsontx-to-hex <fromAddr> <EscapedJsonTxObj>",
++	Short: "get hex bytes string from signed tx json obj",
++	Long:  `get hex bytes string from signed tx json obj`,
++	Args:  cobra.ExactArgs(2),
++	Run: func(cmd *cobra.Command, args []string) {
++		app.InitConfig(datadir, tmNode, persistentPeers, seeds, remoteCLIURL)
++		var jraw json.RawMessage
++		jraw = []byte(args[1])
++
++		tx := types2.StdTx{}
++		err := app.Codec().UnmarshalJSON(jraw, &tx)
++		if err != nil {
++			fmt.Println(err)
++			return
++		}
++
++		txBz, err := auth.DefaultTxEncoder(app.Codec())(types2.NewTx(&types3.MsgSend{
++			FromAddress: tx.Msg.(types3.MsgSend).FromAddress,
++			ToAddress:   tx.Msg.(types3.MsgSend).ToAddress,
++			Amount:      tx.Msg.(types3.MsgSend).Amount,
++		},
++			tx.Fee, tx.Signature, tx.Memo, tx.Entropy), -1)
++		if err != nil {
++			fmt.Println(err)
++			return
++		}
++		fmt.Println("Printing fromAddr")
++		fmt.Println(args[0])
++		fmt.Println("Printing Tx hex Bytes")
++		fmt.Println(hex.EncodeToString(txBz))
++	},
++}
++
++var MsgToHexString = &cobra.Command{
++	Use:   "jsonmsg-to-hex <EscapedJsonObj>",
++	Short: "get hex bytes from from json obj",
++	Long:  `get hex bytes from from json obj`,
++	Args:  cobra.ExactArgs(1),
++	Run: func(cmd *cobra.Command, args []string) {
++		app.InitConfig(datadir, tmNode, persistentPeers, seeds, remoteCLIURL)
++		var jraw json.RawMessage
++		jraw = []byte(args[0])
++
++		hs := hex.EncodeToString(jraw)
++
++		fmt.Println("Printing original msg")
++		fmt.Println(string(jraw))
++		fmt.Println("Printing hex Bytes")
++		fmt.Println(hs)
++	},
++}
++
+ var completionCmd = &cobra.Command{
+ 	Use:   "completion (bash | zsh | fish | powershell)",
+ 	Short: "Generate completion script",
+diff --git a/app/cmd/rpc/client.go b/app/cmd/rpc/client.go
+index 1f2b2d76..b0c1e5f5 100644
+--- a/app/cmd/rpc/client.go
++++ b/app/cmd/rpc/client.go
+@@ -6,6 +6,9 @@ import (
+ 	"encoding/json"
+ 	"fmt"
+ 	nodesTypes "github.com/pokt-network/pocket-core/x/nodes/types"
++	"github.com/pokt-network/pocket-core/x/auth"
++	authTypes "github.com/pokt-network/pocket-core/x/auth/types"
++	types2 "github.com/pokt-network/pocket-core/x/nodes/types"
+ 	"io/ioutil"
+ 	"net/http"
+ 	"os"
+@@ -191,6 +194,47 @@ func SendRawTx(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+ 	WriteJSONResponse(w, string(j), r.URL.Path, r.Host)
+ }
+ 
++type SendRawTxParams2 struct {
++	Addr string          `json:"address"`
++	Tx   json.RawMessage `json:"tx"`
++}
++
++func SendRawTx2(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
++	var params = SendRawTxParams2{}
++	if err := PopModel(w, r, ps, &params); err != nil {
++		WriteErrorResponse(w, 400, err.Error())
++		return
++	}
++	var t auth.StdTx
++	err := app.Codec().UnmarshalJSON(params.Tx, &t)
++	if err != nil {
++		WriteErrorResponse(w, 400, err.Error())
++		return
++	}
++
++	txBz, err := auth.DefaultTxEncoder(app.Codec())(authTypes.NewTx(&types2.MsgSend{
++		FromAddress: t.Msg.(types2.MsgSend).FromAddress,
++		ToAddress:   t.Msg.(types2.MsgSend).ToAddress,
++		Amount:      t.Msg.(types2.MsgSend).Amount,
++	},
++		t.Fee, t.Signature, t.Memo, t.Entropy), app.PCA.LastBlockHeight())
++	if err != nil {
++		WriteErrorResponse(w, 400, err.Error())
++		return
++	}
++	res, err := app.PCA.SendRawTx(params.Addr, txBz)
++	if err != nil {
++		WriteErrorResponse(w, 400, err.Error())
++		return
++	}
++	j, er := app.Codec().MarshalJSON(res)
++	if er != nil {
++		WriteErrorResponse(w, 400, er.Error())
++		return
++	}
++	WriteJSONResponse(w, string(j), r.URL.Path, r.Host)
++}
++
+ type simRelayParams struct {
+ 	RelayNetworkID string        `json:"relay_network_id"` // RelayNetworkID
+ 	Payload        types.Payload `json:"payload"`          // the data payload of the request
+diff --git a/app/cmd/rpc/rpc_test.go b/app/cmd/rpc/rpc_test.go
+index e8d855e1..c91d5719 100644
+--- a/app/cmd/rpc/rpc_test.go
++++ b/app/cmd/rpc/rpc_test.go
+@@ -1088,6 +1088,77 @@ func TestRPC_RawTX(t *testing.T) {
+ 	stopCli()
+ }
+ 
++func TestRPC_RawTX2(t *testing.T) {
++	codec.UpgradeHeight = 7000
++	_, kb, cleanup := NewInMemoryTendermintNode(t, oneValTwoNodeGenesisState())
++	cb, err := kb.GetCoinbase()
++	assert.Nil(t, err)
++	kp, err := kb.Create("test")
++	assert.Nil(t, err)
++	pk, err := kb.ExportPrivateKeyObject(cb.GetAddress(), "test")
++	assert.Nil(t, err)
++	_, stopCli, evtChan := subscribeTo(t, tmTypes.EventNewBlock)
++	// create the transaction
++	tra := authTypes.NewTestTx(types.Context{}.WithChainID("pocket-test"),
++		&types2.MsgSend{
++			FromAddress: cb.GetAddress(),
++			ToAddress:   kp.GetAddress(),
++			Amount:      types.NewInt(1),
++		},
++		pk,
++		rand2.Int64(),
++		types.NewCoins(types.NewCoin(types.DefaultStakeDenom, types.NewInt(100000))))
++	assert.NotNil(t, tra)
++
++	_ = memCodecMod(true)
++	tra2 := authTypes.NewTestTx(types.Context{}.WithChainID("pocket-test"),
++		&types2.MsgSend{
++			FromAddress: cb.GetAddress(),
++			ToAddress:   kp.GetAddress(),
++			Amount:      types.NewInt(2),
++		},
++		pk,
++		rand2.Int64(),
++		types.NewCoins(types.NewCoin(types.DefaultStakeDenom, types.NewInt(100000))))
++	assert.NotNil(t, tra2)
++	<-evtChan // Wait for block
++	tx, _ := memCodec().MarshalJSON(tra.(auth.StdTx))
++	params := SendRawTxParams2{
++		Addr: cb.GetAddress().String(),
++		Tx:   tx,
++	}
++	q := newClientRequest("rawtx2", newBody(params))
++	rec := httptest.NewRecorder()
++	SendRawTx2(rec, q, httprouter.Params{})
++	resp := getResponse(rec)
++	assert.Nil(t, err)
++	assert.NotNil(t, resp)
++	var response types.TxResponse
++	err = memCodec().UnmarshalJSON([]byte(resp), &response)
++	assert.Nil(t, err)
++	assert.Equal(t, uint32(0), response.Code)
++
++	<-evtChan // Wait for block
++	tx2, _ := memCodec().MarshalJSON(tra.(auth.StdTx))
++	params = SendRawTxParams2{
++		Addr: cb.GetAddress().String(),
++		Tx:   tx2,
++	}
++	q2 := newClientRequest("rawtx2", newBody(params))
++	rec2 := httptest.NewRecorder()
++	SendRawTx2(rec2, q2, httprouter.Params{})
++	resp2 := getResponse(rec2)
++	assert.Nil(t, err)
++	assert.NotNil(t, resp2)
++	var response2 types.TxResponse
++	err = memCodec().UnmarshalJSON([]byte(resp2), &response2)
++	assert.Nil(t, err)
++	assert.Nil(t, response2.Logs)
++
++	cleanup()
++	stopCli()
++}
++
+ func TestRPC_QueryNodeClaims(t *testing.T) {
+ 	codec.UpgradeHeight = 7000
+ 	_, _, cleanup := NewInMemoryTendermintNode(t, oneValTwoNodeGenesisState())
+diff --git a/app/cmd/rpc/server.go b/app/cmd/rpc/server.go
+index fdd139d5..574a94f3 100644
+--- a/app/cmd/rpc/server.go
++++ b/app/cmd/rpc/server.go
+@@ -38,6 +38,7 @@ func StartRPC(port string, timeout int64, simulation, debug, allBlockTxs, hotRel
+ 		routes = append(routes, Route{Name: "FreeOsMemory", Method: "GET", Path: "/debug/freememory", HandlerFunc: FreeMemory})
+ 		routes = append(routes, Route{Name: "MemStats", Method: "GET", Path: "/debug/memstats", HandlerFunc: MemStats})
+ 		routes = append(routes, Route{Name: "QuerySecondUpgrade", Method: "POST", Path: "/debug/second", HandlerFunc: SecondUpgrade})
++		routes = append(routes, Route{Name: "SendRawTx2", Method: "POST", Path: "/v1/client/rawtx2", HandlerFunc: SendRawTx2})
+ 		routes = append(routes, Route{Name: "QueryValidatorByChain", Method: "POST", Path: "/debug/vbc", HandlerFunc: QueryValidatorsByChain})
+ 	}
+ 
+@@ -121,6 +122,7 @@ func GetRoutes() Routes {
+ 		Route{Name: "QueryUpgrade", Method: "POST", Path: "/v1/query/upgrade", HandlerFunc: Upgrade},
+ 		Route{Name: "QuerySigningInfo", Method: "POST", Path: "/v1/query/signinginfo", HandlerFunc: SigningInfo},
+ 		Route{Name: "QueryChains", Method: "POST", Path: "/v1/private/chains", HandlerFunc: Chains},
++		Route{Name: "SendRawTx2", Method: "POST", Path: "/v1/client/rawtx2", HandlerFunc: SendRawTx2},
+ 	}
+ 	return routes
+ }

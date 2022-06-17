@@ -4,6 +4,7 @@ import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
 import Axios from 'axios';
 import Transport from "./common";
 import Pokt from "hw-app-pokt";
+import * as ed from 'noble-ed25519';
 
 let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.3"]
 
@@ -51,6 +52,7 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 
     let transport = await Transport.open("http://localhost:5000/apdu");
     let kda = new Pokt(transport);
+    kda.sendChunks = kda.sendWithBlocks;
     
     //await new Promise(resolve => setTimeout(resolve, 100));
     
@@ -62,15 +64,14 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
     
     //await new Promise(resolve => setTimeout(resolve, 100));
 
+    if(err) throw(err);
 
     expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
     // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => a["text"] != "W e l c o m e")).to.deep.equal(prompts);
-    if(err) throw(err);
 }
 
 describe('basic tests', () => {
   afterEach( async function() {
-    console.log("Clearing settings");
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
     await Axios.delete("http://localhost:5000/events");
   });
@@ -78,9 +79,7 @@ describe('basic tests', () => {
   it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
-      console.log("Started pubkey get");
       let rv = await pokt.getPublicKey("0");
-      console.log("Reached Pubkey Got");
       expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     }, [
@@ -95,9 +94,7 @@ describe('basic tests', () => {
   
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Pokt) => {
-      console.log("Started pubkey get");
       let rv = await kda.getPublicKey("0");
-      console.log("Reached Pubkey Got, " + JSON.stringify(rv));
       expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
       return;
     },
@@ -114,11 +111,17 @@ describe('basic tests', () => {
 
 function testTransaction(path: string, txn: string, prompts: any[]) {
      return async () => {
-       await sendCommandAndAccept(
+       let sig = await sendCommandAndAccept(
          async (kda : Pokt) => {
-           console.log("Started pubkey get");
-           let rv = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
-           expect(rv.signature.length).to.equal(128);
+
+           let pk = await kda.getPublicKey(path);
+
+           // We don't want the prompts from getPublicKey in our result
+           await Axios.delete("http://localhost:5000/events");
+
+           let sig = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+
+           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey)).to.equal(true);
          }, prompts);
      }
 }
@@ -214,6 +217,14 @@ describe("Signing tests", function() {
        JSON.stringify(exampleSend),
 [
          {
+        "header": "Signing",
+        "prompt": "Transaction",
+         },
+         {
+        "header": "For Account",
+        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+         },
+         {
         "header": "Send",
         "prompt": "Transaction",
          },
@@ -230,14 +241,6 @@ describe("Signing tests", function() {
         "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
          },
          {
-        "header": "Sign Hash?",
-        "prompt": "D9779BB631C0BA7A991D5E6166B6419F5557CB423FD137079121986607856D92",
-         },
-         {
-        "header": "For Account",
-        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
-         },
-         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -249,14 +252,13 @@ describe("Signing tests", function() {
        "0/0",
        JSON.stringify(exampleUnjail),
        [
-         {
-        "header": "Sign Hash?",
-        "prompt": "FF11A8FD314B73EE4EB15D7097F2CAB8E0A4896427E5384254A47B3F1AB022FD",
-         },
-         {
-         "header": "For Account",
-         "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
-         },
+        { "header": "Signing",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "For Account",
+          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+        },
          {
            "text": "Confirm",
            "x": 43,
@@ -270,6 +272,13 @@ describe("Signing tests", function() {
        "0/0",
        JSON.stringify(exampleStake),
        [
+        { "header": "Signing",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "For Account",
+          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+        },
          {
         "header": "Stake",
         "prompt": "Transaction",
@@ -291,14 +300,6 @@ describe("Signing tests", function() {
         "prompt": "1000000",
          },
          {
-        "header": "Sign Hash?",
-        "prompt": "9BF2A5EAAECA8A5FAD5C2C4CA0C2D3FFEABC28A2AF2FE337343136DBEFF4437F",
-         },
-         {
-        "header": "For Account",
-        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
-         },
-         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -312,6 +313,13 @@ describe("Signing tests", function() {
        "0/0",
        JSON.stringify(exampleUnstake),
        [
+        { "header": "Signing",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "For Account",
+          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+        },
         {
           "header": "Unstake",
           "prompt": "Transaction"
@@ -319,14 +327,6 @@ describe("Signing tests", function() {
         {
           "header": "Transfer from",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
-        },
-        {
-          "header": "Sign Hash?",
-          "prompt": "BAF8E9CB74DF4DBD4B28E1A6B77A472E371C8ABC091EC606A5810A944F8F3851"
-        },
-        {
-          "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
         },
         {
           "text": "Confirm",

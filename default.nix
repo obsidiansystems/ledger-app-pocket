@@ -59,17 +59,28 @@ rec {
     mkdir src
     touch src/main.rs
 
-    cargo-ledger --use-prebuilt ${rootCrate}/bin/pocket --hex-next-to-json
+    RUSTC_BOOTSTRAP=1 cargo-ledger --use-prebuilt ${rootCrate}/bin/pocket --hex-next-to-json
 
     mkdir -p $out/pocket
     cp app.json app.hex $out/pocket
     cp ${./tarball-default.nix} $out/pocket/default.nix
+    cp ${./tarball-shell.nix} $out/pocket/shell.nix
     cp ${./rust-app/pocket.gif} $out/pocket/pocket.gif
   '');
 
   tarball = pkgs.runCommandNoCC "app-tarball.tar.gz" { } ''
     tar -czvhf $out -C ${tarSrc} pocket
   '';
+
+  loadApp = pkgs.writeScriptBin "load-app" ''
+  #!/usr/bin/env bash
+    cd ${tarSrc}/pocket
+    ${ledger-platform.ledgerctl}/bin/ledgerctl install -f ${tarSrc}/pocket/app.json
+  '';
+
+  appShell = pkgs.mkShell {
+    packages = [ loadApp ledger-platform.generic-cli pkgs.jq pocket-core pocket-cli-cmd-renamed ];
+  };
 
   testPackage = (import ./ts-tests/override.nix { inherit pkgs; }).package;
 
@@ -117,10 +128,15 @@ rec {
     src = pkgs.fetchFromGitHub {
       owner = "pokt-network";
       repo = "pocket-core";
-      rev = "27edab249a2a370c2b084b96daeda084261fcd0d";
-      sha256 = "1gqpp16bxjcm2v27yxgsz7wa4l1mqagici76npg30z8fr7l66xa4";
+      rev = "98a12e0f1ecb98e40cd2012e081de842daf43e90";
+      sha256 = "0h6yl6rv8xkc81gzs1xs1gl6aw5k2xaz63avg0rxbj6nnl7qdr8l";
     };
-    vendorSha256 = "175absl4bz3ps7pr9g1s7spznw33lgqw0w0lvpyy4i99pq242idz";
+    patches = [ ./pocket-core.patch ];
+    vendorSha256 = "04rwxmmk2za27ylyxidd499bb2c0ssrishgnfnq7wm6f1b99vbs0";
     doCheck = false;
   };
+  pocket-cli-cmd-renamed = pkgs.linkFarm "pocket-cmd" [ {
+    name = "bin/pocket";
+    path = "${pocket-core}/bin/pocket_core";
+  } ];
 }
