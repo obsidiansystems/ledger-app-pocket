@@ -95,21 +95,23 @@ rec {
       pkgs.wget ledger-platform.speculos.speculos testScript
     ];
   } ''
-    RUST_APP=${rootCrate}/bin/*
-    echo RUST APP IS $RUST_APP
-    # speculos -k 2.0 $RUST_APP --display headless &
     mkdir $out
     (
     speculos -k 2.0 ${appExe} --display headless &
     SPECULOS=$!
 
     until wget -O/dev/null -o/dev/null http://localhost:5000; do sleep 0.1; done;
+    sleep 1;
 
     ${testScript}/bin/mocha-wrapper
     rv=$?
+    echo "Finished tests"
     kill -9 $SPECULOS
-    exit $rv) | tee $out/short |& tee $out/full
+    exit $rv) | tee $out/short |& tee $out/full &
+    (sleep 2m; kill %2) &
+    wait %2
     rv=$?
+    kill %3
     cat $out/short
     exit $rv
   '';
