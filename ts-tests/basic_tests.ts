@@ -74,6 +74,7 @@ describe('basic tests', () => {
   afterEach( async function() {
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
     await Axios.delete("http://localhost:5000/events");
+    await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
   });
 
   it('provides a public key', async () => {
