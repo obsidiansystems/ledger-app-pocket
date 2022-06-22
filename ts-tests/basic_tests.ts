@@ -70,17 +70,6 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
     // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => a["text"] != "W e l c o m e")).to.deep.equal(prompts);
 }
 
-let sendCommandAndAcceptAndIgnoreResult = async function(command : any) {
-  await setAcceptAutomationRules();
-  await Axios.delete("http://localhost:5000/events");
-
-  let transport = await Transport.open("http://localhost:5000/apdu");
-  let kda = new Pokt(transport);
-  kda.sendChunks = kda.sendWithBlocks;
-  try { await command(kda); } catch(e) {
-  }
-}
-
 describe('basic tests', () => {
   afterEach( async function() {
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
@@ -88,16 +77,6 @@ describe('basic tests', () => {
     await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
   });
 
-  it('Dummy run, result is ignored', async () => {
-
-    // Note: This always passes.
-    // Somehow the first test is always failing, so using a dummy test
-    await sendCommandAndAcceptAndIgnoreResult(async (pokt : Pokt) => {
-      await pokt.getPublicKey("0");
-      return;
-    });
-  });
-  
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Pokt) => {
       let rv = await kda.getPublicKey("0");
