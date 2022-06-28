@@ -141,4 +141,8 @@ rec {
     name = "bin/pocket";
     path = "${pocket-core}/bin/pocket_core";
   } ];
+
+  test-cli = (import ./test-cli {
+    inherit pkgs;
+  }).package;
 }
