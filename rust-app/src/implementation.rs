@@ -136,8 +136,29 @@ const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
 
 const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> =
   Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
-  UnstakeValueInterp{field_validator_address: FROM_ADDRESS_ACTION});
+  UnstakeValueInterp{field_validator_address: UNSTAKE_FROM_ADDRESS_ACTION});
 
+const UNSTAKE_FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
+                                  //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
+          write_scroller("Unstake address", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+          *destination = Some(());
+          Some(())
+        }));
+
+const UNJAIL_MESSAGE_ACTION: impl JsonInterp<UnjailValueSchema, State: Debug> =
+  Preaction(|| { write_scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
+  UnjailValueInterp{field_address: UNJAIL_ADDRESS_ACTION});
+
+const UNJAIL_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
+                                  //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+  Action(JsonStringAccumulate::<64>,
+        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
+          write_scroller("Address", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+          *destination = Some(());
+          Some(())
+        }));
 
 pub struct DynamicStackBoxSlot<S>(S, bool);
 pub struct DynamicStackBox<S>(*mut DynamicStackBoxSlot<S>);
@@ -252,7 +273,7 @@ pub const SIGN_IMPL: SignImplT =
                       field_fee: DropInterp,
                       field_memo: DropInterp,
                       field_msg: Message {send_message: SEND_MESSAGE_ACTION,
-                                          unjail_message: DropInterp,
+                                          unjail_message: UNJAIL_MESSAGE_ACTION,
                                           stake_message: STAKE_MESSAGE_ACTION,
                                           unstake_message: UNSTAKE_MESSAGE_ACTION},
                   }),

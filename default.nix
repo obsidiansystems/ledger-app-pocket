@@ -63,6 +63,7 @@ rec {
 
     mkdir -p $out/pocket
     cp app.json app.hex $out/pocket
+    cp ${rootCrate}/bin/pocket $out/pocket/app.elf
     cp ${./tarball-default.nix} $out/pocket/default.nix
     cp ${./tarball-shell.nix} $out/pocket/shell.nix
     cp ${./rust-app/pocket.gif} $out/pocket/pocket.gif
@@ -108,10 +109,12 @@ rec {
     echo "Finished tests"
     kill -9 $SPECULOS
     exit $rv) | tee $out/short |& tee $out/full &
-    (sleep 2m; kill %2) &
-    wait %2
+    TESTS=$!
+    (sleep 2m; kill $TESTS) &
+    TESTKILLER=$!
+    wait $TESTS
     rv=$?
-    kill %3
+    kill $TESTKILLER
     cat $out/short
     exit $rv
   '';
