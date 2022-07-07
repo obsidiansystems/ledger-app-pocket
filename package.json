@@ -1,5 +1,5 @@
 {
-  "name": "ledger-generic-cli",
+  "name": "pokt-ledger-test-cli",
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "generic-cli": "./build/cli.js"
+    "pocket-ledger-cli": "./build/cli.js"
   },
   "author": "",
   "devDependencies": {
