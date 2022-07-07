@@ -80,11 +80,11 @@ describe('basic tests', () => {
   it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
-      let rv = await pokt.getPublicKey("44'/535348'/0");
-      expect(rv.publicKey).to.equal("20fb7058c31049db08e84d52ff7605cdcdf77db785380ef11b553cd454a7fa56");
+      let rv = await pokt.getPublicKey("44'/635'/0");
+      expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, [
-      { "header": "Provide Public Key", "prompt": "For Address     B9B72B620528F110AF6E688CEF927789657752C2" },
+      { "header": "Provide Public Key", "prompt": "For Address     80E004848CD91888257D10E783420E923709E2D1" },
       {
         "text": "Confirm",
         "x": 43,
@@ -95,12 +95,12 @@ describe('basic tests', () => {
   
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Pokt) => {
-      let rv = await kda.getPublicKey("44'/535348'/0");
-      expect(rv.publicKey).to.equal("20fb7058c31049db08e84d52ff7605cdcdf77db785380ef11b553cd454a7fa56");
+      let rv = await kda.getPublicKey("44'/635'/0");
+      expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     },
     [
-      { "header": "Provide Public Key", "prompt": "For Address     B9B72B620528F110AF6E688CEF927789657752C2" },
+      { "header": "Provide Public Key", "prompt": "For Address     80E004848CD91888257D10E783420E923709E2D1" },
       {
         "text": "Confirm",
         "x": 43,
@@ -214,7 +214,7 @@ let exampleUnstake = {
 describe("Signing tests", function() {
   it("can sign a simple transfer",
      testTransaction(
-       "44'/535348'/0/0",
+       "44'/635'/0/0",
        JSON.stringify(exampleSend),
 [
          {
@@ -223,7 +223,7 @@ describe("Signing tests", function() {
          },
          {
         "header": "For Account",
-        "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
+        "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
          },
          {
         "header": "Send",
@@ -250,7 +250,7 @@ describe("Signing tests", function() {
      ));
   it("can sign a simple unjail",
      testTransaction(
-       "44'/535348'/0/0",
+       "44'/635'/0/0",
        JSON.stringify(exampleUnjail),
        [
         { "header": "Signing",
@@ -258,7 +258,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
+          "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
         },
          {
            "text": "Confirm",
@@ -270,7 +270,7 @@ describe("Signing tests", function() {
 
   it("can sign a simple stake",
      testTransaction(
-       "44'/535348'/0/0",
+       "44'/635'/0/0",
        JSON.stringify(exampleStake),
        [
         { "header": "Signing",
@@ -278,7 +278,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
+          "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
         },
          {
         "header": "Stake",
@@ -311,7 +311,7 @@ describe("Signing tests", function() {
 
   it("can sign a simple unstake",
      testTransaction(
-       "44'/535348'/0/0",
+       "44'/635'/0/0",
        JSON.stringify(exampleUnstake),
        [
         { "header": "Signing",
@@ -319,7 +319,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
+          "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
         },
         {
           "header": "Unstake",
