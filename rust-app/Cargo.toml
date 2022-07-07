@@ -45,7 +45,7 @@ branch = "use-ambient-compiler-and-target"
 
 [package.metadata.nanos]
 name = "Pocket"
-path = "44'/535348'"
+path = "44'/635'"
 curve = "ed25519"
 flags = "0"
 icon = "pocket.gif"
