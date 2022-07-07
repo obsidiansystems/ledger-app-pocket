@@ -83,15 +83,16 @@ enum Ins {
     Exit
 }
 
-impl From<u8> for Ins {
-    fn from(ins: u8) -> Ins {
+impl TryFrom<u8> for Ins {
+    type Error = ();
+    fn try_from(ins: u8) -> Result<Ins, ()> {
         match ins {
-            0 => Ins::GetVersion,
-            2 => Ins::GetPubkey,
-            3 => Ins::Sign,
-            0xfe => Ins::GetVersionStr,
-            0xff => Ins::Exit,
-            _ => panic!(),
+            0 => Ok(Ins::GetVersion),
+            2 => Ok(Ins::GetPubkey),
+            3 => Ok(Ins::Sign),
+            0xfe => Ok(Ins::GetVersionStr),
+            0xff => Ok(Ins::Exit),
+            _ => Err(()),
         }
     }
 }

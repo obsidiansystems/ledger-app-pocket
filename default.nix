@@ -109,10 +109,12 @@ rec {
     echo "Finished tests"
     kill -9 $SPECULOS
     exit $rv) | tee $out/short |& tee $out/full &
-    (sleep 2m; kill %2) &
-    wait %2
+    TESTS=$!
+    (sleep 2m; kill $TESTS) &
+    TESTKILLER=$!
+    wait $TESTS
     rv=$?
-    kill %3
+    kill $TESTKILLER
     cat $out/short
     exit $rv
   '';
