@@ -72,6 +72,12 @@ define_json_struct! { PoktCmd 16 {
 
 // Payload for a signature request, content-agnostic.
 pub type SignParameters = (
-    LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
     Bip32Key,
+    LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
+);
+
+pub type DoubledSignParameters = (
+    Bip32Key,
+    (LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
+     LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>)
 );

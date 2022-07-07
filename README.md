@@ -1,6 +1,6 @@
-# Rust Nano S Application
+# Pocket Network Nano S Application
 
-A simple application that receives a message, displays it, and requests user approval to sign. Can also display an example menu.
+An application for signing Pocket Network transactions.
 
 ## Building
 
@@ -10,29 +10,8 @@ If you are on Linux and have Nix installed, builds and development environments 
 ### Prerequisites
 
 This project requires ledger firmware version: 2.1.0 or greater
-This project will try to build [nanos-secure-sdk](https://github.com/LedgerHQ/nanos-secure-sdk), so you will need:
 
-#### Linux
-
-1. A standard ARM gcc (`sudo apt-get install gcc-arm-none-eabi binutils-arm-none-eabi`)
-2. Cross compilation headers (`sudo apt-get install gcc-multilib`)
-2. Python3 (`sudo apt-get install python3`)
-3. Pip3 (`sudo apt-get install python3-pip`)
-
-#### Windows
-
-1. install [Clang](http://releases.llvm.org/download.html)
-2. install an [ARM GCC toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads)
-3. [Python](https://www.python.org/)
-
-
-Other things you will need:
-- [Cargo-ledger](https://github.com/LedgerHQ/cargo-ledger.git)
-- [Speculos](https://github.com/LedgerHQ/speculos) (make sure you add speculos.py to your PATH by running `export PATH=/path/to/speculos:$PATH`)
-- The correct target for rustc: `rustup target add thumbv6m-none-eabi`
-
-You can build on either Windows or Linux with a simple `cargo build` or `cargo build --release`.
-It currently builds on stable.
+Building and installing this app from source currently requires the [nix](https://nixos.org/) package manager and a linux machine to construct the appropriate rust environment. Loading a pre-built tarball can be done with the ledgerctl command.
 
 ## Loading
 
@@ -50,15 +29,6 @@ cargo-ledger load
 ````
 You do not need to install cargo-ledger outside of the nix-shell.
 
-Some options of the manifest file can be configured directly in `Cargo.toml` under a custom section:
-
-```yaml
-[package.metadata.nanos]
-curve = "secp256k1"
-flags = "0x40"
-icon = "btc.gif"
-```
-
 ### Using the pre-packaged tarball (any OS)
 Installing the app from a tarball can be done using `ledgerctl`. For more information on how to install and use that tool see the [instructions from LedgerHQ](https://github.com/LedgerHQ/ledgerctl).
 
@@ -68,10 +38,32 @@ cd nano-s-release
 ledgerctl install -f app.json
 ```
 
+alternately, with nix installed,
+
+```bash
+nix-shell https://github.com/obsidiansystems/ledger-app-pocket/releases/tag/v0.0.4/release.tar.gz --run load-app
+```
+
+will fetch ledgerctl and run the install for release 0.0.4 of the app.
+
 ## Testing
 
 One can for example use [speculos](https://github.com/LedgerHQ/speculos)
 
 `cargo run --release` defaults to running speculos on the generated binary with the appropriate flags, if `speculos.py` is in your `PATH`.
 
-There is a small test script that sends some of the available commands in `test/test_cmds.py`, or raw APDUs that can be used with `ledgerctl`.
+The test suite can be run with `cargo test` in from the shell provided by nix-shell.
+
+A shell with the generic-cli tool for interacting with ledger apps, a "load-app" command to load the app, and pocket-core on the path can be accessed with the appShell derivation, and generic-cli can be used to interact with the app:
+
+```bash
+nix-shell -A appShell
+
+generic-cli getAddress --useBlock "44'/535348'/0'/0/0" --json
+
+generic-cli sign --useBlock "44'/535348'/0'/0/0" --json '{"chain_id":"testnet","entropy":"-7780543831205109370","fee":[{"amount":"10000","denom":"upokt"}],"memo":"","msg":{"type":"pos/Send","value":{"amount":"1000000","from_address":"51568b979c4c017735a743e289dd862987143290","to_address":"51568b979c4c017735a743e289dd862987143290"}}}'
+
+```
+
+the --useBlock argument to generic-cli is required for the pocket app to select the correct ledger/host protocol. Producing a transaction to sign, and assembling the resulting ed25519 signature with the transaction to send, are done with the pocket commandline.
+

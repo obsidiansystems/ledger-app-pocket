@@ -2110,6 +2110,15 @@ let
         sha512 = "W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==";
       };
     };
+    "fast-sha256-1.3.0" = {
+      name = "fast-sha256";
+      packageName = "fast-sha256";
+      version = "1.3.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/fast-sha256/-/fast-sha256-1.3.0.tgz";
+        sha512 = "n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==";
+      };
+    };
     "fastest-levenshtein-1.0.12" = {
       name = "fastest-levenshtein";
       packageName = "fastest-levenshtein";
@@ -2776,24 +2785,24 @@ let
         sha512 = "EC2utToWl4RKfs5zd36Mxq7nzHHBuomZboI0yYL6Y0RmBgT7Sgkq4rQ0ezFTYoIsSs7Tm9SJe+o2FcAg6GBhGA==";
       };
     };
-    "hw-app-obsidian-common-git+http://github.com/obsidiansystems/hw-app-obsidian-common#9fd33f6218f34c0e3a7da96b63656a2b3ae76e95" = {
+    "hw-app-obsidian-common-git+https://github.com/obsidiansystems/hw-app-obsidian-common.git#26be9cd3ed1ac0ad777618bb165dc06c80393332" = {
       name = "hw-app-obsidian-common";
       packageName = "hw-app-obsidian-common";
       version = "0.0.1";
       src = fetchgit {
-        url = "http://github.com/obsidiansystems/hw-app-obsidian-common";
-        rev = "9fd33f6218f34c0e3a7da96b63656a2b3ae76e95";
-        sha256 = "1f376864ec95fbbe1a8c121f61254578f784e972c1ed7d920e8b6f642b801808";
+        url = "https://github.com/obsidiansystems/hw-app-obsidian-common.git";
+        rev = "26be9cd3ed1ac0ad777618bb165dc06c80393332";
+        sha256 = "eec76477991ecec8bf7cdc1a77c240f93c4f7dfd2814070a77dcf37f4557e17b";
       };
     };
-    "hw-app-pokt-git+ssh://git@github.com/obsidiansystems/hw-app-pokt.git#cd9843156b2639b4cd4024c69fec41192f93bc43" = {
+    "hw-app-pokt-git+https://github.com/obsidiansystems/hw-app-pokt.git#26884adaa97f0098a6c7e5e1821ce48d3ae12e7f" = {
       name = "hw-app-pokt";
       packageName = "hw-app-pokt";
       version = "0.0.0";
       src = fetchgit {
-        url = "ssh://git@github.com/obsidiansystems/hw-app-pokt.git";
-        rev = "cd9843156b2639b4cd4024c69fec41192f93bc43";
-        sha256 = "8ddfe159d2b4bbce5b9fe2f10f02d288d04d1929745ffb8f12f55470a8bd5ef8";
+        url = "https://github.com/obsidiansystems/hw-app-pokt.git";
+        rev = "26884adaa97f0098a6c7e5e1821ce48d3ae12e7f";
+        sha256 = "6b9218c722a7a66aa4ecf71485b1fd6d4d60f0f7f74d200d8ba8925d3d3b5e31";
       };
     };
     "indent-string-4.0.0" = {
@@ -4198,6 +4207,15 @@ let
       src = fetchurl {
         url = "https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz";
         sha512 = "Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==";
+      };
+    };
+    "noble-ed25519-1.2.6" = {
+      name = "noble-ed25519";
+      packageName = "noble-ed25519";
+      version = "1.2.6";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/noble-ed25519/-/noble-ed25519-1.2.6.tgz";
+        sha512 = "zfnWqg9FVMp8CnzUpAjbt1nDXpDjCvxYiCXdnW1mY8zQHw/6twUlkFm14VPdojVzc0kcd+i9zT79+26GcNbsuQ==";
       };
     };
     "node-domexception-1.0.0" = {
@@ -7061,6 +7079,7 @@ let
       sources."fast-check-2.21.0"
       sources."fast-levenshtein-3.0.0"
       sources."fast-safe-stringify-2.1.1"
+      sources."fast-sha256-1.3.0"
       sources."fastest-levenshtein-1.0.12"
       sources."faye-websocket-0.10.0"
       sources."fecha-4.2.1"
@@ -7164,8 +7183,11 @@ let
       sources."html-void-elements-1.0.5"
       sources."http-parser-js-0.5.5"
       sources."http2-client-1.3.5"
-      sources."hw-app-obsidian-common-git+http://github.com/obsidiansystems/hw-app-obsidian-common#9fd33f6218f34c0e3a7da96b63656a2b3ae76e95"
-      sources."hw-app-pokt-git+ssh://git@github.com/obsidiansystems/hw-app-pokt.git#cd9843156b2639b4cd4024c69fec41192f93bc43"
+      (sources."hw-app-pokt-git+https://github.com/obsidiansystems/hw-app-pokt.git#26884adaa97f0098a6c7e5e1821ce48d3ae12e7f" // {
+        dependencies = [
+          sources."hw-app-obsidian-common-git+https://github.com/obsidiansystems/hw-app-obsidian-common.git#26be9cd3ed1ac0ad777618bb165dc06c80393332"
+        ];
+      })
       sources."indent-string-4.0.0"
       sources."inflight-1.0.6"
       sources."inherits-2.0.4"
@@ -7383,6 +7405,7 @@ let
       sources."nanoid-3.1.20"
       sources."nanomatch-1.2.13"
       sources."neo-async-2.6.2"
+      sources."noble-ed25519-1.2.6"
       sources."node-domexception-1.0.0"
       sources."node-fetch-3.2.0"
       sources."node-fetch-h2-2.3.0"
