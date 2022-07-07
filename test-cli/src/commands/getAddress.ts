@@ -49,7 +49,8 @@ export const handler = async (argv: Arguments<Options>): Promise<void> => {
     process.stdout.write(JSON.stringify(res, null, 2));
     process.exit(0);
   }
-  process.stdout.write(res.publicKey + "\n");
+  process.stdout.write("address: " + res.address + "\n");
+  process.stdout.write("public key: " + res.publicKey + "\n");
   process.exit(0);
 }
 
