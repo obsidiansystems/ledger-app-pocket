@@ -9,7 +9,7 @@ case $3 in
     echo RUST APP IS: $RUST_APP
     speculos -k 2.0 $RUST_APP --display headless &
     SPECULOS=$!
-    until wget -O/dev/null -o/dev/null http://localhost:5000/; do sleep 0.1; done;
+    until wget -O- -o/dev/null http://localhost:5000/events | grep -q Pocket; do sleep 0.1; done;
     cd ../ts-tests;
     if ! [ -d "node_modules" ] ; then npm install; fi
     npm test

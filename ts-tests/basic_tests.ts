@@ -6,7 +6,7 @@ import Transport from "./common";
 import Pokt from "hw-app-pokt";
 import * as ed from 'noble-ed25519';
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.3"]
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.4"]
 
 let setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
@@ -74,17 +74,17 @@ describe('basic tests', () => {
   afterEach( async function() {
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
     await Axios.delete("http://localhost:5000/events");
-    await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
+    // await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
   });
 
   it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
-      let rv = await pokt.getPublicKey("0");
-      expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
+      let rv = await pokt.getPublicKey("44'/535348'/0");
+      expect(rv.publicKey).to.equal("20fb7058c31049db08e84d52ff7605cdcdf77db785380ef11b553cd454a7fa56");
       return;
     }, [
-      { "header": "Provide Public Key", "prompt": "For Address     7F916B907886913C6DD7AB62681FC52140AFBC84" },
+      { "header": "Provide Public Key", "prompt": "For Address     B9B72B620528F110AF6E688CEF927789657752C2" },
       {
         "text": "Confirm",
         "x": 43,
@@ -95,12 +95,12 @@ describe('basic tests', () => {
   
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (kda : Pokt) => {
-      let rv = await kda.getPublicKey("0");
-      expect(rv.publicKey).to.equal("8118ad392b9276e348c1473649a3bbb7ec2b39380e40898d25b55e9e6ee94ca3");
+      let rv = await kda.getPublicKey("44'/535348'/0");
+      expect(rv.publicKey).to.equal("20fb7058c31049db08e84d52ff7605cdcdf77db785380ef11b553cd454a7fa56");
       return;
     },
     [
-      { "header": "Provide Public Key", "prompt": "For Address     7F916B907886913C6DD7AB62681FC52140AFBC84" },
+      { "header": "Provide Public Key", "prompt": "For Address     B9B72B620528F110AF6E688CEF927789657752C2" },
       {
         "text": "Confirm",
         "x": 43,
@@ -214,7 +214,7 @@ let exampleUnstake = {
 describe("Signing tests", function() {
   it("can sign a simple transfer",
      testTransaction(
-       "0/0",
+       "44'/535348'/0/0",
        JSON.stringify(exampleSend),
 [
          {
@@ -223,7 +223,7 @@ describe("Signing tests", function() {
          },
          {
         "header": "For Account",
-        "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+        "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
          },
          {
         "header": "Send",
@@ -250,7 +250,7 @@ describe("Signing tests", function() {
      ));
   it("can sign a simple unjail",
      testTransaction(
-       "0/0",
+       "44'/535348'/0/0",
        JSON.stringify(exampleUnjail),
        [
         { "header": "Signing",
@@ -258,7 +258,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+          "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
         },
          {
            "text": "Confirm",
@@ -270,7 +270,7 @@ describe("Signing tests", function() {
 
   it("can sign a simple stake",
      testTransaction(
-       "0/0",
+       "44'/535348'/0/0",
        JSON.stringify(exampleStake),
        [
         { "header": "Signing",
@@ -278,7 +278,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+          "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
         },
          {
         "header": "Stake",
@@ -311,7 +311,7 @@ describe("Signing tests", function() {
 
   it("can sign a simple unstake",
      testTransaction(
-       "0/0",
+       "44'/535348'/0/0",
        JSON.stringify(exampleUnstake),
        [
         { "header": "Signing",
@@ -319,7 +319,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "678C1A7A95CDCA4812036CB4A2466F033973E962"
+          "prompt": "417AE5CFCCE61343BB596B5204558225E6100BEA"
         },
         {
           "header": "Unstake",
