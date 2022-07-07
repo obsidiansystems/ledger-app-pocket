@@ -63,6 +63,7 @@ rec {
 
     mkdir -p $out/pocket
     cp app.json app.hex $out/pocket
+    cp ${rootCrate}/bin/pocket $out/pocket/app.elf
     cp ${./tarball-default.nix} $out/pocket/default.nix
     cp ${./tarball-shell.nix} $out/pocket/shell.nix
     cp ${./rust-app/pocket.gif} $out/pocket/pocket.gif
