@@ -9,7 +9,7 @@ use core::ops::{Deref,DerefMut};
 use arrayvec::{CapacityError,ArrayVec};
 use ledger_log::*;
 
-pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/535348'/0'/0/0");
+pub const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'/0'/0/0");
 
 /// Helper function that derives the seed over Ed25519
 pub fn bip32_derive_eddsa(path: &[u32]) -> Result<[u8; 64], SyscallError> {
