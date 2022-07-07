@@ -17,18 +17,15 @@ export const builder: CommandBuilder<Options, Options> = (yargs) =>
   yargs
     .options({
       speculos: {type: 'boolean'},
-      useBlock: {type: 'boolean'},
       json: {type: 'boolean'},
       verbose: {type: 'boolean'},
     })
     .describe({
       speculos: "Connect to a speculos instance instead of a real ledger; use --apdu 5555 when running speculos to enable.",
-      useBlock: "Use block protocol",
       json: "Output all fields from getAddress in json format",
       verbose: "Print verbose output of message transfer with ledger",
     })
     .default('speculos', false)
-    .default('useBlock', false)
     .default('json', false)
     .default('verbose', false)
     .positional('path', {type: 'string', demandOption: true, description: "Bip32 path to for the public key to provide."});
@@ -44,9 +41,7 @@ export const handler = async (argv: Arguments<Options>): Promise<void> => {
   }
 
   let app = new Common(transport, "", "", verbose === true);
-  if(useBlock) {
-    app.sendChunks = app.sendWithBlocks;
-  }
+  app.sendChunks = app.sendWithBlocks;
 
   let res = await app.getPublicKey(path);
 
