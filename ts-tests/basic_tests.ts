@@ -260,6 +260,14 @@ describe("Signing tests", function() {
           "header": "For Account",
           "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
         },
+        {
+          "header": "Unjail",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "Address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
          {
            "text": "Confirm",
            "x": 43,
@@ -326,7 +334,7 @@ describe("Signing tests", function() {
           "prompt": "Transaction"
         },
         {
-          "header": "Transfer from",
+          "header": "Unstake address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
         },
         {
