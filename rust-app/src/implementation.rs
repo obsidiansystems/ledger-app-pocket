@@ -136,7 +136,15 @@ const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
 
 const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> =
   Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
-  UnstakeValueInterp{field_validator_address: UNSTAKE_FROM_ADDRESS_ACTION});
+  UnstakeValueInterp{field_validator_address: UNSTAKE_FROM_ADDRESS_ACTION, field_signer_address: SIGNER_ADDRESS_ACTION});
+
+const SIGNER_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> =
+  Action(JsonStringAccumulate::<64>,
+        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
+          write_scroller("Signer address", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+          *destination = Some(());
+          Some(())
+        }));
 
 const UNSTAKE_FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
                                   //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
@@ -149,7 +157,7 @@ const UNSTAKE_FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = /
 
 const UNJAIL_MESSAGE_ACTION: impl JsonInterp<UnjailValueSchema, State: Debug> =
   Preaction(|| { write_scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
-  UnjailValueInterp{field_address: UNJAIL_ADDRESS_ACTION});
+  UnjailValueInterp{field_address: UNJAIL_ADDRESS_ACTION, field_signer_address: SIGNER_ADDRESS_ACTION});
 
 const UNJAIL_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
                                   //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
@@ -458,13 +466,13 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
           b"pos/Send" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::SendMessage));
           }
-          b"pos/MsgUnjail" =>  {
+          b"pos/8.0MsgUnjail" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnjailMessage));
           }
           b"pos/MsgStake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::StakeMessage));
           }
-          b"pos/MsgBeginUnstake" =>  {
+          b"pos/8.0MsgBeginUnstake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnstakeMessage));
           }
           _ => return Err(Some(OOB::Reject)),

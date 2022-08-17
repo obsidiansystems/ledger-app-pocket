@@ -41,7 +41,8 @@ define_json_struct! { SendValue 16 {
 }}
 
 define_json_struct! { UnjailValue 16 {
-  address: JsonString
+  address: JsonString,
+  signer_address: JsonString
 }}
 
 define_json_struct! { PublicKey 16 {
@@ -57,6 +58,7 @@ define_json_struct! { StakeValue 16 {
 }}
 
 define_json_struct! { UnstakeValue 17 {
+  signer_address: JsonString,
   validator_address: JsonString
 }}
 
