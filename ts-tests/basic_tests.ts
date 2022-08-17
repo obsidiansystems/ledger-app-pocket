@@ -160,9 +160,10 @@ let exampleUnjail = {
   ],
   "memo": "",
   "msg": {
-    "type": "pos/MsgUnjail",
+    "type": "pos/8.0MsgUnjail",
     "value": {
-      "address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+      "address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "signer_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
     }
   }
 };
@@ -204,8 +205,9 @@ let exampleUnstake = {
   ],
   "memo": "",
   "msg": {
-    "type": "pos/MsgBeginUnstake",
+    "type": "pos/8.0MsgBeginUnstake",
     "value": {
+      "signer_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb",
       "validator_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
     }
   }
@@ -267,6 +269,10 @@ describe("Signing tests", function() {
         {
           "header": "Address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "header": "Signer address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
         },
          {
            "text": "Confirm",
@@ -332,6 +338,10 @@ describe("Signing tests", function() {
         {
           "header": "Unstake",
           "prompt": "Transaction"
+        },
+        {
+          "header": "Signer address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
         },
         {
           "header": "Unstake address",
