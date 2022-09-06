@@ -179,7 +179,7 @@ let exampleStake = {
   ],
   "memo": "",
   "msg": {
-    "type": "pos/MsgStake",
+    "type": "pos/8.0MsgStake",
     "value": {
       "chains": [
         "0034"
@@ -189,7 +189,8 @@ let exampleStake = {
         "value": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0"
       },
       "service_url": "https://serviceURI.com:3000",
-      "value": "1000000"
+      "value": "1000000",
+      "output_address":"db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
     }
   }
 };
@@ -314,6 +315,10 @@ describe("Signing tests", function() {
         "header": "Value",
         "prompt": "1000000",
          },
+	 {
+	"header": "Output Address",
+	"prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+	 },
          {
            "text": "Confirm",
            "x": 43,

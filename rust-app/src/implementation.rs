@@ -124,6 +124,7 @@ const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
     field_public_key: PUBLICKEY_ACTION,
     field_service_url: SERVICE_URL_ACTION,
     field_value: VALUE_ACTION,
+    field_output_address: show_address::<"Output Address">()
   });
 
 
@@ -438,7 +439,7 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
           b"pos/8.0MsgUnjail" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnjailMessage));
           }
-          b"pos/MsgStake" =>  {
+          b"pos/8.0MsgStake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::StakeMessage));
           }
           b"pos/8.0MsgBeginUnstake" =>  {
