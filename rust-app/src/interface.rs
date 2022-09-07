@@ -54,7 +54,8 @@ define_json_struct! { StakeValue 16 {
   chains: JsonArray<JsonString>,
   public_key: PublicKeySchema,
   service_url: JsonString,
-  value: JsonString
+  value: JsonString,
+  output_address: JsonString
 }}
 
 define_json_struct! { UnstakeValue 17 {

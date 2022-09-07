@@ -55,23 +55,14 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
         }).ok()
     }));
 
-const FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
-                                  //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
+const fn show_address<const TITLE: &'static str>() -> impl JsonInterp<JsonString, State: Debug> {
   Action(JsonStringAccumulate::<64>,
-        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
-          write_scroller("Transfer from", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+        mkvfn(move | from_address: &ArrayVec<u8, 64>, destination | {
+          write_scroller(TITLE, |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
           *destination = Some(());
           Some(())
-        }));
-
-const TO_ADDRESS_ACTION: Action<JsonStringAccumulate<64>,
-                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
-  Action(JsonStringAccumulate::<64>,
-        | to_address, destination | {
-            write_scroller("Transfer To", |w| Ok(write!(w, "{}", from_utf8(to_address.as_slice())?)?))?;
-            *destination = Some(());
-            Some(())
-        });
+        }))
+}
 
 /* This would be used to show fees; not currently used.
 const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccumulate<64>>,
@@ -87,8 +78,8 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
 const SEND_MESSAGE_ACTION: impl JsonInterp<SendValueSchema, State: Debug> =
   Preaction(|| { write_scroller("Send", |w| Ok(write!(w, "Transaction")?)) },
   SendValueInterp{field_amount: VALUE_ACTION,
-            field_from_address: FROM_ADDRESS_ACTION,
-            field_to_address: TO_ADDRESS_ACTION});
+            field_from_address: show_address::<"Transfer from">(), // FROM_ADDRESS_ACTION,
+            field_to_address: show_address::<"Transfer To">()}); // TO_ADDRESS_ACTION});
 
 const CHAIN_ACTION: Action<JsonStringAccumulate<64>,
                            fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
@@ -132,41 +123,20 @@ const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
     field_chains: SubInterp(CHAIN_ACTION),
     field_public_key: PUBLICKEY_ACTION,
     field_service_url: SERVICE_URL_ACTION,
-    field_value: VALUE_ACTION});
+    field_value: VALUE_ACTION,
+    field_output_address: show_address::<"Output Address">()
+  });
+
 
 const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> =
   Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
-  UnstakeValueInterp{field_validator_address: UNSTAKE_FROM_ADDRESS_ACTION, field_signer_address: SIGNER_ADDRESS_ACTION});
+  UnstakeValueInterp{field_validator_address: show_address::<"Unstake address">(), field_signer_address: SIGNER_ADDRESS_ACTION});
 
-const SIGNER_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> =
-  Action(JsonStringAccumulate::<64>,
-        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
-          write_scroller("Signer address", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
-          *destination = Some(());
-          Some(())
-        }));
-
-const UNSTAKE_FROM_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
-                                  //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
-  Action(JsonStringAccumulate::<64>,
-        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
-          write_scroller("Unstake address", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
-          *destination = Some(());
-          Some(())
-        }));
+const SIGNER_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = show_address::<"Signer address">();
 
 const UNJAIL_MESSAGE_ACTION: impl JsonInterp<UnjailValueSchema, State: Debug> =
   Preaction(|| { write_scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
-  UnjailValueInterp{field_address: UNJAIL_ADDRESS_ACTION, field_signer_address: SIGNER_ADDRESS_ACTION});
-
-const UNJAIL_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = //Action<JsonStringAccumulate<64>,
-                                  //fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
-  Action(JsonStringAccumulate::<64>,
-        mkvfn(| from_address: &ArrayVec<u8, 64>, destination | {
-          write_scroller("Address", |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
-          *destination = Some(());
-          Some(())
-        }));
+  UnjailValueInterp{field_address: show_address::<"Address">(), field_signer_address: SIGNER_ADDRESS_ACTION});
 
 pub struct DynamicStackBoxSlot<S>(S, bool);
 pub struct DynamicStackBox<S>(*mut DynamicStackBoxSlot<S>);
@@ -469,7 +439,7 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
           b"pos/8.0MsgUnjail" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::UnjailMessage));
           }
-          b"pos/MsgStake" =>  {
+          b"pos/8.0MsgStake" =>  {
             set_from_thunk(state, ||MessageState::ValueSep(MessageType::StakeMessage));
           }
           b"pos/8.0MsgBeginUnstake" =>  {
