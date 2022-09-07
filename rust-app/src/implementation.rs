@@ -41,10 +41,6 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
         with_public_keys(path, |key: &_, pkh: &_| {
 
-        write_scroller("Provide Public Key", |w| Ok(write!(w, "For Address     {}", pkh)?))?;
-
-        final_accept_prompt(&[])?;
-
         let key_bytes = public_key_bytes(key);
         let rv = destination.insert(ArrayVec::new());
         rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;

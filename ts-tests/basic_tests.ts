@@ -83,14 +83,7 @@ describe('basic tests', () => {
       let rv = await pokt.getPublicKey("44'/635'/0");
       expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
-    }, [
-      { "header": "Provide Public Key", "prompt": "For Address     80E004848CD91888257D10E783420E923709E2D1" },
-      {
-        "text": "Confirm",
-        "x": 43,
-        "y": 11,
-      },
-    ]);
+    }, []);
   });
   
   it('provides a public key', async () => {
@@ -98,15 +91,7 @@ describe('basic tests', () => {
       let rv = await kda.getPublicKey("44'/635'/0");
       expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
-    },
-    [
-      { "header": "Provide Public Key", "prompt": "For Address     80E004848CD91888257D10E783420E923709E2D1" },
-      {
-        "text": "Confirm",
-        "x": 43,
-        "y": 11,
-      },
-    ]);
+    }, []);
   });
 });
 
