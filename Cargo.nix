@@ -304,11 +304,12 @@ rec {
         crateName = "ledger-crypto-helpers";
         version = "0.2.0";
         edition = "2018";
-        # We can't filter paths with references in Nix 2.4
-        # See https://github.com/NixOS/nix/issues/5410
-        src = if (lib.versionOlder builtins.nixVersion "2.4pre20211007")
-          then lib.cleanSourceWith { filter = sourceFilter;  src = ../../obsidian/ledger-crypto-helpers; }
-          else ../../obsidian/ledger-crypto-helpers;
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/alamgu/ledger-crypto-helpers";
+          rev = "091c2195a76e98341364b2f7f3837026ecf8b050";
+          sha256 = "1kcn6mxnlw2dd7g55nr1kmqiqn2slsjaihd16vlzv3bvdz8c6csh";
+        };
         dependencies = [
           {
             name = "arrayvec";
