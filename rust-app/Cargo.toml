@@ -1,7 +1,6 @@
-cargo-features = ["edition2021"]
 [package]
 name = "pocket"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["jonored", "yhql"]
 edition = "2021"
 autobins = false
@@ -9,10 +8,13 @@ resolver = "2"
 
 [dependencies]
 arrayvec = { version = "0.7.2", default-features = false }
-ledger-parser-combinators = { git = "https://github.com/obsidiansystems/ledger-parser-combinators", branch="wip-pocket-stuff" }
-ledger-log = { git = "https://github.com/obsidiansystems/ledger-platform" }
-zeroize = { version = "1.5.2", default-features = false }
 enum-init = { git = "https://github.com/obsidiansystems/enum-init" }
+#ledger-crypto-helpers = { git = "https://github.com/alamgu/ledger-crypto-helpers" }
+ledger-crypto-helpers = { path = "/home/jcericson/src/obsidian/ledger-crypto-helpers" }
+ledger-log = { git = "https://github.com/alamgu/ledger-log" }
+ledger-parser-combinators = { git = "https://github.com/alamgu/ledger-parser-combinators" }
+zeroize = { version = "1.5.2", default-features = false }
+
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable
 # speculos logging and change log level.
 [features]
@@ -21,12 +23,12 @@ default = [ ]
 speculos = [ "nanos_sdk/speculos", "ledger-log/speculos", "ledger-log/log_error", "ledger-parser-combinators/logging" ]
 extra_debug = ["ledger-log/log_trace"]
 
-[target.thumbv6m-none-eabi.dependencies]
-nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git" }
-nanos_ui = { git = "https://github.com/LedgerHQ/ledger-nanos-ui.git" }
-prompts-ui = { git = "https://github.com/obsidiansystems/ledger-platform" }
+[target.'cfg(target_family = "bolos")'.dependencies]
+nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git" } 
+nanos_ui = { git = "https://github.com/LedgerHQ/ledger-nanos-ui.git" } 
+ledger-prompts-ui = { git = "https://github.com/alamgu/ledger-prompts-ui" }
 
-[target.thumbv6m-none-eabi.dev-dependencies.nanos_sdk]
+[target.'cfg(target_family = "bolos")'.dev-dependencies.nanos_sdk]
 git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git"
 features = [ "speculos" ]
 
@@ -39,9 +41,21 @@ test = false
 path = "bin-src/main.rs"
 
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk.git".nanos_sdk]
-# path = "./ledger-nanos-sdk"
-git = "https://github.com/obsidiansystems/ledger-nanos-sdk.git"
-branch = "use-ambient-compiler-and-target"
+git = "https://github.com/alamgu/ledger-nanos-sdk.git"
+branch = "unified-build-with-lib-bagl"
+[patch."https://github.com/LedgerHQ/ledger-nanos-ui.git".nanos_ui]
+git = "https://github.com/obsidiansystems/ledger-nanos-ui"
+branch = "use-lib-bagl-for-x-and-splus"
+
+[profile.dev]
+# We need this to ensure stack usage is minimal even on speculos
+opt-level = 3
+# This is needed to avoid this error while doing 'cargo stack-sizes'
+#    error: undefined symbol: core::panicking::panic::
+overflow-checks = false
+[profile.release]
+opt-level = 3
+overflow-checks = false
 
 [package.metadata.nanos]
 name = "Pocket"
@@ -49,3 +63,4 @@ path = "44'/635'"
 curve = "ed25519"
 flags = "0"
 icon = "pocket.gif"
+icon_small = "pocket-small.gif"

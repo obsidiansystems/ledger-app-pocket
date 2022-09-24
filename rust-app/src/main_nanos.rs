@@ -1,18 +1,16 @@
-use pocket::implementation::*;
-use prompts_ui::RootMenu;
-use core::convert::{TryFrom, TryInto};
-use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
-use crypto_helpers::{Hash, Hasher};
+use crate::implementation::*;
+use crate::interface::*;
+
+use ledger_crypto_helpers::hasher::{Hasher, SHA256};
+use ledger_parser_combinators::interp_parser::OOB;
+use ledger_parser_combinators::interp_parser::call_me_maybe;
+use ledger_prompts_ui::RootMenu;
+use ledger_log::{info, trace};
+
 use nanos_sdk::io;
 
-nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
-
-use ledger_parser_combinators::interp_parser::OOB;
-use pocket::*;
-
-#[cfg(not(test))]
-#[no_mangle]
-extern "C" fn sample_main() {
+#[allow(dead_code)]
+pub fn app_main() {
     let mut comm = io::Comm::new();
     let mut states = ParsersState::NoState;
     let mut block_state = BlockState::default();
@@ -62,7 +60,7 @@ extern "C" fn sample_main() {
                         _ => (),
                     } }
                     _ => { match busy_menu.update(btn) {
-                        Some(1) => { info!("Resetting at user direction via busy menu"); set_from_thunk(&mut states, || ParsersState::NoState); }
+                        Some(1) => { info!("Resetting at user direction via busy menu"); reset_parsers_state(&mut states) }
                         _ => (),
                     } }
                 };
@@ -106,7 +104,7 @@ use nanos_sdk::io::Reply;
 use ledger_parser_combinators::interp_parser::InterpParser;
 
 const HASH_LEN: usize = 32;
-type SHA256 = [u8; HASH_LEN];
+type BSHA256 = [u8; HASH_LEN];
 
 const MAX_PARAMS: usize = 2;
 
@@ -114,8 +112,8 @@ const MAX_PARAMS: usize = 2;
 // Ed25519.
 #[derive(Default)]
 struct BlockState {
-    params: ArrayVec<SHA256, MAX_PARAMS>,
-    requested_block: SHA256,
+    params: ArrayVec<BSHA256, MAX_PARAMS>,
+    requested_block: BSHA256,
     state: usize,
 }
 
@@ -155,7 +153,7 @@ impl TryFrom<u8> for HostToLedgerCmd {
 /*
 trait BlockyAdapterScheme {
     const first_param : usize;
-    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<SHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply>;
+    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<BSHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply>;
 }
 
 enum SignStateEnum {
@@ -173,7 +171,7 @@ impl Default for SignStateEnum {
 
 impl BlockyAdapterScheme for SignStateEnum {
     const first_param: usize = 0;
-    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<SHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply> -> {
+    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<BSHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply> -> {
         match self {
             BlockStateEnum::FirstPassPath => {
                 *self = BlockStateEnum::FirstPassTxn;
@@ -205,6 +203,9 @@ impl BlockyAdapterScheme for OneParamOnceState {
     }
 }
 */
+
+
+use ledger_parser_combinators::interp_parser::{ParserCommon};
 
 #[inline(never)]
 fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N: usize>(
@@ -243,10 +244,10 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
 
             // Check the hash, so the host can't lie.
             call_me_maybe( || {
-                let mut hasher = Hasher::new();
+                let mut hasher = SHA256::new();
                 hasher.update(&block[1..]);
-                let Hash(hashed) = hasher.finalize();
-                if hashed != block_state.requested_block {
+                let hashed = hasher.finalize();
+                if hashed.0 != block_state.requested_block {
                     None
                 } else {
                     Some(())
@@ -338,10 +339,10 @@ fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState, block_s
             comm.append(b"Pocket");
         }
         Ins::GetPubkey => {
-            run_parser_apdu::<_, Bip32Key>(parser, get_get_address_state, block_state, &[0], &GET_ADDRESS_IMPL, comm)?
+            run_parser_apdu::<_, Bip32Key, _>(parser, get_get_address_state, block_state, &[0], &GET_ADDRESS_IMPL, comm)?
         }
         Ins::Sign => {
-            run_parser_apdu::<_, SignParameters>(parser, get_sign_state, block_state, &SIGN_SEQ, &SIGN_IMPL, comm)?
+            run_parser_apdu::<_, DoubledSignParameters, _>(parser, get_sign_state, block_state, &SIGN_SEQ, &SIGN_IMPL, comm)?
         }
         Ins::GetVersionStr => {
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
