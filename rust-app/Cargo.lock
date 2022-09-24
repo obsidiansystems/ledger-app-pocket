@@ -62,17 +62,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-init"
-version = "0.1.0"
-source = "git+https://github.com/obsidiansystems/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c"
-dependencies = [
- "Inflector",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -121,7 +110,7 @@ source = "git+https://github.com/alamgu/ledger-parser-combinators#c7ee244c322d42
 dependencies = [
  "arrayvec",
  "bstringify",
- "enum-init 0.1.0 (git+https://github.com/alamgu/enum-init)",
+ "enum-init",
  "generic-array",
  "ledger-log",
  "nanos_sdk",
@@ -191,7 +180,7 @@ name = "pocket"
 version = "0.0.5"
 dependencies = [
  "arrayvec",
- "enum-init 0.1.0 (git+https://github.com/obsidiansystems/enum-init)",
+ "enum-init",
  "ledger-crypto-helpers",
  "ledger-log",
  "ledger-parser-combinators",

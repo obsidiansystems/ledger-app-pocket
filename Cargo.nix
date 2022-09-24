@@ -184,46 +184,13 @@ rec {
           "parallel" = [ "jobserver" ];
         };
       };
-      "enum-init 0.1.0 (git+https://github.com/alamgu/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)" = rec {
+      "enum-init" = rec {
         crateName = "enum-init";
         version = "0.1.0";
         edition = "2018";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/alamgu/enum-init";
-          rev = "a831c2fbbe00af926ae87c064bfe4da58d26777c";
-          sha256 = "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr";
-        };
-        procMacro = true;
-        dependencies = [
-          {
-            name = "Inflector";
-            packageId = "Inflector";
-            rename = "inflector";
-          }
-          {
-            name = "proc-macro2";
-            packageId = "proc-macro2";
-          }
-          {
-            name = "quote";
-            packageId = "quote";
-          }
-          {
-            name = "syn";
-            packageId = "syn";
-            features = [ "full" ];
-          }
-        ];
-
-      };
-      "enum-init 0.1.0 (git+https://github.com/obsidiansystems/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)" = rec {
-        crateName = "enum-init";
-        version = "0.1.0";
-        edition = "2018";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/enum-init";
           rev = "a831c2fbbe00af926ae87c064bfe4da58d26777c";
           sha256 = "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr";
         };
@@ -399,7 +366,7 @@ rec {
           }
           {
             name = "enum-init";
-            packageId = "enum-init 0.1.0 (git+https://github.com/alamgu/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)";
+            packageId = "enum-init";
           }
           {
             name = "generic-array";
@@ -605,7 +572,7 @@ rec {
           }
           {
             name = "enum-init";
-            packageId = "enum-init 0.1.0 (git+https://github.com/obsidiansystems/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)";
+            packageId = "enum-init";
           }
           {
             name = "ledger-crypto-helpers";
