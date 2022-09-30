@@ -14,13 +14,15 @@ let setAcceptAutomationRules = async function() {
       rules: [
         ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
         { "y": 16, "actions": [] },
+        { "y": 31, "actions": [] },
+        { "y": 46, "actions": [] },
         { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
         { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
       ]
     });
 }
 
-let processPrompts = function(prompts: [any]) {
+let processPrompts = function(prompts: any[]) {
   let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
   let {done, value} = i.next();
   let header = "";
@@ -35,6 +37,10 @@ let processPrompts = function(prompts: [any]) {
       }
     } else if(value["y"] == 16) {
       prompt += value["text"];
+    } else if((value["y"] == 31)) {
+      prompt += value["text"];
+    } else if((value["y"] == 46)) {
+      prompt += value["text"];
     } else {
       if(header || prompt) rv.push({ header, prompt });
       rv.push(value);
@@ -46,19 +52,45 @@ let processPrompts = function(prompts: [any]) {
   return rv;
 }
 
+let fixActualPromptsForSPlus = function(prompts: any[]) {
+  return prompts.map ( (value) => {
+    if (value["text"]) {
+      value["x"] = "<patched>";
+    }
+    return value;
+  });
+}
+
+// HACK to workaround the OCR bug https://github.com/LedgerHQ/speculos/issues/204
+let fixRefPromptsForSPlus = function(prompts: any[]) {
+  return prompts.map ( (value) => {
+    let fixF = (str: string) => {
+      return str.replace(/S/g,"").replace(/I/g, "l");
+    };
+    if (value["header"]) {
+      value["header"] = fixF(value["header"]);
+      value["prompt"] = fixF(value["prompt"]);
+    } else if (value["text"]) {
+      value["text"] = fixF(value["text"]);
+      value["x"] = "<patched>";
+    }
+    return value;
+  });
+}
+
 let sendCommandAndAccept = async function(command : any, prompts : any) {
     await setAcceptAutomationRules();
     await Axios.delete("http://localhost:5000/events");
 
     let transport = await Transport.open("http://localhost:5000/apdu");
-    let kda = new Pokt(transport);
-    kda.sendChunks = kda.sendWithBlocks;
+    let client = new Pokt(transport);
+    client.sendChunks = client.sendWithBlocks;
     
     //await new Promise(resolve => setTimeout(resolve, 100));
     
     let err = null;
 
-    try { await command(kda); } catch(e) {
+    try { await command(client); } catch(e) {
       err = e;
     }
     
@@ -66,11 +98,21 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 
     if(err) throw(err);
 
-    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
-    // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => a["text"] != "W e l c o m e")).to.deep.equal(prompts);
+    let actual_prompts = processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any]);
+    try {
+      expect(actual_prompts).to.deep.equal(prompts);
+    } catch(e) {
+      try {
+        expect(fixActualPromptsForSPlus(actual_prompts)).to.deep.equal(fixRefPromptsForSPlus(prompts));
+      } catch (_) {
+        // Throw the original error if there is a mismatch as it is generally more useful
+        throw(e);
+      }
+    }
 }
 
 describe('basic tests', () => {
+
   afterEach( async function() {
     await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
     await Axios.delete("http://localhost:5000/events");
@@ -87,8 +129,8 @@ describe('basic tests', () => {
   });
   
   it('provides a public key', async () => {
-  await sendCommandAndAccept(async (kda : Pokt) => {
-      let rv = await kda.getPublicKey("44'/635'/0");
+  await sendCommandAndAccept(async (client : Pokt) => {
+      let rv = await client.getPublicKey("44'/635'/0");
       expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, []);
@@ -98,14 +140,14 @@ describe('basic tests', () => {
 function testTransaction(path: string, txn: string, prompts: any[]) {
      return async () => {
        let sig = await sendCommandAndAccept(
-         async (kda : Pokt) => {
+         async (client : Pokt) => {
 
-           let pk = await kda.getPublicKey(path);
+           let pk = await client.getPublicKey(path);
 
            // We don't want the prompts from getPublicKey in our result
            await Axios.delete("http://localhost:5000/events");
 
-           let sig = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+           let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 
            expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey)).to.equal(true);
          }, prompts);
