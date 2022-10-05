@@ -87,7 +87,7 @@ const fn show_address<const TITLE: &'static str>() -> Action<JsonStringAccumulat
 {
   Action(JsonStringAccumulate::<64>,
         mkvfn(move | from_address: &ArrayVec<u8, 64>, destination | {
-          write_scroller(TITLE, |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+          scroller(TITLE, |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
           *destination = Some(());
           Some(())
         }))
@@ -98,7 +98,7 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
                                   fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>> =
   Action(AmountType{field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>},
         | AmountType{field_amount: amount, field_denom: denom}, destination | {
-          write_scroller("Amount:", |w| Ok(write!(w, "{} ({})", from_utf8(amount.as_ref()?)?, from_utf8(denom.as_ref()?)?)?))?;
+          scroller("Amount:", |w| Ok(write!(w, "{} ({})", from_utf8(amount.as_ref()?)?, from_utf8(denom.as_ref()?)?)?))?;
           *destination = Some(());
           Some(())
         });
@@ -106,7 +106,7 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
 
 type SendMessageAction = impl JsonInterp<SendValueSchema, State: Debug>;
 const SEND_MESSAGE_ACTION: SendMessageAction =
-  Preaction(|| { write_scroller("Send", |w| Ok(write!(w, "Transaction")?)) },
+  Preaction(|| { scroller("Send", |w| Ok(write!(w, "Transaction")?)) },
   SendValueInterp{field_amount: VALUE_ACTION,
             field_from_address: show_address::<"Transfer from">(), // FROM_ADDRESS_ACTION,
             field_to_address: show_address::<"Transfer To">()}); // TO_ADDRESS_ACTION});
@@ -115,7 +115,7 @@ const CHAIN_ACTION: Action<JsonStringAccumulate<64>,
                            fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | chain, destination | {
-          write_scroller("Chain", |w| Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?))?;
+          scroller("Chain", |w| Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?))?;
           *destination = Some(());
           Some(())
         });
@@ -124,7 +124,7 @@ const VALUE_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | value, destination | {
-          write_scroller("Value", |w| Ok(write!(w, "{}", from_utf8(value.as_ref())?)?))?;
+          scroller("Value", |w| Ok(write!(w, "{}", from_utf8(value.as_ref())?)?))?;
           *destination = Some(());
           Some(())
         });
@@ -135,7 +135,7 @@ const PUBLICKEY_ACTION: PublicKeyAction =
     field_type: JsonStringAccumulate::<64>,
     field_value:JsonStringAccumulate::<64>},
         mkfn(| PublicKey{field_type: ty, field_value: val}: &PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, destination | {
-            write_scroller("Public Key", |w| Ok(write!(w, "{} ({})", from_utf8(val.as_ref().ok_or(ScrollerError)?)?, from_utf8(ty.as_ref().ok_or(ScrollerError)?)?)?))?;
+            scroller("Public Key", |w| Ok(write!(w, "{} ({})", from_utf8(val.as_ref().ok_or(ScrollerError)?)?, from_utf8(ty.as_ref().ok_or(ScrollerError)?)?)?))?;
             *destination = Some(());
             Some(())
         }));
@@ -144,14 +144,14 @@ const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | service_url, destination | {
-          write_scroller("Service URL", |w| Ok(write!(w, "{}", from_utf8(service_url)?)?))?;
+          scroller("Service URL", |w| Ok(write!(w, "{}", from_utf8(service_url)?)?))?;
           *destination = Some(());
           Some(())
         });
 
 type StakeMessageAction = impl JsonInterp<StakeValueSchema, State: Debug>;
 const STAKE_MESSAGE_ACTION: StakeMessageAction =
-  Preaction(|| { write_scroller("Stake", |w| Ok(write!(w, "Transaction")?)) }, StakeValueInterp{
+  Preaction(|| { scroller("Stake", |w| Ok(write!(w, "Transaction")?)) }, StakeValueInterp{
     field_chains: SubInterp(CHAIN_ACTION),
     field_public_key: PUBLICKEY_ACTION,
     field_service_url: SERVICE_URL_ACTION,
@@ -162,7 +162,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction =
 
 type UnstakeMessageAction = impl JsonInterp<UnstakeValueSchema, State: Debug>;
 const UNSTAKE_MESSAGE_ACTION: UnstakeMessageAction =
-  Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
+  Preaction(|| { scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
   UnstakeValueInterp{field_validator_address: show_address::<"Unstake address">(), field_signer_address: SIGNER_ADDRESS_ACTION});
 
 type SignerAddressAction = impl JsonInterp<JsonString, State: Debug>;
@@ -171,7 +171,7 @@ const SIGNER_ADDRESS_ACTION: SignerAddressAction =
 
 type UnjailMessageAction = impl JsonInterp<UnjailValueSchema, State: Debug>;
 const UNJAIL_MESSAGE_ACTION: UnjailMessageAction =
-  Preaction(|| { write_scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
+  Preaction(|| { scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
   UnjailValueInterp{field_address: show_address::<"Address">(), field_signer_address: SIGNER_ADDRESS_ACTION});
 
 pub struct DynamicStackBoxSlot<S>(S, bool);
@@ -284,9 +284,9 @@ pub const SIGN_IMPL: SignImplT =
           SubInterp(DefaultInterp),
           // And ask the user if this is the key the meant to sign with:
           mktfn(|path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-              write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
+              scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
               with_public_keys(path, |_, pkh: &PKH| {
-                  write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?)).ok_or(ScrollerError)?;
+                  scroller("For Account", |w| Ok(write!(w, "{}", pkh)?)).ok_or(ScrollerError)?;
                   ed.init(path)?;
                   // *destination = Some(ed);
                   set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
