@@ -6,7 +6,7 @@ import Transport from "./common";
 import Pokt from "hw-app-pokt";
 import * as ed from 'noble-ed25519';
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.4"]
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.5"]
 
 let setAcceptAutomationRules = async function() {
     await Axios.post("http://127.0.0.1:5000/automation", {
@@ -149,7 +149,7 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
 
            let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 
-           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey)).to.equal(true);
+           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
          }, prompts);
      }
 }
