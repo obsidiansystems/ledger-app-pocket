@@ -85,15 +85,15 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
     let transport = await Transport.open("http://127.0.0.1:5000/apdu");
     let client = new Pokt(transport);
     client.sendChunks = client.sendWithBlocks;
-    
+
     //await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     let err = null;
 
     try { await command(client); } catch(e) {
       err = e;
     }
-    
+
     //await new Promise(resolve => setTimeout(resolve, 100));
 
     if(err) throw(err);
@@ -127,7 +127,7 @@ describe('basic tests', () => {
       return;
     }, []);
   });
-  
+
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (client : Pokt) => {
       let rv = await client.getPublicKey("44'/635'/0");
@@ -315,37 +315,38 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleStake),
        [
-        { "header": "Signing",
+         {
+           "header": "Signing",
           "prompt": "Transaction"
-        },
-        {
-          "header": "For Account",
-          "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
-        },
-         {
-        "header": "Stake",
-        "prompt": "Transaction",
          },
          {
-        "header": "Chain",
-        "prompt": "0034",
+           "header": "For Account",
+           "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
          },
          {
-        "header": "Public Key",
-        "prompt": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0 (crypto/ed25519_public_key)",
+           "header": "Stake",
+           "prompt": "Transaction",
          },
          {
-        "header": "Service URL",
-        "prompt": "https://serviceURI.com:3000",
+           "header": "Chain",
+           "prompt": "0034",
          },
          {
-        "header": "Value",
-        "prompt": "1000000",
+           "header": "Public Key",
+           "prompt": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0 (crypto/ed25519_public_key)",
          },
-	 {
-	"header": "Output Address",
-	"prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
-	 },
+         {
+           "header": "Service URL",
+           "prompt": "https://serviceURI.com:3000",
+         },
+         {
+           "header": "Value",
+           "prompt": "1000000",
+         },
+         {
+           "header": "Output Address",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+         },
          {
            "text": "Confirm",
            "x": 43,
