@@ -39,7 +39,7 @@ rec {
         });
   };
 
-  makeTarSrc = { appExe, device }: pkgs.runCommandCC "makeTarSrc" {
+  makeTarSrc = { appExe, device }: pkgs.runCommandCC "make-tar-src-${device}" {
     nativeBuildInputs = [
       alamgu.cargo-ledger
       alamgu.ledgerRustPlatform.rust.cargo
@@ -53,16 +53,17 @@ rec {
 
     cargo-ledger --use-prebuilt ${appExe} --hex-next-to-json ledger ${device}
 
-    mkdir -p $out/pocket
+    dest=$out/pocket
+    mkdir -p $dest
+
     # Create a file to indicate what device this is for
-    echo ${device} > $out/pocket/device
-    cp app_${device}.json $out/pocket/app.json
-    cp app.hex $out/pocket
-    cp ${appExe} $out/pocket/app.elf
-    cp ${./tarball-default.nix} $out/pocket/default.nix
-    cp ${./tarball-shell.nix} $out/pocket/shell.nix
-    cp ${./rust-app/pocket.gif} $out/pocket/pocket.gif
-    cp ${./rust-app/pocket-small.gif} $out/pocket/pocket-small.gif
+    echo ${device} > $dest/device
+    cp app_${device}.json $dest/app.json
+    cp app.hex $dest
+    cp ${./tarball-default.nix} $dest/default.nix
+    cp ${./tarball-shell.nix} $dest/shell.nix
+    cp ${./rust-app/pocket.gif} $dest/pocket.gif
+    cp ${./rust-app/pocket-small.gif} $dest/pocket-small.gif
   '');
 
   testPackage = (import ./ts-tests/override.nix { inherit pkgs; }).package;
@@ -73,7 +74,7 @@ rec {
     exec ${pkgs.nodejs-14_x}/bin/npm --offline test -- "$@"
   '';
 
-  runTests = { appExe, speculosCmd }: pkgs.runCommandNoCC "run-tests" {
+  runTests = { appExe, device, speculosCmd }: pkgs.runCommandNoCC "run-tests-${device}" {
     nativeBuildInputs = [
       pkgs.wget alamgu.speculos.speculos testScript
     ];
@@ -105,14 +106,14 @@ rec {
     }).rootCrate.build;
 
     tarSrc = makeTarSrc { inherit appExe device; };
-    tarball = pkgs.runCommandNoCC "app-tarball.tar.gz" { } ''
+    tarball = pkgs.runCommandNoCC "app-tarball-${device}.tar.gz" { } ''
       tar -czvhf $out -C ${tarSrc} pocket
     '';
 
     loadApp = pkgs.writeScriptBin "load-app" ''
       #!/usr/bin/env bash
       cd ${tarSrc}/pocket
-      ${alamgu.ledgerctl}/bin/ledgerctl install -f ${tarSrc}/pocket/app_${device}.json
+      ${alamgu.ledgerctl}/bin/ledgerctl install -f ${tarSrc}/pocket/app.json
     '';
 
     speculosCmd =
@@ -122,10 +123,10 @@ rec {
       else throw ("Unknown target device: `${device}'");
 
     # test-with-loging = runTests {
-    #   inherit speculosCmd;
+    #   inherit speculosCmd device;
     #   appExe = rootCrate-with-logging + "/bin/pocket";
     # };
-    test = runTests { inherit appExe speculosCmd; };
+    test = runTests { inherit appExe speculosCmd device; };
 
     appShell = pkgs.mkShell {
       packages = [
