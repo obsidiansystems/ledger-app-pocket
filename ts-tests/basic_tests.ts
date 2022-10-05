@@ -51,14 +51,14 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
     await Axios.delete("http://localhost:5000/events");
 
     let transport = await Transport.open("http://localhost:5000/apdu");
-    let kda = new Pokt(transport);
-    kda.sendChunks = kda.sendWithBlocks;
+    let client = new Pokt(transport);
+    client.sendChunks = client.sendWithBlocks;
 
     //await new Promise(resolve => setTimeout(resolve, 100));
 
     let err = null;
 
-    try { await command(kda); } catch(e) {
+    try { await command(client); } catch(e) {
       err = e;
     }
 
@@ -87,8 +87,8 @@ describe('basic tests', () => {
   });
 
   it('provides a public key', async () => {
-  await sendCommandAndAccept(async (kda : Pokt) => {
-      let rv = await kda.getPublicKey("44'/635'/0");
+  await sendCommandAndAccept(async (client : Pokt) => {
+      let rv = await client.getPublicKey("44'/635'/0");
       expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, []);
@@ -98,14 +98,14 @@ describe('basic tests', () => {
 function testTransaction(path: string, txn: string, prompts: any[]) {
      return async () => {
        let sig = await sendCommandAndAccept(
-         async (kda : Pokt) => {
+         async (client : Pokt) => {
 
-           let pk = await kda.getPublicKey(path);
+           let pk = await client.getPublicKey(path);
 
            // We don't want the prompts from getPublicKey in our result
            await Axios.delete("http://localhost:5000/events");
 
-           let sig = await kda.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+           let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 
            expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey)).to.equal(true);
          }, prompts);
