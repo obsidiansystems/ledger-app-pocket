@@ -22,7 +22,7 @@ let setAcceptAutomationRules = async function() {
     });
 }
 
-let processPrompts = function(prompts: [any]) {
+let processPrompts = function(prompts: any[]) {
   let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])); // .values();
   let header = "";
   let prompt = "";
