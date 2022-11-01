@@ -3,6 +3,7 @@ use crate::interface::*;
 use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
+use crate::crypto_helpers::PKH;
 use ledger_crypto_helpers::common::{try_option, Address, CryptographyError};
 use ledger_crypto_helpers::ed25519::*;
 use ledger_crypto_helpers::eddsa::{with_public_keys, ed25519_public_key_bytes, Ed25519RawPubKeyAddress};
@@ -15,8 +16,6 @@ use ledger_prompts_ui::{write_scroller, final_accept_prompt, ScrollerError, Prom
 use core::str::from_utf8;
 
 use core::convert::TryFrom;
-
-type PKH = Ed25519RawPubKeyAddress;
 
 use ledger_parser_combinators::define_json_struct_interp;
 use ledger_parser_combinators::json::*;
