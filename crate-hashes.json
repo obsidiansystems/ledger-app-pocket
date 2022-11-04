@@ -1,9 +1,9 @@
 {
-  "enum-init 0.1.0 (git+https://github.com/obsidiansystems/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)": "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr",
-  "ledger-log 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform#7fbbc41e6c5d1883f3b00932cef628e320757045)": "0ngk5y3pk0p3hm978nr6p5mvilp0mz90r6c3g0pb3flvfcxgjrxj",
-  "ledger-parser-combinators 0.1.0 (git+https://github.com/obsidiansystems/ledger-parser-combinators?branch=wip-pocket-stuff#9faaa62c8b64461011046cdc58a5dfe485fb8a18)": "0r7yidjn2595svpf4wq25h9fk17adak7pdafff8pyzlm8nrzgbm8",
-  "nanos_sdk 0.1.0 (git+https://github.com/obsidiansystems/ledger-nanos-sdk.git?branch=use-ambient-compiler-and-target#1d358edd6cddbdcd4d6deb29f856b40e7e863c07)": "1v5xz06vsd2ih6vl3qxill5w3k5gplbylqk3nw0jdvcwy0jx3v09",
+  "enum-init 0.1.0 (git+https://github.com/alamgu/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)": "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr",
+  "ledger-log 0.1.0 (git+https://github.com/alamgu/ledger-log#4f813daf1099672cafa0cf7794d0b70786407a0e)": "1cfi6k60pnsnpvvcbn6k2ccx29q2pxahwgi3l6vhkm39fm7g6i25",
+  "ledger-parser-combinators 0.1.0 (git+https://github.com/alamgu/ledger-parser-combinators?branch=wip-pocket-stuff#ea814e9582f2b1640970c333fb036054c68f36d0)": "1nnac7r3ldpkf2wsba0nx77byiga4xvb36lfv3y19rz8k9g4zhm8",
+  "ledger-prompts-ui 0.1.0 (git+https://github.com/alamgu/ledger-prompts-ui#a867fc1fb569c14dfdec638a810b5594b7ccd47c)": "01xmakg3bkwjpg3p5gp4xicn0chlyprbq6vgrbz5vka22gsi3a8b",
+  "nanos_sdk 0.1.0 (git+https://github.com/alamgu/ledger-nanos-sdk.git?branch=use-ambient-compiler-and-target#1d358edd6cddbdcd4d6deb29f856b40e7e863c07)": "1v5xz06vsd2ih6vl3qxill5w3k5gplbylqk3nw0jdvcwy0jx3v09",
   "nanos_ui 0.1.0 (git+https://github.com/LedgerHQ/ledger-nanos-ui.git#bab7dc5a40d2988f682e0ca9c04eb631d50934ca)": "0qq5s7ayc38fjfciyj5svd9zsq2qz1gf91nl4k7q1zyslvn0q8f9",
-  "prompts-ui 0.1.0 (git+https://github.com/obsidiansystems/ledger-platform#7fbbc41e6c5d1883f3b00932cef628e320757045)": "0ngk5y3pk0p3hm978nr6p5mvilp0mz90r6c3g0pb3flvfcxgjrxj",
   "testmacro 0.1.0 (git+https://github.com/yhql/testmacro#29a16cb8718d61b67c6c391e60c8347c064e921e)": "0agl46ilx2psfvwvg8iwfmq203xapw435h03qskxqf5dnwhy1kir"
 }

@@ -167,18 +167,6 @@ rec {
           "parallel" = [ "jobserver" ];
         };
       };
-      "cfg-if" = rec {
-        crateName = "cfg-if";
-        version = "1.0.0";
-        edition = "2018";
-        sha256 = "1za0vb97n4brpzpv8lsbnzmq5r8f2b0cpqqr0sy8h5bn751xxwds";
-        authors = [
-          "Alex Crichton <alex@alexcrichton.com>"
-        ];
-        features = {
-          "rustc-dep-of-std" = [ "core" "compiler_builtins" ];
-        };
-      };
       "cty" = rec {
         crateName = "cty";
         version = "0.2.2";
@@ -195,7 +183,7 @@ rec {
         edition = "2018";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/enum-init";
+          url = "https://github.com/alamgu/enum-init";
           rev = "a831c2fbbe00af926ae87c064bfe4da58d26777c";
           sha256 = "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr";
         };
@@ -276,9 +264,9 @@ rec {
         edition = "2018";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/ledger-platform";
-          rev = "7fbbc41e6c5d1883f3b00932cef628e320757045";
-          sha256 = "0ngk5y3pk0p3hm978nr6p5mvilp0mz90r6c3g0pb3flvfcxgjrxj";
+          url = "https://github.com/alamgu/ledger-log";
+          rev = "4f813daf1099672cafa0cf7794d0b70786407a0e";
+          sha256 = "1cfi6k60pnsnpvvcbn6k2ccx29q2pxahwgi3l6vhkm39fm7g6i25";
         };
         dependencies = [
           {
@@ -307,9 +295,9 @@ rec {
         edition = "2018";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/ledger-parser-combinators";
-          rev = "9faaa62c8b64461011046cdc58a5dfe485fb8a18";
-          sha256 = "0r7yidjn2595svpf4wq25h9fk17adak7pdafff8pyzlm8nrzgbm8";
+          url = "https://github.com/alamgu/ledger-parser-combinators";
+          rev = "ea814e9582f2b1640970c333fb036054c68f36d0";
+          sha256 = "1nnac7r3ldpkf2wsba0nx77byiga4xvb36lfv3y19rz8k9g4zhm8";
         };
         authors = [
           "Jonathan D.K. Gibbons <jonored@gmail.com>"
@@ -340,14 +328,9 @@ rec {
             features = [ "log_trace" ];
           }
           {
-            name = "log";
-            packageId = "log";
-          }
-          {
             name = "nanos_sdk";
             packageId = "nanos_sdk";
             target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-            features = [ "speculos" ];
           }
           {
             name = "paste";
@@ -358,6 +341,39 @@ rec {
           "logging" = [ "ledger-log" ];
         };
         resolvedDefaultFeatures = [ "ledger-log" "logging" ];
+      };
+      "ledger-prompts-ui" = rec {
+        crateName = "ledger-prompts-ui";
+        version = "0.1.0";
+        edition = "2018";
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/alamgu/ledger-prompts-ui";
+          rev = "a867fc1fb569c14dfdec638a810b5594b7ccd47c";
+          sha256 = "01xmakg3bkwjpg3p5gp4xicn0chlyprbq6vgrbz5vka22gsi3a8b";
+        };
+        dependencies = [
+          {
+            name = "arrayvec";
+            packageId = "arrayvec";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "ledger-log";
+            packageId = "ledger-log";
+          }
+          {
+            name = "nanos_sdk";
+            packageId = "nanos_sdk";
+          }
+          {
+            name = "nanos_ui";
+            packageId = "nanos_ui";
+          }
+        ];
+        features = {
+          "speculos" = [ "nanos_sdk/speculos" ];
+        };
       };
       "libc" = rec {
         crateName = "libc";
@@ -373,27 +389,6 @@ rec {
           "use_std" = [ "std" ];
         };
         resolvedDefaultFeatures = [ "default" "std" ];
-      };
-      "log" = rec {
-        crateName = "log";
-        version = "0.4.14";
-        edition = "2015";
-        sha256 = "04175hv0v62shd82qydq58a48k3bjijmk54v38zgqlbxqkkbpfai";
-        authors = [
-          "The Rust Project Developers"
-        ];
-        dependencies = [
-          {
-            name = "cfg-if";
-            packageId = "cfg-if";
-          }
-        ];
-        features = {
-          "kv_unstable" = [ "value-bag" ];
-          "kv_unstable_serde" = [ "kv_unstable_std" "value-bag/serde" "serde" ];
-          "kv_unstable_std" = [ "std" "kv_unstable" "value-bag/error" ];
-          "kv_unstable_sval" = [ "kv_unstable" "value-bag/sval" "sval" ];
-        };
       };
       "memchr" = rec {
         crateName = "memchr";
@@ -418,7 +413,7 @@ rec {
         edition = "2018";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/ledger-nanos-sdk.git";
+          url = "https://github.com/alamgu/ledger-nanos-sdk.git";
           rev = "1d358edd6cddbdcd4d6deb29f856b40e7e863c07";
           sha256 = "1v5xz06vsd2ih6vl3qxill5w3k5gplbylqk3nw0jdvcwy0jx3v09";
         };
@@ -527,6 +522,11 @@ rec {
             packageId = "ledger-parser-combinators";
           }
           {
+            name = "ledger-prompts-ui";
+            packageId = "ledger-prompts-ui";
+            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
+          }
+          {
             name = "nanos_sdk";
             packageId = "nanos_sdk";
             target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
@@ -534,11 +534,6 @@ rec {
           {
             name = "nanos_ui";
             packageId = "nanos_ui";
-            target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
-          }
-          {
-            name = "prompts-ui";
-            packageId = "prompts-ui";
             target = { target, features }: ((let p = stdenv.hostPlatform; in p.rustc.config or p.config) == "thumbv6m-none-eabi");
           }
           {
@@ -584,39 +579,6 @@ rec {
           "default" = [ "proc-macro" ];
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
-      };
-      "prompts-ui" = rec {
-        crateName = "prompts-ui";
-        version = "0.1.0";
-        edition = "2018";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/obsidiansystems/ledger-platform";
-          rev = "7fbbc41e6c5d1883f3b00932cef628e320757045";
-          sha256 = "0ngk5y3pk0p3hm978nr6p5mvilp0mz90r6c3g0pb3flvfcxgjrxj";
-        };
-        dependencies = [
-          {
-            name = "arrayvec";
-            packageId = "arrayvec";
-            usesDefaultFeatures = false;
-          }
-          {
-            name = "ledger-log";
-            packageId = "ledger-log";
-          }
-          {
-            name = "nanos_sdk";
-            packageId = "nanos_sdk";
-          }
-          {
-            name = "nanos_ui";
-            packageId = "nanos_ui";
-          }
-        ];
-        features = {
-          "speculos" = [ "nanos_sdk/speculos" ];
-        };
       };
       "quote" = rec {
         crateName = "quote";

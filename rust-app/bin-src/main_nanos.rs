@@ -1,5 +1,5 @@
 use pocket::implementation::*;
-use prompts_ui::RootMenu;
+use ledger_prompts_ui::RootMenu;
 use core::convert::{TryFrom, TryInto};
 use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
 use crypto_helpers::{Hash, Hasher};

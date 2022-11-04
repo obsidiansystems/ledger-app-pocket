@@ -5,10 +5,10 @@ use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
 use ledger_parser_combinators::interp_parser::{
-    Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynInterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult
+    Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynInterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult, Preaction
 };
 use ledger_parser_combinators::json::Json;
-use prompts_ui::{write_scroller, final_accept_prompt};
+use ledger_prompts_ui::{write_scroller, final_accept_prompt};
 use core::str::from_utf8;
 use core::convert::TryFrom;
 
