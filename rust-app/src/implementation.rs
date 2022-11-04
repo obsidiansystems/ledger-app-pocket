@@ -3,7 +3,7 @@ use crate::interface::*;
 use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
-use crate::crypto_helpers::PKH;
+use crate::crypto_helpers::{BIP32_PREFIX, PKH};
 use ledger_crypto_helpers::common::{try_option, Address, CryptographyError};
 use ledger_crypto_helpers::ed25519::*;
 use ledger_crypto_helpers::eddsa::{with_public_keys, ed25519_public_key_bytes, Ed25519RawPubKeyAddress};
@@ -61,6 +61,10 @@ pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
+        if ! path.starts_with(&BIP32_PREFIX[0..2]) {
+            // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
+            return None;
+        }
         with_public_keys(path, |key: &_, pkh: &PKH| { try_option(|| -> Option<()> {
             let rv = destination.insert(ArrayVec::new());
 
