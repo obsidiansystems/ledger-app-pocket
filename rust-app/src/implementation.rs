@@ -1,9 +1,11 @@
-use crate::crypto_helpers::{PKH, BIP32_PREFIX, with_public_keys, Ed25519, public_key_bytes};
 use crate::interface::*;
 use crate::*;
 use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
+use crate::crypto_helpers::BIP32_PREFIX;
+use ledger_crypto_helpers::common::{PKH, public_key_bytes, with_public_keys};
+use ledger_crypto_helpers::ed25519::*;
 use ledger_parser_combinators::interp_parser::{
     Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynInterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult, Preaction
 };

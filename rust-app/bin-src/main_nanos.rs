@@ -2,7 +2,7 @@ use pocket::implementation::*;
 use ledger_prompts_ui::RootMenu;
 use core::convert::{TryFrom, TryInto};
 use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
-use crypto_helpers::{Hasher, SHA256};
+use ledger_crypto_helpers::hasher::{Hasher, SHA256};
 use nanos_sdk::io;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
