@@ -9,10 +9,10 @@ resolver = "2"
 
 [dependencies]
 arrayvec = { version = "0.7.2", default-features = false }
-ledger-parser-combinators = { git = "https://github.com/alamgu/ledger-parser-combinators", branch="wip-pocket-stuff" }
-ledger-log = { git = "https://github.com/alamgu/ledger-log" }
-zeroize = { version = "1.5.2", default-features = false }
 enum-init = { git = "https://github.com/alamgu/enum-init" }
+ledger-log = { git = "https://github.com/alamgu/ledger-log" }
+ledger-parser-combinators = { git = "https://github.com/alamgu/ledger-parser-combinators", branch="wip-pocket-stuff" }
+zeroize = { version = "1.5.2", default-features = false }
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable
 # speculos logging and change log level.
 [features]
@@ -39,7 +39,6 @@ test = false
 path = "bin-src/main.rs"
 
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk.git".nanos_sdk]
-# path = "./ledger-nanos-sdk"
 git = "https://github.com/alamgu/ledger-nanos-sdk.git"
 branch = "use-ambient-compiler-and-target"
 
