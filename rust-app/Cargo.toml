@@ -11,6 +11,7 @@ resolver = "2"
 arrayvec = { version = "0.7.2", default-features = false }
 enum-init = { git = "https://github.com/alamgu/enum-init" }
 ledger-log = { git = "https://github.com/alamgu/ledger-log" }
+ledger-crypto-helpers = { git = "https://github.com/alamgu/ledger-crypto-helpers" }
 ledger-parser-combinators = { git = "https://github.com/alamgu/ledger-parser-combinators", branch="wip-pocket-stuff" }
 zeroize = { version = "1.5.2", default-features = false }
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable

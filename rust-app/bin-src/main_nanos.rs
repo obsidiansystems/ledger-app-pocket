@@ -2,7 +2,7 @@ use pocket::implementation::*;
 use ledger_prompts_ui::RootMenu;
 use core::convert::{TryFrom, TryInto};
 use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
-use crypto_helpers::{Hash, Hasher};
+use crypto_helpers::{Hasher, SHA256};
 use nanos_sdk::io;
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -103,7 +103,7 @@ use nanos_sdk::io::Reply;
 use ledger_parser_combinators::interp_parser::InterpParser;
 
 const HASH_LEN: usize = 32;
-type SHA256 = [u8; HASH_LEN];
+type BSHA256 = [u8; HASH_LEN];
 
 const MAX_PARAMS: usize = 2;
 
@@ -111,8 +111,8 @@ const MAX_PARAMS: usize = 2;
 // Ed25519.
 #[derive(Default)]
 struct BlockState {
-    params: ArrayVec<SHA256, MAX_PARAMS>,
-    requested_block: SHA256,
+    params: ArrayVec<BSHA256, MAX_PARAMS>,
+    requested_block: BSHA256,
     state: usize,
 }
 
@@ -152,7 +152,7 @@ impl TryFrom<u8> for HostToLedgerCmd {
 /*
 trait BlockyAdapterScheme {
     const first_param : usize;
-    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<SHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply>;
+    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<BSHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply>;
 }
 
 enum SignStateEnum {
@@ -170,7 +170,7 @@ impl Default for SignStateEnum {
 
 impl BlockyAdapterScheme for SignStateEnum {
     const first_param: usize = 0;
-    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<SHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply> -> {
+    fn next_block<'a, 'b>(&'a mut self, params : &'b ArrayVec<BSHA256, MAX_PARAMS>) -> Result<&'b [u8], Reply> -> {
         match self {
             BlockStateEnum::FirstPassPath => {
                 *self = BlockStateEnum::FirstPassTxn;
@@ -240,10 +240,10 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N:
 
             // Check the hash, so the host can't lie.
             call_me_maybe( || {
-                let mut hasher = Hasher::new();
+                let mut hasher = SHA256::new();
                 hasher.update(&block[1..]);
-                let Hash(hashed) = hasher.finalize();
-                if hashed != block_state.requested_block {
+                let hashed = hasher.finalize();
+                if hashed.0 != block_state.requested_block {
                     None
                 } else {
                     Some(())

@@ -141,6 +141,19 @@ rec {
         ];
 
       };
+      "base64" = rec {
+        crateName = "base64";
+        version = "0.13.1";
+        edition = "2018";
+        sha256 = "1s494mqmzjb766fy1kqlccgfg2sdcjb6hzbvzqv2jw65fdi5h6wy";
+        authors = [
+          "Alice Maz <alice@alicemaz.com>"
+          "Marshall Pierce <marshall@mpierce.org>"
+        ];
+        features = {
+          "default" = [ "std" ];
+        };
+      };
       "bstringify" = rec {
         crateName = "bstringify";
         version = "0.1.2";
@@ -257,6 +270,49 @@ rec {
           }
         ];
 
+      };
+      "ledger-crypto-helpers" = rec {
+        crateName = "ledger-crypto-helpers";
+        version = "0.1.0";
+        edition = "2018";
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/alamgu/ledger-crypto-helpers";
+          rev = "e61a1af900e5d86150bbadfba3df13f0346f38b4";
+          sha256 = "1csdjj6vh1csvc34xpc5hx7ajk6vfdnnhk6zk3wpgm2kmdw1gjnw";
+        };
+        dependencies = [
+          {
+            name = "arrayvec";
+            packageId = "arrayvec";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "base64";
+            packageId = "base64";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "ledger-log";
+            packageId = "ledger-log";
+          }
+          {
+            name = "nanos_sdk";
+            packageId = "nanos_sdk";
+          }
+          {
+            name = "nanos_ui";
+            packageId = "nanos_ui";
+          }
+          {
+            name = "zeroize";
+            packageId = "zeroize";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "speculos" = [ "nanos_sdk/speculos" ];
+        };
       };
       "ledger-log" = rec {
         crateName = "ledger-log";
@@ -512,6 +568,10 @@ rec {
           {
             name = "enum-init";
             packageId = "enum-init";
+          }
+          {
+            name = "ledger-crypto-helpers";
+            packageId = "ledger-crypto-helpers";
           }
           {
             name = "ledger-log";

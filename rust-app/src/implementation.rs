@@ -1,4 +1,4 @@
-use crate::crypto_helpers::{with_public_keys, Ed25519, public_key_bytes};
+use crate::crypto_helpers::{PKH, BIP32_PREFIX, with_public_keys, Ed25519, public_key_bytes};
 use crate::interface::*;
 use crate::*;
 use arrayvec::ArrayVec;
@@ -39,7 +39,11 @@ pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT =
     Action(SubInterp(DefaultInterp), mkfn(|path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
-        with_public_keys(path, |key: &_, pkh: &_| {
+        if ! path.starts_with(&BIP32_PREFIX[0..2]) {
+            // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
+            return None;
+        }
+        with_public_keys(path, |key: &_, pkh: &PKH| {
 
         let key_bytes = public_key_bytes(key);
         let rv = destination.insert(ArrayVec::new());
@@ -226,7 +230,7 @@ pub const SIGN_IMPL: SignImplT =
           // And ask the user if this is the key the meant to sign with:
           mktfn(|path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
               write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
-              with_public_keys(path, |_, pkh| {
+              with_public_keys(path, |_, pkh: &PKH| {
                   write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
                   ed.init(path).ok()?;
                   // *destination = Some(ed);

@@ -211,7 +211,7 @@ describe("Signing tests", function() {
          },
          {
         "header": "For Account",
-        "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
+        "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
          },
          {
         "header": "Send",
@@ -246,7 +246,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
+          "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
         },
         {
           "header": "Unjail",
@@ -279,7 +279,7 @@ describe("Signing tests", function() {
          },
          {
            "header": "For Account",
-           "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
+           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
          },
          {
            "header": "Stake",
@@ -324,7 +324,7 @@ describe("Signing tests", function() {
         },
         {
           "header": "For Account",
-          "prompt": "C2FC52E0BF6FA0686EB1B7AFA8D6AB22D7138488"
+          "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
         },
         {
           "header": "Unstake",
