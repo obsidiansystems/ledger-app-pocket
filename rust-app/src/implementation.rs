@@ -1,17 +1,20 @@
-use crate::interface::*;
 use crate::*;
+use crate::interface::*;
 use arrayvec::ArrayVec;
 use core::fmt::Write;
 use core::fmt::Debug;
-use crate::crypto_helpers::BIP32_PREFIX;
-use ledger_crypto_helpers::common::{PKH, public_key_bytes, with_public_keys};
+use crate::crypto_helpers::{BIP32_PREFIX, PKH};
+use ledger_crypto_helpers::common::{try_option, Address, CryptographyError};
 use ledger_crypto_helpers::ed25519::*;
+use ledger_crypto_helpers::eddsa::{with_public_keys, ed25519_public_key_bytes, Ed25519RawPubKeyAddress};
 use ledger_parser_combinators::interp_parser::{
-    Action, MoveAction, DynBind, DefaultInterp, DropInterp, InterpParser, DynInterpParser, ObserveLengthedBytes, SubInterp, OOB, set_from_thunk, ParseResult, Preaction
+Action, DefaultInterp, DropInterp, DynBind, DynParser, InterpParser, MoveAction, OOB, ObserveLengthedBytes, ParseResult, ParserCommon, SubInterp, set_from_thunk, Preaction,
 };
 use ledger_parser_combinators::json::Json;
-use ledger_prompts_ui::{write_scroller, final_accept_prompt};
+use ledger_prompts_ui::{write_scroller, final_accept_prompt, ScrollerError, PromptWrite};
+
 use core::str::from_utf8;
+
 use core::convert::TryFrom;
 
 use ledger_parser_combinators::define_json_struct_interp;
@@ -36,6 +39,23 @@ const fn mkvfn<A,C>(q: fn(&A,&mut Option<()>)->C) -> fn(&A,&mut Option<()>)->C {
 /*const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
   q
 }*/
+/*
+const fn mkvfn<A>(q: fn(&A,&mut Option<()>)->Option<()>) -> fn(&A,&mut Option<()>)->Option<()> {
+    q
+}
+*/
+
+#[cfg(not(target_os = "nanos"))]
+#[inline(never)]
+fn scroller < F: for <'b> Fn(&mut PromptWrite<'b, 16>) -> Result<(), ScrollerError> > (title: &str, prompt_function: F) -> Option<()> {
+    ledger_prompts_ui::write_scroller_three_rows(title, prompt_function)
+}
+
+#[cfg(target_os = "nanos")]
+#[inline(never)]
+fn scroller < F: for <'b> Fn(&mut PromptWrite<'b, 16>) -> Result<(), ScrollerError> > (title: &str, prompt_function: F) -> Option<()> {
+    ledger_prompts_ui::write_scroller(title, prompt_function)
+}
 
 pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 128>>;
 
@@ -45,22 +65,32 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT =
             // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
             return None;
         }
-        with_public_keys(path, |key: &_, pkh: &PKH| {
+        with_public_keys(path, |key: &_, pkh: &PKH| { try_option(|| -> Option<()> {
+            let rv = destination.insert(ArrayVec::new());
 
-        let key_bytes = public_key_bytes(key);
-        let rv = destination.insert(ArrayVec::new());
-        rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;
-        rv.try_extend_from_slice(key_bytes).ok()?;
-        rv.try_push(u8::try_from(pkh.0.len()).ok()?).ok()?;
-        rv.try_extend_from_slice(&pkh.0).ok()?;
-        Ok(())
-        }).ok()
+            // Should return the format that the chain customarily uses for public keys; for
+            // ed25519 that's usually r | s with no prefix, which isn't quite our internal
+            // representation.
+            let key_bytes = ed25519_public_key_bytes(key);
+
+            rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;
+            rv.try_extend_from_slice(key_bytes).ok()?;
+
+            // And we'll send the address along; in our case it happens to be the same as the
+            // public key, but in general it's something computed from the public key.
+            let binary_address = pkh.get_binary_address();
+            rv.try_push(u8::try_from(binary_address.len()).ok()?).ok()?;
+            rv.try_extend_from_slice(binary_address).ok()?;
+            Some(())
+        }())}).ok()
     }));
 
-const fn show_address<const TITLE: &'static str>() -> impl JsonInterp<JsonString, State: Debug> {
+//const fn show_address<const TITLE: &'static str>() -> impl JsonInterp<JsonString, State: Debug, Returning: Debug>
+const fn show_address<const TITLE: &'static str>() -> Action<JsonStringAccumulate<64>, fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>>
+{
   Action(JsonStringAccumulate::<64>,
         mkvfn(move | from_address: &ArrayVec<u8, 64>, destination | {
-          write_scroller(TITLE, |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
+          scroller(TITLE, |w| Ok(write!(w, "{}", from_utf8(from_address.as_slice())?)?))?;
           *destination = Some(());
           Some(())
         }))
@@ -71,14 +101,15 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
                                   fn(& AmountType<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, &mut Option<()>) -> Option<()>> =
   Action(AmountType{field_amount: JsonStringAccumulate::<64>, field_denom: JsonStringAccumulate::<64>},
         | AmountType{field_amount: amount, field_denom: denom}, destination | {
-          write_scroller("Amount:", |w| Ok(write!(w, "{} ({})", from_utf8(amount.as_ref()?)?, from_utf8(denom.as_ref()?)?)?))?;
+          scroller("Amount:", |w| Ok(write!(w, "{} ({})", from_utf8(amount.as_ref()?)?, from_utf8(denom.as_ref()?)?)?))?;
           *destination = Some(());
           Some(())
         });
 */
 
-const SEND_MESSAGE_ACTION: impl JsonInterp<SendValueSchema, State: Debug> =
-  Preaction(|| { write_scroller("Send", |w| Ok(write!(w, "Transaction")?)) },
+type SendMessageAction = impl JsonInterp<SendValueSchema, State: Debug>;
+const SEND_MESSAGE_ACTION: SendMessageAction =
+  Preaction(|| { scroller("Send", |w| Ok(write!(w, "Transaction")?)) },
   SendValueInterp{field_amount: VALUE_ACTION,
             field_from_address: show_address::<"Transfer from">(), // FROM_ADDRESS_ACTION,
             field_to_address: show_address::<"Transfer To">()}); // TO_ADDRESS_ACTION});
@@ -87,7 +118,7 @@ const CHAIN_ACTION: Action<JsonStringAccumulate<64>,
                            fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | chain, destination | {
-          write_scroller("Chain", |w| Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?))?;
+          scroller("Chain", |w| Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?))?;
           *destination = Some(());
           Some(())
         });
@@ -96,17 +127,18 @@ const VALUE_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | value, destination | {
-          write_scroller("Value", |w| Ok(write!(w, "{}", from_utf8(value.as_ref())?)?))?;
+          scroller("Value", |w| Ok(write!(w, "{}", from_utf8(value.as_ref())?)?))?;
           *destination = Some(());
           Some(())
         });
 
-const PUBLICKEY_ACTION: impl JsonInterp<PublicKeySchema, State: Debug> =
+type PublicKeyAction = impl JsonInterp<PublicKeySchema, State: Debug>;
+const PUBLICKEY_ACTION: PublicKeyAction =
   Action(PublicKeyInterp {
     field_type: JsonStringAccumulate::<64>,
     field_value:JsonStringAccumulate::<64>},
         mkfn(| PublicKey{field_type: ty, field_value: val}: &PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>, destination | {
-            write_scroller("Public Key", |w| Ok(write!(w, "{} ({})", from_utf8(val.as_ref()?)?, from_utf8(ty.as_ref()?)?)?))?;
+            scroller("Public Key", |w| Ok(write!(w, "{} ({})", from_utf8(val.as_ref().ok_or(ScrollerError)?)?, from_utf8(ty.as_ref().ok_or(ScrollerError)?)?)?))?;
             *destination = Some(());
             Some(())
         }));
@@ -115,13 +147,14 @@ const SERVICE_URL_ACTION: Action<JsonStringAccumulate<64>,
                                  fn(& ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> =
   Action(JsonStringAccumulate::<64>,
         | service_url, destination | {
-          write_scroller("Service URL", |w| Ok(write!(w, "{}", from_utf8(service_url)?)?))?;
+          scroller("Service URL", |w| Ok(write!(w, "{}", from_utf8(service_url)?)?))?;
           *destination = Some(());
           Some(())
         });
 
-const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
-  Preaction(|| { write_scroller("Stake", |w| Ok(write!(w, "Transaction")?)) }, StakeValueInterp{
+type StakeMessageAction = impl JsonInterp<StakeValueSchema, State: Debug>;
+const STAKE_MESSAGE_ACTION: StakeMessageAction =
+  Preaction(|| { scroller("Stake", |w| Ok(write!(w, "Transaction")?)) }, StakeValueInterp{
     field_chains: SubInterp(CHAIN_ACTION),
     field_public_key: PUBLICKEY_ACTION,
     field_service_url: SERVICE_URL_ACTION,
@@ -130,14 +163,18 @@ const STAKE_MESSAGE_ACTION: impl JsonInterp<StakeValueSchema, State: Debug> =
   });
 
 
-const UNSTAKE_MESSAGE_ACTION: impl JsonInterp<UnstakeValueSchema, State: Debug> =
-  Preaction(|| { write_scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
+type UnstakeMessageAction = impl JsonInterp<UnstakeValueSchema, State: Debug>;
+const UNSTAKE_MESSAGE_ACTION: UnstakeMessageAction =
+  Preaction(|| { scroller("Unstake", |w| Ok(write!(w, "Transaction")?)) },
   UnstakeValueInterp{field_validator_address: show_address::<"Unstake address">(), field_signer_address: SIGNER_ADDRESS_ACTION});
 
-const SIGNER_ADDRESS_ACTION: impl JsonInterp<JsonString, State: Debug> = show_address::<"Signer address">();
+type SignerAddressAction = impl JsonInterp<JsonString, State: Debug>;
+const SIGNER_ADDRESS_ACTION: SignerAddressAction =
+  Action(show_address::<"Signer address">(), mkvfn(|_, _| Some(())));
 
-const UNJAIL_MESSAGE_ACTION: impl JsonInterp<UnjailValueSchema, State: Debug> =
-  Preaction(|| { write_scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
+type UnjailMessageAction = impl JsonInterp<UnjailValueSchema, State: Debug>;
+const UNJAIL_MESSAGE_ACTION: UnjailMessageAction =
+  Preaction(|| { scroller("Unjail", |w| Ok(write!(w, "Transaction")?)) },
   UnjailValueInterp{field_address: show_address::<"Address">(), field_signer_address: SIGNER_ADDRESS_ACTION});
 
 pub struct DynamicStackBoxSlot<S>(S, bool);
@@ -205,13 +242,16 @@ pub struct WithStackBoxed<S>(S);
 
 pub struct WithStackBoxedState<S, P>(S, DynamicStackBoxSlot<P>, bool);
 
-impl<Q: Default, T, S: DynInterpParser<T, Parameter = DynamicStackBox<Q>>> InterpParser<T> for WithStackBoxed<S> {
+impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>>> ParserCommon<T> for WithStackBoxed<S> {
     type State = WithStackBoxedState<S::State, Q>;
     type Returning = S::Returning;
     fn init(&self) -> Self::State {
         let rv = WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false);
         rv
     }
+}
+
+impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>> + InterpParser<T>> InterpParser<T> for WithStackBoxed<S> {
     fn parse<'a, 'b>(&self, state: &'b mut Self::State, chunk: &'a [u8], destination: &mut Option<Self::Returning>) -> ParseResult<'a> {
         if ! state.2 {
             self.0.init_param(state.1.to_box(), &mut state.0, destination);
@@ -225,19 +265,35 @@ pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayV
 
 pub const SIGN_SEQ: [usize; 3] = [1, 0, 0];
 
+enum SignTempError {
+   ScrollerError(ScrollerError),
+   CryptographyError(CryptographyError),
+}
+
+impl From<ScrollerError> for SignTempError {
+    fn from(e: ScrollerError) -> Self {
+        SignTempError::ScrollerError(e)
+    }
+}
+impl From<CryptographyError> for SignTempError {
+    fn from(e: CryptographyError) -> Self {
+        SignTempError::CryptographyError(e)
+    }
+}
+
 pub const SIGN_IMPL: SignImplT =
     WithStackBoxed(DynBind (
       Action(
           SubInterp(DefaultInterp),
           // And ask the user if this is the key the meant to sign with:
           mktfn(|path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-              write_scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
+              scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
               with_public_keys(path, |_, pkh: &PKH| {
-                  write_scroller("For Account", |w| Ok(write!(w, "{}", pkh)?))?;
-                  ed.init(path).ok()?;
+                  scroller("For Account", |w| Ok(write!(w, "{}", pkh)?)).ok_or(ScrollerError)?;
+                  ed.init(path)?;
                   // *destination = Some(ed);
                   set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
-                  Ok(())
+                  Ok::<_, SignTempError>(())
               }).ok()?;
               Some(())
           }),
@@ -252,10 +308,12 @@ pub const SIGN_IMPL: SignImplT =
                       field_entropy: DropInterp,
                       field_fee: DropInterp,
                       field_memo: DropInterp,
-                      field_msg: Message {send_message: SEND_MESSAGE_ACTION,
-                                          unjail_message: UNJAIL_MESSAGE_ACTION,
-                                          stake_message: STAKE_MESSAGE_ACTION,
-                                          unstake_message: UNSTAKE_MESSAGE_ACTION},
+                      field_msg: Message {
+                          send_message: SEND_MESSAGE_ACTION,
+                          unjail_message: UNJAIL_MESSAGE_ACTION,
+                          stake_message: STAKE_MESSAGE_ACTION,
+                          unstake_message: UNSTAKE_MESSAGE_ACTION
+                      },
                   }),
                   mkvfn(| _, ret | {
                     *ret = Some(());
@@ -297,15 +355,16 @@ pub enum ParsersStateInner<A, B> {
     NoState,
     GetAddressState(A),
     SignState(B),
-    /*GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::State),
-    SignState(<SignImplT as InterpParser<DoubledSignParameters>>::State),*/
+    /*GetAddressState(<GetAddressImplT as ParserCommon<Bip32Key>>::State),
+    SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::State),*/
 }
 
-pub type ParsersState = ParsersStateInner<<GetAddressImplT as InterpParser<Bip32Key>>::State, <SignImplT as InterpParser<DoubledSignParameters>>::State>;
+pub type ParsersState = ParsersStateInner<<GetAddressImplT as ParserCommon<Bip32Key>>::State, <SignImplT as ParserCommon<DoubledSignParameters>>::State>;
 
 pub fn reset_parsers_state(state: &mut ParsersState) {
     *state = ParsersState::NoState;
 }
+
 /*
 pub fn not_a_real_fn() {
     trace!("foo: {:?}",ParsersState_internal::ParsersStateTag::GetAddressState);
@@ -342,8 +401,8 @@ pub struct Message<
   pub unstake_message: UnstakeInterp
 }
 
-type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State;
-type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>;
+type TemporaryStringState<const N: usize>  = <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State;
+type TemporaryStringReturn<const N: usize> = Option<<JsonStringAccumulate<N> as ParserCommon<JsonString>>::Returning>;
 
 #[derive(Debug)]
 pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, UnstakeMessageState> {
@@ -361,10 +420,10 @@ pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, U
   End,
 }
 
-fn init_str<const N: usize>() -> <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State {
-    <JsonStringAccumulate<N> as JsonInterp<JsonString>>::init(&JsonStringAccumulate)
+fn init_str<const N: usize>() -> <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State {
+    <JsonStringAccumulate<N> as ParserCommon<JsonString>>::init(&JsonStringAccumulate)
 }
-fn call_str<'a, const N: usize>(ss: &mut <JsonStringAccumulate<N> as JsonInterp<JsonString>>::State, token: JsonToken<'a>, dest: &mut Option<<JsonStringAccumulate<N> as JsonInterp<JsonString>>::Returning>) -> Result<(), Option<OOB>> {
+fn call_str<'a, const N: usize>(ss: &mut <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State, token: JsonToken<'a>, dest: &mut Option<<JsonStringAccumulate<N> as ParserCommon<JsonString>>::Returning>) -> Result<(), Option<OOB>> {
     <JsonStringAccumulate<N> as JsonInterp<JsonString>>::parse(&JsonStringAccumulate, ss, token, dest)
 }
 
@@ -379,12 +438,15 @@ pub enum MessageReturn<
   UnstakeMessageReturn(Option<UnstakeMessageReturn>)
 }
 
-impl JsonInterp<MessageSchema> for DropInterp {
-    type State = <DropInterp as JsonInterp<JsonAny>>::State;
-    type Returning = <DropInterp as JsonInterp<JsonAny>>::Returning;
+impl ParserCommon<MessageSchema> for DropInterp {
+    type State = <DropInterp as ParserCommon<JsonAny>>::State;
+    type Returning = <DropInterp as ParserCommon<JsonAny>>::Returning;
     fn init(&self) -> Self::State {
-        <DropInterp as JsonInterp<JsonAny>>::init(&DropInterp)
+        <DropInterp as ParserCommon<JsonAny>>::init(&DropInterp)
     }
+}
+
+impl JsonInterp<MessageSchema> for DropInterp {
     fn parse<'a>(&self, state: &mut Self::State, token: JsonToken<'a>, destination: &mut Option<Self::Returning>) -> Result<(), Option<OOB>> {
         <DropInterp as JsonInterp<JsonAny>>::parse(&DropInterp, state, token, destination)
     }
@@ -394,23 +456,35 @@ impl <SendInterp: JsonInterp<SendValueSchema>,
       UnjailInterp: JsonInterp<UnjailValueSchema>,
       StakeInterp: JsonInterp<StakeValueSchema>,
       UnstakeInterp: JsonInterp<UnstakeValueSchema>>
-  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
+  ParserCommon<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
   where
-  <SendInterp as JsonInterp<SendValueSchema>>::State: core::fmt::Debug,
-  <UnjailInterp as JsonInterp<UnjailValueSchema>>::State: core::fmt::Debug,
-  <StakeInterp as JsonInterp<StakeValueSchema>>::State: core::fmt::Debug,
-  <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::State: core::fmt::Debug {
-  type State = MessageState<<SendInterp as JsonInterp<SendValueSchema>>::State,
-                            <UnjailInterp as JsonInterp<UnjailValueSchema>>::State,
-                            <StakeInterp as JsonInterp<StakeValueSchema>>::State,
-                            <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::State>;
-  type Returning = MessageReturn<<SendInterp as JsonInterp<SendValueSchema>>::Returning,
-                                 <UnjailInterp as JsonInterp<UnjailValueSchema>>::Returning,
-                                 <StakeInterp as JsonInterp<StakeValueSchema>>::Returning,
-                                 <UnstakeInterp as JsonInterp<UnstakeValueSchema>>::Returning>;
+  <SendInterp as ParserCommon<SendValueSchema>>::State: core::fmt::Debug,
+  <UnjailInterp as ParserCommon<UnjailValueSchema>>::State: core::fmt::Debug,
+  <StakeInterp as ParserCommon<StakeValueSchema>>::State: core::fmt::Debug,
+  <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State: core::fmt::Debug {
+  type State = MessageState<<SendInterp as ParserCommon<SendValueSchema>>::State,
+                            <UnjailInterp as ParserCommon<UnjailValueSchema>>::State,
+                            <StakeInterp as ParserCommon<StakeValueSchema>>::State,
+                            <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State>;
+  type Returning = MessageReturn<<SendInterp as ParserCommon<SendValueSchema>>::Returning,
+                                 <UnjailInterp as ParserCommon<UnjailValueSchema>>::Returning,
+                                 <StakeInterp as ParserCommon<StakeValueSchema>>::Returning,
+                                 <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::Returning>;
   fn init(&self) -> Self::State {
     MessageState::Start
   }
+}
+
+impl <SendInterp: JsonInterp<SendValueSchema>,
+      UnjailInterp: JsonInterp<UnjailValueSchema>,
+      StakeInterp: JsonInterp<StakeValueSchema>,
+      UnstakeInterp: JsonInterp<UnstakeValueSchema>>
+  JsonInterp<MessageSchema> for Message<SendInterp, UnjailInterp, StakeInterp, UnstakeInterp>
+  where
+  <SendInterp as ParserCommon<SendValueSchema>>::State: core::fmt::Debug,
+  <UnjailInterp as ParserCommon<UnjailValueSchema>>::State: core::fmt::Debug,
+  <StakeInterp as ParserCommon<StakeValueSchema>>::State: core::fmt::Debug,
+  <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State: core::fmt::Debug {
   #[inline(never)]
   fn parse<'a>(&self,
                state: &mut Self::State,
@@ -545,12 +619,12 @@ pokt_cmd_definition!{}
 #[inline(never)]
 pub fn get_get_address_state(
     s: &mut ParsersState,
-) -> &mut <GetAddressImplT as InterpParser<Bip32Key>>::State {
+) -> &mut <GetAddressImplT as ParserCommon<Bip32Key>>::State {
     match s {
         ParsersState::GetAddressState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
-            *s = ParsersState::GetAddressState(<GetAddressImplT as InterpParser<Bip32Key>>::init(
+            *s = ParsersState::GetAddressState(<GetAddressImplT as ParserCommon<Bip32Key>>::init(
                 &GET_ADDRESS_IMPL,
             ));
         }
@@ -566,7 +640,7 @@ pub fn get_get_address_state(
 #[inline(never)]
 pub fn get_sign_state(
     s: &mut ParsersState,
-) -> &mut <SignImplT as InterpParser<DoubledSignParameters>>::State {
+) -> &mut <SignImplT as ParserCommon<DoubledSignParameters>>::State {
     match s {
         ParsersState::SignState(_) => {}
         _ => {
@@ -576,11 +650,11 @@ pub fn get_sign_state(
                 core::ptr::drop_in_place(s_ptr);
                 // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
                 // fill it; we rely on init_in_place to not panic.
-                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| { <SignImplT as InterpParser<DoubledSignParameters>>::init_in_place(&SIGN_IMPL, a); });
+                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| { <SignImplT as ParserCommon<DoubledSignParameters>>::init_in_place(&SIGN_IMPL, a); });
                 trace!("Get_sign_stated");
             }
             /*
-            *s = ParsersState::SignState(<SignImplT as InterpParser<DoubledSignParameters>>::init(
+            *s = ParsersState::SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
             )); */
         }

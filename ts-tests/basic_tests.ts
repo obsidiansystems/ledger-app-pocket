@@ -6,27 +6,29 @@ import Transport from "./common";
 import Pokt from "hw-app-pokt";
 import * as ed from 'noble-ed25519';
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.4"]
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.5"]
 
 let setAcceptAutomationRules = async function() {
-    await Axios.post("http://localhost:5000/automation", {
+    await Axios.post("http://127.0.0.1:5000/automation", {
       version: 1,
       rules: [
         ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
         { "y": 16, "actions": [] },
+        { "y": 31, "actions": [] },
+        { "y": 46, "actions": [] },
         { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
         { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
       ]
     });
 }
 
-let processPrompts = function(prompts: [any]) {
-  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
-  let {done, value} = i.next();
+let processPrompts = function(prompts: any[]) {
+  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])); // .values();
   let header = "";
   let prompt = "";
   let rv = [];
-  while(!done) {
+  for (var ii in i) {
+    let value = i[ii];
     if(value["y"] == 1) {
       if(value["text"] != header) {
         if(header || prompt) rv.push({ header, prompt });
@@ -35,22 +37,52 @@ let processPrompts = function(prompts: [any]) {
       }
     } else if(value["y"] == 16) {
       prompt += value["text"];
+    } else if((value["y"] == 31)) {
+      prompt += value["text"];
+    } else if((value["y"] == 46)) {
+      prompt += value["text"];
     } else {
       if(header || prompt) rv.push({ header, prompt });
       rv.push(value);
       header = "";
       prompt = "";
     }
-    ({done, value} = i.next());
   }
+  if (header || prompt) rv.push({ header, prompt });
   return rv;
+}
+
+let fixActualPromptsForSPlus = function(prompts: any[]) {
+  return prompts.map ( (value) => {
+    if (value["text"]) {
+      value["x"] = "<patched>";
+    }
+    return value;
+  });
+}
+
+// HACK to workaround the OCR bug https://github.com/LedgerHQ/speculos/issues/204
+let fixRefPromptsForSPlus = function(prompts: any[]) {
+  return prompts.map ( (value) => {
+    let fixF = (str: string) => {
+      return str.replace(/S/g,"").replace(/I/g, "l");
+    };
+    if (value["header"]) {
+      value["header"] = fixF(value["header"]);
+      value["prompt"] = fixF(value["prompt"]);
+    } else if (value["text"]) {
+      value["text"] = fixF(value["text"]);
+      value["x"] = "<patched>";
+    }
+    return value;
+  });
 }
 
 let sendCommandAndAccept = async function(command : any, prompts : any) {
     await setAcceptAutomationRules();
-    await Axios.delete("http://localhost:5000/events");
+    await Axios.delete("http://127.0.0.1:5000/events");
 
-    let transport = await Transport.open("http://localhost:5000/apdu");
+    let transport = await Transport.open("http://127.0.0.1:5000/apdu");
     let client = new Pokt(transport);
     client.sendChunks = client.sendWithBlocks;
 
@@ -66,14 +98,24 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 
     if(err) throw(err);
 
-    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
-    // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => a["text"] != "W e l c o m e")).to.deep.equal(prompts);
+    let actual_prompts = processPrompts((await Axios.get("http://127.0.0.1:5000/events")).data["events"] as [any]);
+    try {
+      expect(actual_prompts).to.deep.equal(prompts);
+    } catch(e) {
+      try {
+        expect(fixActualPromptsForSPlus(actual_prompts)).to.deep.equal(fixRefPromptsForSPlus(prompts));
+      } catch (_) {
+        // Throw the original error if there is a mismatch as it is generally more useful
+        throw(e);
+      }
+    }
 }
 
 describe('basic tests', () => {
+
   afterEach( async function() {
-    await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
-    await Axios.delete("http://localhost:5000/events");
+    await Axios.post("http://127.0.0.1:5000/automation", {version: 1, rules: []});
+    await Axios.delete("http://127.0.0.1:5000/events");
     // await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
   });
 
@@ -103,11 +145,11 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
            let pk = await client.getPublicKey(path);
 
            // We don't want the prompts from getPublicKey in our result
-           await Axios.delete("http://localhost:5000/events");
+           await Axios.delete("http://127.0.0.1:5000/events");
 
            let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 
-           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey)).to.equal(true);
+           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
          }, prompts);
      }
 }

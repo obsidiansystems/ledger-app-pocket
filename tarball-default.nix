@@ -1,5 +1,5 @@
 let
-  alamgu = import (fetchTarball "https://github.com/obsidiansystems/alamgu/archive/develop.tar.gz") {};
+  alamgu = import (fetchTarball "https://github.com/alamgu/alamgu/archive/develop.tar.gz") {};
   ledgerctl = alamgu.ledgerctl;
   this = ./.;
 in

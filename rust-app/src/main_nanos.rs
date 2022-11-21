@@ -1,18 +1,16 @@
-use pocket::implementation::*;
-use ledger_prompts_ui::RootMenu;
-use core::convert::{TryFrom, TryInto};
-use ledger_parser_combinators::interp_parser::{set_from_thunk, call_me_maybe};
+use crate::implementation::*;
+use crate::interface::*;
+
 use ledger_crypto_helpers::hasher::{Hasher, SHA256};
+use ledger_parser_combinators::interp_parser::OOB;
+use ledger_parser_combinators::interp_parser::call_me_maybe;
+use ledger_prompts_ui::RootMenu;
+use ledger_log::{info, trace};
+
 use nanos_sdk::io;
 
-nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
-
-use ledger_parser_combinators::interp_parser::OOB;
-use pocket::*;
-
-#[cfg(not(test))]
-#[no_mangle]
-extern "C" fn sample_main() {
+#[allow(dead_code)]
+pub fn app_main() {
     let mut comm = io::Comm::new();
     let mut states = ParsersState::NoState;
     let mut block_state = BlockState::default();
@@ -23,7 +21,10 @@ extern "C" fn sample_main() {
     // not_a_real_fn();
 
     info!("Pocket app {}", env!("CARGO_PKG_VERSION"));
-    info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}", core::mem::size_of::<io::Comm>(), core::mem::size_of::<ParsersState>(), core::mem::size_of::<BlockState>());
+    info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}"
+          , core::mem::size_of::<io::Comm>()
+          , core::mem::size_of::<ParsersState>()
+          , core::mem::size_of::<BlockState>());
 
     let // Draw some 'welcome' screen
         menu = |states : &ParsersState, idle : & mut RootMenu<2>, busy : & mut RootMenu<2>| {
@@ -37,7 +38,7 @@ extern "C" fn sample_main() {
     loop {
         // Wait for either a specific button push to exit the app
         // or an APDU command
-        match comm.next_event() {
+        match comm.next_event::<Ins>() {
             io::Event::Command(ins) => {
                 trace!("Command received");
                 match handle_apdu(&mut comm, ins, &mut states, &mut block_state) {
@@ -59,7 +60,7 @@ extern "C" fn sample_main() {
                         _ => (),
                     } }
                     _ => { match busy_menu.update(btn) {
-                        Some(1) => { info!("Resetting at user direction via busy menu"); set_from_thunk(&mut states, || ParsersState::NoState); }
+                        Some(1) => { info!("Resetting at user direction via busy menu"); reset_parsers_state(&mut states) }
                         _ => (),
                     } }
                 };
@@ -203,10 +204,13 @@ impl BlockyAdapterScheme for OneParamOnceState {
 }
 */
 
+
+use ledger_parser_combinators::interp_parser::{ParserCommon};
+
 #[inline(never)]
-fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8,128>>, A, const N: usize>(
+fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N: usize>(
     states: &mut ParsersState,
-    get_state: fn(&mut ParsersState) -> &mut <P as InterpParser<A>>::State,
+    get_state: fn(&mut ParsersState) -> &mut <P as ParserCommon<A>>::State,
     block_state: &mut BlockState,
     seq: &[usize; N],
     parser: &P,
@@ -335,10 +339,10 @@ fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState, block_s
             comm.append(b"Pocket");
         }
         Ins::GetPubkey => {
-            run_parser_apdu(parser, get_get_address_state, block_state, &[0], &GET_ADDRESS_IMPL, comm)?
+            run_parser_apdu::<_, Bip32Key, _>(parser, get_get_address_state, block_state, &[0], &GET_ADDRESS_IMPL, comm)?
         }
         Ins::Sign => {
-            run_parser_apdu(parser, get_sign_state, block_state, &SIGN_SEQ, &SIGN_IMPL, comm)?
+            run_parser_apdu::<_, DoubledSignParameters, _>(parser, get_sign_state, block_state, &SIGN_SEQ, &SIGN_IMPL, comm)?
         }
         Ins::GetVersionStr => {
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
