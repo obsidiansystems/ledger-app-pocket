@@ -8,8 +8,12 @@ import * as ed from 'noble-ed25519';
 
 let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.5"]
 
+const API_PORT: number = 5005;
+
+const BASE_URL: string = `http://127.0.0.1:${API_PORT}`;
+
 let setAcceptAutomationRules = async function() {
-    await Axios.post("http://127.0.0.1:5000/automation", {
+    await Axios.post(BASE_URL + "/automation", {
       version: 1,
       rules: [
         ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
@@ -80,9 +84,9 @@ let fixRefPromptsForSPlus = function(prompts: any[]) {
 
 let sendCommandAndAccept = async function(command : any, prompts : any) {
     await setAcceptAutomationRules();
-    await Axios.delete("http://127.0.0.1:5000/events");
+    await Axios.delete(BASE_URL + "/events");
 
-    let transport = await Transport.open("http://127.0.0.1:5000/apdu");
+    let transport = await Transport.open(BASE_URL + "/apdu");
     let client = new Pokt(transport);
     client.sendChunks = client.sendWithBlocks;
 
@@ -98,7 +102,7 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 
     if(err) throw(err);
 
-    let actual_prompts = processPrompts((await Axios.get("http://127.0.0.1:5000/events")).data["events"] as [any]);
+    let actual_prompts = processPrompts((await Axios.get(BASE_URL + "/events")).data["events"] as [any]);
     try {
       expect(actual_prompts).to.deep.equal(prompts);
     } catch(e) {
@@ -114,8 +118,8 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 describe('basic tests', () => {
 
   afterEach( async function() {
-    await Axios.post("http://127.0.0.1:5000/automation", {version: 1, rules: []});
-    await Axios.delete("http://127.0.0.1:5000/events");
+    await Axios.post(BASE_URL + "/automation", {version: 1, rules: []});
+    await Axios.delete(BASE_URL + "/events");
     // await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
   });
 
@@ -145,7 +149,7 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
            let pk = await client.getPublicKey(path);
 
            // We don't want the prompts from getPublicKey in our result
-           await Axios.delete("http://127.0.0.1:5000/events");
+           await Axios.delete(BASE_URL + "/events");
 
            let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 

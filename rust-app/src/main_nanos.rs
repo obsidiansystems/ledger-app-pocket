@@ -55,14 +55,16 @@ pub fn app_main() {
             io::Event::Button(btn) => {
                 trace!("Button received");
                 match states {
-                    ParsersState::NoState => {match idle_menu.update(btn) {
-                        Some(1) => { info!("Exiting app at user direction via root menu"); nanos_sdk::exit_app(0) },
-                        _ => (),
-                    } }
-                    _ => { match busy_menu.update(btn) {
-                        Some(1) => { info!("Resetting at user direction via busy menu"); reset_parsers_state(&mut states) }
-                        _ => (),
-                    } }
+                    ParsersState::NoState => {
+                        if let Some(1) = idle_menu.update(btn) {
+                            info!("Exiting app at user direction via root menu"); nanos_sdk::exit_app(0)
+                        }
+                    }
+                    _ => {
+                        if let Some(1) = idle_menu.update(btn) {
+                            info!("Resetting at user direction via busy menu"); reset_parsers_state(&mut states)
+                        }
+                    }
                 };
                 menu(&states, & mut idle_menu, & mut busy_menu);
                 trace!("Button done");
