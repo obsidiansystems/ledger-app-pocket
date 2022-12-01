@@ -41,9 +41,9 @@ To use this tool using Nix, from the root level of this repo, run:
 ```
 nix-shell -A nanos.appShell
 
-generic-cli getAddress --useBlock "44'/535348'/0'/0/0" --json
+generic-cli getAddress --useBlock "44'/635'/0'/0/0" --json
 
-generic-cli sign --useBlock "44'/535348'/0'/0/0" --json '{"chain_id":"testnet","entropy":"-7780543831205109370","fee":[{"amount":"10000","denom":"upokt"}],"memo":"","msg":{"type":"pos/Send","value":{"amount":"1000000","from_address":"51568b979c4c017735a743e289dd862987143290","to_address":"51568b979c4c017735a743e289dd862987143290"}}}'
+generic-cli sign --useBlock "44'/635'/0'/0/0" --json '{"chain_id":"testnet","entropy":"-7780543831205109370","fee":[{"amount":"10000","denom":"upokt"}],"memo":"","msg":{"type":"pos/Send","value":{"amount":"1000000","from_address":"51568b979c4c017735a743e289dd862987143290","to_address":"51568b979c4c017735a743e289dd862987143290"}}}'
 
 ```
 
