@@ -1,8 +1,8 @@
 {
   "owner": "alamgu",
   "repo": "alamgu",
-  "branch": "new-stack-sizes-2",
+  "branch": "proper-loader",
   "private": false,
-  "rev": "f56068c5c9520c415c5354ec4986af632b3a23b9",
-  "sha256": "0ii9mvy6sbpabalqgl76kmdsnyh4wamdnc7bzcdmfy18ixd6r441"
+  "rev": "a0b68deed2cc6dd6e1673b9c05ae2520a683147b",
+  "sha256": "1gzc8lydqnvh0qkw0x4s8kx025g9w15cr3zvwg4xpm330mwvnngg"
 }
