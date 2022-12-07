@@ -28,14 +28,14 @@ There is a separate tarball for each device.
 #### Build one yourself, with Nix
 
 There is a separate tarball for each device.
-To build one, do:
+To build one, run:
 ```bash
 nix-build -A $DEVICE.tarball
 ```
 where `DEVICE` is one of
- - `nanos` for Nano S
- - `nanox` for Nano X
- - `nanosplus` for Nano S+
+ - `nanos`, for Nano S
+ - `nanox`, for Nano X
+ - `nanosplus`, for Nano S+
 
 The last line printed out will be the path of the tarball.
 
@@ -75,9 +75,9 @@ To use this tool using Nix, from the root level of this repo, run this command t
 nix-shell -A $DEVICE.appShell
 ```
 where `DEVICE` is one of
- - `nanos` for Nano S
- - `nanox` for Nano X
- - `nanosplus` for Nano S+
+ - `nanos`, for Nano S
+ - `nanox`, for Nano X
+ - `nanosplus`, for Nano S+
 
 Then, one can use `generic-cli` like this:
 ```bash
@@ -85,6 +85,8 @@ generic-cli getAddress --useBlock "44'/635'/0'/0/0" --json
 
 generic-cli sign --useBlock "44'/635'/0'/0/0" --json '{"chain_id":"testnet","entropy":"-7780543831205109370","fee":[{"amount":"10000","denom":"upokt"}],"memo":"","msg":{"type":"pos/Send","value":{"amount":"1000000","from_address":"51568b979c4c017735a743e289dd862987143290","to_address":"51568b979c4c017735a743e289dd862987143290"}}}'
 ```
+
+The exact output you see will vary, since Ledger devices should not be configured to have the same private key!
 
 the `--useBlock` argument to generic-cli is required for the pocket app to select the correct ledger/host protocol. Producing a transaction to sign, and assembling the resulting ed25519 signature with the transaction to send, are done with the pocket commandline.
 
