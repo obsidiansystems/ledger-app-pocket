@@ -28,14 +28,14 @@ There is a separate tarball for each device.
 #### Build one yourself, with Nix
 
 There is a separate tarball for each device.
-To build one, do:
+To build one, run:
 ```bash
 nix-build -A $DEVICE.tarball
 ```
 where `DEVICE` is one of
- - `nanos` for Nano S
- - `nanox` for Nano X
- - `nanosplus` for Nano S+
+ - `nanos`, for Nano S
+ - `nanox`, for Nano X
+ - `nanosplus`, for Nano S+
 
 The last line printed out will be the path of the tarball.
 
@@ -75,16 +75,29 @@ To use this tool using Nix, from the root level of this repo, run this command t
 nix-shell -A $DEVICE.appShell
 ```
 where `DEVICE` is one of
- - `nanos` for Nano S
- - `nanox` for Nano X
- - `nanosplus` for Nano S+
+ - `nanos`, for Nano S
+ - `nanox`, for Nano X
+ - `nanosplus`, for Nano S+
 
 Then, one can use `generic-cli` like this:
-```bash
-generic-cli getAddress --useBlock "44'/635'/0'/0/0" --json
 
-generic-cli sign --useBlock "44'/635'/0'/0/0" --json '{"chain_id":"testnet","entropy":"-7780543831205109370","fee":[{"amount":"10000","denom":"upokt"}],"memo":"","msg":{"type":"pos/Send","value":{"amount":"1000000","from_address":"51568b979c4c017735a743e289dd862987143290","to_address":"51568b979c4c017735a743e289dd862987143290"}}}'
-```
+- Get a public key for a BIP-32 derivation:
+  ```shell-session
+  $ generic-cli getAddress --useBlock "44'/635'/0'/0/0" --json
+  {
+    "publicKey": "3f903a00b0b9634b61de1fedee53dcd02ef6c94ec63529a20565b17f306ff0a9",
+    "address": "e8ed4e23ebb4d59444fa8fe1a0e3a1171dfe6af2"
+  }
+  ```
+
+- Sign a transaction:
+  ```shell-session
+  $ generic-cli sign --useBlock "44'/635'/0'/0/0" --json '{"chain_id":"testnet","entropy":"-7780543831205109370","fee":[{"amount":"10000","denom":"upokt"}],"memo":"","msg":{"type":"pos/Send","value":{"amount":"1000000","from_address":"51568b979c4c017735a743e289dd862987143290","to_address":"51568b979c4c017735a743e289dd862987143290"}}}'
+  Signing:  <Buffer 7b 22 63 68 61 69 6e 5f 69 64 22 3a 22 74 65 73 74 6e 65 74 22 2c 22 65 6e 74 72 6f 70 79 22 3a 22 2d 37 37 38 30 35 34 33 38 33 31 32 30 35 31 30 39 ... 227 more bytes>
+  0217976c898df122bf71fe3f29fb9f5d61e6ea26f0fd327c89ea5a754df843e1044a5a6aad50df9ab7fd8a3a1ed78083b2925ab973168ed25c8556b7fcf3e500
+  ```
+
+The exact output you see will vary, since Ledger devices should not be configured to have the same private key!
 
 the `--useBlock` argument to generic-cli is required for the pocket app to select the correct ledger/host protocol. Producing a transaction to sign, and assembling the resulting ed25519 signature with the transaction to send, are done with the pocket commandline.
 
