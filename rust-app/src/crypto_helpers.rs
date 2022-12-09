@@ -1,15 +1,15 @@
 use crate::info;
 use core::default::Default;
 //use core::option::NoneError;
+use arrayvec::{ArrayVec, CapacityError};
 use core::fmt;
+use core::ops::{Deref, DerefMut};
+use ledger_crypto_helpers::common::*;
+use ledger_crypto_helpers::eddsa::*;
+use ledger_log::*;
 use nanos_sdk::bindings::*;
 use nanos_sdk::io::SyscallError;
 use zeroize::{DefaultIsZeroes, Zeroizing};
-use core::ops::{Deref,DerefMut};
-use arrayvec::{CapacityError,ArrayVec};
-use ledger_log::*;
-use ledger_crypto_helpers::common::*;
-use ledger_crypto_helpers::eddsa::*;
 
 pub const BIP32_PREFIX: [u32; 3] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'");
 
@@ -39,7 +39,7 @@ pub fn get_pkh(key: &nanos_sdk::ecc::ECPublicKey<65, 'E'>) -> Result<PKH, Syscal
             public_key_hash.len() as u32,
         );
     }
-    let mut rv=PKH([0; 20]);
+    let mut rv = PKH([0; 20]);
     rv.0.clone_from_slice(&public_key_hash[0..20]);
     Ok(rv)
 }

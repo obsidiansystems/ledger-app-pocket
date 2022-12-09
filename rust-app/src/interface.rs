@@ -81,6 +81,8 @@ pub type SignParameters = (
 
 pub type DoubledSignParameters = (
     Bip32Key,
-    (LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
-     LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>)
+    (
+        LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
+        LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
+    ),
 );

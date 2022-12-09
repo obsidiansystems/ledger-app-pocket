@@ -2,10 +2,10 @@ use crate::implementation::*;
 use crate::interface::*;
 
 use ledger_crypto_helpers::hasher::{Hasher, SHA256};
-use ledger_parser_combinators::interp_parser::OOB;
-use ledger_parser_combinators::interp_parser::call_me_maybe;
-use ledger_prompts_ui::RootMenu;
 use ledger_log::{info, trace};
+use ledger_parser_combinators::interp_parser::call_me_maybe;
+use ledger_parser_combinators::interp_parser::OOB;
+use ledger_prompts_ui::RootMenu;
 
 use nanos_sdk::io;
 
@@ -15,16 +15,18 @@ pub fn app_main() {
     let mut states = ParsersState::NoState;
     let mut block_state = BlockState::default();
 
-    let mut idle_menu = RootMenu::new([ concat!("Pocket ", env!("CARGO_PKG_VERSION")), "Exit" ]);
-    let mut busy_menu = RootMenu::new([ "Working...", "Cancel" ]);
+    let mut idle_menu = RootMenu::new([concat!("Pocket ", env!("CARGO_PKG_VERSION")), "Exit"]);
+    let mut busy_menu = RootMenu::new(["Working...", "Cancel"]);
 
     // not_a_real_fn();
 
     info!("Pocket app {}", env!("CARGO_PKG_VERSION"));
-    info!("State sizes\ncomm: {}\nstates: {}\nblock_state: {}"
-          , core::mem::size_of::<io::Comm>()
-          , core::mem::size_of::<ParsersState>()
-          , core::mem::size_of::<BlockState>());
+    info!(
+        "State sizes\ncomm: {}\nstates: {}\nblock_state: {}",
+        core::mem::size_of::<io::Comm>(),
+        core::mem::size_of::<ParsersState>(),
+        core::mem::size_of::<BlockState>()
+    );
 
     let // Draw some 'welcome' screen
         menu = |states : &ParsersState, idle : & mut RootMenu<2>, busy : & mut RootMenu<2>| {
@@ -34,7 +36,7 @@ pub fn app_main() {
             }
         };
 
-    menu(&states, & mut idle_menu, & mut busy_menu);
+    menu(&states, &mut idle_menu, &mut busy_menu);
     loop {
         // Wait for either a specific button push to exit the app
         // or an APDU command
@@ -49,7 +51,7 @@ pub fn app_main() {
                     }
                     Err(sw) => comm.reply(sw),
                 };
-                menu(&states, & mut idle_menu, & mut busy_menu);
+                menu(&states, &mut idle_menu, &mut busy_menu);
                 trace!("Command done");
             }
             io::Event::Button(btn) => {
@@ -57,21 +59,23 @@ pub fn app_main() {
                 match states {
                     ParsersState::NoState => {
                         if let Some(1) = idle_menu.update(btn) {
-                            info!("Exiting app at user direction via root menu"); nanos_sdk::exit_app(0)
+                            info!("Exiting app at user direction via root menu");
+                            nanos_sdk::exit_app(0)
                         }
                     }
                     _ => {
                         if let Some(1) = idle_menu.update(btn) {
-                            info!("Resetting at user direction via busy menu"); reset_parsers_state(&mut states)
+                            info!("Resetting at user direction via busy menu");
+                            reset_parsers_state(&mut states)
                         }
                     }
                 };
-                menu(&states, & mut idle_menu, & mut busy_menu);
+                menu(&states, &mut idle_menu, &mut busy_menu);
                 trace!("Button done");
             }
             io::Event::Ticker => {
                 //trace!("Ignoring ticker event");
-            },
+            }
         }
     }
 }
@@ -83,7 +87,7 @@ enum Ins {
     GetPubkey,
     Sign,
     GetVersionStr,
-    Exit
+    Exit,
 }
 
 impl TryFrom<u8> for Ins {
@@ -135,7 +139,7 @@ enum HostToLedgerCmd {
     GetChunkResponseSuccess = 1,
     GetChunkResponseFailure = 2,
     PutChunkResponse = 3,
-    ResultAccumulatingResponse = 4
+    ResultAccumulatingResponse = 4,
 }
 
 impl TryFrom<u8> for HostToLedgerCmd {
@@ -206,8 +210,7 @@ impl BlockyAdapterScheme for OneParamOnceState {
 }
 */
 
-
-use ledger_parser_combinators::interp_parser::{ParserCommon};
+use ledger_parser_combinators::interp_parser::ParserCommon;
 
 #[inline(never)]
 fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N: usize>(
@@ -218,11 +221,11 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
     parser: &P,
     comm: &mut io::Comm,
 ) -> Result<(), Reply> {
-
     trace!("Entered run_parser_apdu_signing");
     let block: &[u8] = comm.get_data()?;
 
-    let host_cmd : HostToLedgerCmd = HostToLedgerCmd::try_from(*block.get(0).ok_or(io::StatusWords::Unknown)?)?;
+    let host_cmd: HostToLedgerCmd =
+        HostToLedgerCmd::try_from(*block.get(0).ok_or(io::StatusWords::Unknown)?)?;
 
     trace!("Host cmd: {:?}", host_cmd);
     match host_cmd {
@@ -231,21 +234,30 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
             reset_parsers_state(states);
             block_state.params.clear();
             for param in block[1..].chunks_exact(HASH_LEN) {
-                block_state.params.try_push(param.try_into().or(Err(io::StatusWords::Unknown))?).or(Err(io::StatusWords::Unknown))?;
+                block_state
+                    .params
+                    .try_push(param.try_into().or(Err(io::StatusWords::Unknown))?)
+                    .or(Err(io::StatusWords::Unknown))?;
             }
             trace!("Params: {:x?}", block_state.params);
             block_state.state = 0;
-            if block_state.params.len() <= *seq.iter().max().unwrap() { return Err(io::StatusWords::Unknown.into()); }
-            block_state.requested_block.copy_from_slice(&block_state.params[seq[block_state.state]][..]);
+            if block_state.params.len() <= *seq.iter().max().unwrap() {
+                return Err(io::StatusWords::Unknown.into());
+            }
+            block_state
+                .requested_block
+                .copy_from_slice(&block_state.params[seq[block_state.state]][..]);
             comm.append(&[LedgerToHostCmd::GetChunk as u8]);
             comm.append(&block_state.requested_block);
             Ok(())
         }
         HostToLedgerCmd::GetChunkResponseSuccess => {
-            if block.len() < HASH_LEN+1 { return Err(io::StatusWords::Unknown.into()); }
+            if block.len() < HASH_LEN + 1 {
+                return Err(io::StatusWords::Unknown.into());
+            }
 
             // Check the hash, so the host can't lie.
-            call_me_maybe( || {
+            call_me_maybe(|| {
                 let mut hasher = SHA256::new();
                 hasher.update(&block[1..]);
                 let hashed = hasher.finalize();
@@ -254,16 +266,18 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                 } else {
                     Some(())
                 }
-            }).ok_or(io::StatusWords::Unknown)?;
+            })
+            .ok_or(io::StatusWords::Unknown)?;
 
-            let next_block = &block[1..1+HASH_LEN];
-            let cursor = &block[1+HASH_LEN..];
+            let next_block = &block[1..1 + HASH_LEN];
+            let cursor = &block[1 + HASH_LEN..];
 
             trace!("Parsing APDU input: {:?}\n", cursor);
             let mut parse_destination = None;
             let gs = get_state(states);
             trace!("State got, calling parser");
-            let parse_rv = <P as InterpParser<A>>::parse(parser, gs, cursor, &mut parse_destination);
+            let parse_rv =
+                <P as InterpParser<A>>::parse(parser, gs, cursor, &mut parse_destination);
             trace!("Parser result: {:?}\n", parse_rv);
             trace!("Parse destination: {:?}\n", parse_destination);
             match parse_rv {
@@ -279,10 +293,14 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                 Err((None, [])) => {
                     trace!("Parser needs more; get more.");
                     // Request the next chunk of our input.
-                    let our_next_block : &[u8] = if next_block == [0; 32] {
+                    let our_next_block: &[u8] = if next_block == [0; 32] {
                         block_state.state = block_state.state + 1;
-                        if block_state.state > seq.len() { return Err(io::StatusWords::Unknown.into()); }
-                        if block_state.params.len() <= seq[block_state.state] { return Err(io::StatusWords::Unknown.into()); }
+                        if block_state.state > seq.len() {
+                            return Err(io::StatusWords::Unknown.into());
+                        }
+                        if block_state.params.len() <= seq[block_state.state] {
+                            return Err(io::StatusWords::Unknown.into());
+                        }
                         &block_state.params[seq[block_state.state]]
                     } else {
                         &next_block
@@ -320,16 +338,19 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     return Err(io::StatusWords::Unknown.into());
                 }
             }
-
         }
         _ => Err(io::StatusWords::Unknown.into()),
     }
-
 }
 
 // fn handle_apdu<P: for<'a> FnMut(ParserTag, &'a [u8]) -> RX<'a, ArrayVec<u8, 260> > >(comm: &mut io::Comm, ins: Ins, parser: &mut P) -> Result<(), Reply> {
 #[inline(never)]
-fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState, block_state: &mut BlockState) -> Result<(), Reply> {
+fn handle_apdu(
+    comm: &mut io::Comm,
+    ins: Ins,
+    parser: &mut ParsersState,
+    block_state: &mut BlockState,
+) -> Result<(), Reply> {
     info!("entering handle_apdu with command {:?}", ins);
     if comm.rx == 0 {
         return Err(io::StatusWords::NothingReceived.into());
@@ -337,15 +358,29 @@ fn handle_apdu(comm: &mut io::Comm, ins: Ins, parser: &mut ParsersState, block_s
 
     match ins {
         Ins::GetVersion => {
-            comm.append(&[env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(), env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(), env!("CARGO_PKG_VERSION_PATCH").parse().unwrap()]);
+            comm.append(&[
+                env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(),
+                env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
+                env!("CARGO_PKG_VERSION_PATCH").parse().unwrap(),
+            ]);
             comm.append(b"Pocket");
         }
-        Ins::GetPubkey => {
-            run_parser_apdu::<_, Bip32Key, _>(parser, get_get_address_state, block_state, &[0], &GET_ADDRESS_IMPL, comm)?
-        }
-        Ins::Sign => {
-            run_parser_apdu::<_, DoubledSignParameters, _>(parser, get_sign_state, block_state, &SIGN_SEQ, &SIGN_IMPL, comm)?
-        }
+        Ins::GetPubkey => run_parser_apdu::<_, Bip32Key, _>(
+            parser,
+            get_get_address_state,
+            block_state,
+            &[0],
+            &GET_ADDRESS_IMPL,
+            comm,
+        )?,
+        Ins::Sign => run_parser_apdu::<_, DoubledSignParameters, _>(
+            parser,
+            get_sign_state,
+            block_state,
+            &SIGN_SEQ,
+            &SIGN_IMPL,
+            comm,
+        )?,
         Ins::GetVersionStr => {
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
         }
