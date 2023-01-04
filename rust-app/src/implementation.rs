@@ -797,22 +797,23 @@ pub fn get_sign_state(
         ParsersState::SignState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
+            /*
             unsafe {
                 let s_ptr = s as *mut ParsersState;
                 core::ptr::drop_in_place(s_ptr);
                 // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
                 // fill it; we rely on init_in_place to not panic.
-                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| {
+                ParsersState::init_sign_state(core::mem::transmute(s_ptr): *mut core::mem::MaybeUninit<ParsersState>, |a| {
                     <SignImplT as ParserCommon<DoubledSignParameters>>::init_in_place(
                         &SIGN_IMPL, a,
                     );
                 });
                 trace!("Get_sign_stated");
             }
-            /*
+            */
             *s = ParsersState::SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
-            )); */
+            ));
         }
     }
     match s {
