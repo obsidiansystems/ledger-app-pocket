@@ -1,7 +1,7 @@
 use crate::implementation::*;
 use crate::interface::*;
 
-use ledger_crypto_helpers::hasher::{Hasher, SHA256};
+use ledger_crypto_helpers::hasher::{Base64Hash, Hasher, SHA256};
 use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
@@ -260,7 +260,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
             call_me_maybe(|| {
                 let mut hasher = SHA256::new();
                 hasher.update(&block[1..]);
-                let hashed = hasher.finalize();
+                let hashed = hasher.finalize::<Base64Hash<{ SHA256::N }>>();
                 if hashed.0 != block_state.requested_block {
                     None
                 } else {
