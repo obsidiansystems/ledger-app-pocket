@@ -195,8 +195,10 @@ rec {
     vendorSha256 = "04rwxmmk2za27ylyxidd499bb2c0ssrishgnfnq7wm6f1b99vbs0";
     doCheck = false;
   };
-  pocket-cli-cmd-renamed = pkgs.linkFarm "pocket-cmd" [ {
-    name = "bin/pocket";
-    path = "${pocket-core}/bin/pocket_core";
-  } ];
+  pocket-cli-cmd-renamed = pkgs.linkFarm "pocket-cmd" [
+    {
+      name = "bin/pocket";
+      path = "${pocket-core}/bin/pocket_core";
+    }
+  ];
 }
