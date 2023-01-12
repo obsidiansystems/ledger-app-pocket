@@ -86,3 +86,27 @@ pub type DoubledSignParameters = (
         LengthFallback<U32<{ Endianness::Little }>, Json<PoktCmdSchema>>,
     ),
 );
+
+#[repr(u8)]
+#[derive(Debug)]
+pub enum Ins {
+    GetVersion,
+    GetPubkey,
+    Sign,
+    GetVersionStr,
+    Exit,
+}
+
+impl TryFrom<u8> for Ins {
+    type Error = ();
+    fn try_from(ins: u8) -> Result<Ins, ()> {
+        match ins {
+            0 => Ok(Ins::GetVersion),
+            2 => Ok(Ins::GetPubkey),
+            3 => Ok(Ins::Sign),
+            0xfe => Ok(Ins::GetVersionStr),
+            0xff => Ok(Ins::Exit),
+            _ => Err(()),
+        }
+    }
+}
