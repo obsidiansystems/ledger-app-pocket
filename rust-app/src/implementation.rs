@@ -1,5 +1,6 @@
 use crate::crypto_helpers::{BIP32_PREFIX, PKH};
 use crate::interface::*;
+use crate::utils::*;
 use crate::*;
 use arrayvec::ArrayVec;
 use core::fmt::Debug;
@@ -14,7 +15,7 @@ use ledger_parser_combinators::interp_parser::{
     MoveAction, ObserveLengthedBytes, ParseResult, ParserCommon, Preaction, SubInterp, OOB,
 };
 use ledger_parser_combinators::json::Json;
-use ledger_prompts_ui::{final_accept_prompt, write_scroller, PromptWrite, ScrollerError};
+use ledger_prompts_ui::{final_accept_prompt, write_scroller, ScrollerError};
 
 use core::str::from_utf8;
 
@@ -26,46 +27,10 @@ use ledger_parser_combinators::json_interp::*;
 
 use enum_init::InPlaceInit;
 
-// A couple type ascription functions to help the compiler along.
-const fn mkfn<A, B, C>(q: fn(&A, &mut B) -> Option<C>) -> fn(&A, &mut B) -> Option<C> {
-    q
-}
-const fn mkmvfn<A, B, C>(q: fn(A, &mut B) -> Option<C>) -> fn(A, &mut B) -> Option<C> {
-    q
-}
 const fn mktfn<A, B, C, D>(
     q: fn(&A, &mut B, DynamicStackBox<D>) -> Option<C>,
 ) -> fn(&A, &mut B, DynamicStackBox<D>) -> Option<C> {
     q
-}
-const fn mkvfn<A, C>(q: fn(&A, &mut Option<()>) -> C) -> fn(&A, &mut Option<()>) -> C {
-    q
-}
-/*const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
-  q
-}*/
-/*
-const fn mkvfn<A>(q: fn(&A,&mut Option<()>)->Option<()>) -> fn(&A,&mut Option<()>)->Option<()> {
-    q
-}
-*/
-
-#[cfg(not(target_os = "nanos"))]
-#[inline(never)]
-fn scroller<F: for<'b> Fn(&mut PromptWrite<'b, 16>) -> Result<(), ScrollerError>>(
-    title: &str,
-    prompt_function: F,
-) -> Option<()> {
-    ledger_prompts_ui::write_scroller_three_rows(title, prompt_function)
-}
-
-#[cfg(target_os = "nanos")]
-#[inline(never)]
-fn scroller<F: for<'b> Fn(&mut PromptWrite<'b, 16>) -> Result<(), ScrollerError>>(
-    title: &str,
-    prompt_function: F,
-) -> Option<()> {
-    ledger_prompts_ui::write_scroller(title, prompt_function)
 }
 
 pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 128>>;

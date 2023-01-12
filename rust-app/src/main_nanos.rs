@@ -1,7 +1,7 @@
 use crate::implementation::*;
 use crate::interface::*;
 
-use ledger_crypto_helpers::hasher::{Hasher, SHA256};
+use ledger_crypto_helpers::hasher::{Base64Hash, Hasher, SHA256};
 use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
@@ -76,30 +76,6 @@ pub fn app_main() {
             io::Event::Ticker => {
                 //trace!("Ignoring ticker event");
             }
-        }
-    }
-}
-
-#[repr(u8)]
-#[derive(Debug)]
-enum Ins {
-    GetVersion,
-    GetPubkey,
-    Sign,
-    GetVersionStr,
-    Exit,
-}
-
-impl TryFrom<u8> for Ins {
-    type Error = ();
-    fn try_from(ins: u8) -> Result<Ins, ()> {
-        match ins {
-            0 => Ok(Ins::GetVersion),
-            2 => Ok(Ins::GetPubkey),
-            3 => Ok(Ins::Sign),
-            0xfe => Ok(Ins::GetVersionStr),
-            0xff => Ok(Ins::Exit),
-            _ => Err(()),
         }
     }
 }
@@ -260,7 +236,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
             call_me_maybe(|| {
                 let mut hasher = SHA256::new();
                 hasher.update(&block[1..]);
-                let hashed = hasher.finalize();
+                let hashed = hasher.finalize::<Base64Hash<{ SHA256::N }>>();
                 if hashed.0 != block_state.requested_block {
                     None
                 } else {

@@ -22,9 +22,13 @@ extern "C" fn sample_main() {
 }
 
 pub mod interface;
-pub mod utils;
 
 pub mod crypto_helpers;
+
+#[cfg(all(target_family = "bolos"))]
+pub mod utils;
+
+#[cfg(all(target_family = "bolos"))]
 pub mod implementation;
 
 #[cfg(all(target_family = "bolos"))]
