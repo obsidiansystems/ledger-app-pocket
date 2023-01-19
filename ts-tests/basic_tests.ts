@@ -33,7 +33,7 @@ describe('basic tests', () => {
 
 function testTransaction(path: string, txn: string, prompts: any[]) {
      return async () => {
-       let sig = await sendCommandAndAccept(
+       await sendCommandAndAccept(
          async (client : Pokt) => {
 
            let pk = await client.getPublicKey(path);
@@ -281,4 +281,15 @@ describe("Signing tests", function() {
         }
        ]
      ));
+});
+
+describe("get version tests", function() {
+  it("can get app version", async () => {
+    await sendCommandAndAccept(async (client : any) => {
+      var rv = await client.getVersion();
+      expect(rv.major).to.equal(0);
+      expect(rv.minor).to.equal(0);
+      expect(rv.patch).to.equal(5);
+      }, []);
+    });
 });

@@ -58,8 +58,8 @@ overflow-checks = false
 
 [package.metadata.nanos]
 name = "Pocket"
-path = "44'/635'"
-curve = "ed25519"
+path = ["44'/635'"]
+curve = ["ed25519"]
 flags = "0"
 icon = "pocket.gif"
 icon_small = "pocket-small.gif"
