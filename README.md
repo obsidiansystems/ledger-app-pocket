@@ -22,7 +22,7 @@ The second step is to load that app from the tarball.
 
 #### Download an official build
 
-Check the [releases page](https://github.com/alamgu/alamgu-example/releases) of this app to see if an official build has been uploaded for this release.
+Check the [releases page](https://github.com/alamgu/pocket/releases) of this app to see if an official build has been uploaded for this release.
 There is a separate tarball for each device.
 
 #### Build one yourself, with Nix
@@ -50,7 +50,7 @@ By using Nix, this can be done simply by using the `load-app` command, without m
 
 ```bash
 tar xzf /path/to/release.tar.gz
-cd rust-app
+cd pocket
 nix-shell
 load-app
 ```
@@ -65,7 +65,7 @@ For more information on how to install and use that tool see the [instructions f
 
 ```bash
 tar xzf release.tar.gz
-cd rust-app
+cd pocket
 ledgerctl install -f app.json
 ```
 
