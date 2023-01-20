@@ -469,8 +469,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/alamgu/ledger-nanos-sdk.git";
-          rev = "796bbe1479c06df73b3014edd94964d1b41b51b3";
-          sha256 = "1wykmy7wsvmwlks7drc4vis3s9c42rj4gs62jpxn9h6kpq8f0517";
+          rev = "100b25ddfb6049f6520d46657cf13a36a3fdeae9";
+          sha256 = "04qvp396fs4cwbkx8j03lqzysaiw78mwvqfmzarqrwq4k4qk7izm";
         };
         authors = [
           "yhql"
@@ -495,7 +495,7 @@ rec {
         ];
         features = {
         };
-        resolvedDefaultFeatures = [ "lib_bagl" "speculos" ];
+        resolvedDefaultFeatures = [ "lib_bagl" "pending_review_screen" "speculos" ];
       };
       "nanos_ui" = rec {
         crateName = "nanos_ui";
@@ -626,9 +626,10 @@ rec {
         ];
         features = {
           "extra_debug" = [ "ledger-log/log_trace" ];
+          "pending_review_screen" = [ "nanos_sdk/pending_review_screen" ];
           "speculos" = [ "nanos_sdk/speculos" "ledger-log/speculos" "ledger-log/log_error" "ledger-parser-combinators/logging" ];
         };
-        resolvedDefaultFeatures = [ "default" "extra_debug" "speculos" ];
+        resolvedDefaultFeatures = [ "default" "extra_debug" "pending_review_screen" "speculos" ];
       };
       "proc-macro2" = rec {
         crateName = "proc-macro2";

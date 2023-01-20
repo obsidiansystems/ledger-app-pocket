@@ -21,6 +21,7 @@ default = [ ]
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable speculos logging and change log level.
 speculos = [ "nanos_sdk/speculos", "ledger-log/speculos", "ledger-log/log_error", "ledger-parser-combinators/logging" ]
 extra_debug = ["ledger-log/log_trace"]
+pending_review_screen = ["nanos_sdk/pending_review_screen"]
 
 [target.'cfg(target_family = "bolos")'.dependencies]
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git" }
@@ -41,7 +42,7 @@ path = "bin-src/main.rs"
 
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk.git".nanos_sdk]
 git = "https://github.com/alamgu/ledger-nanos-sdk.git"
-branch = "memory-fixes"
+branch = "memory-fixes-pending"
 [patch."https://github.com/LedgerHQ/ledger-nanos-ui.git".nanos_ui]
 git = "https://github.com/obsidiansystems/ledger-nanos-ui"
 branch = "use-lib-bagl-for-x-and-splus"
