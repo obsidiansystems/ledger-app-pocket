@@ -84,20 +84,19 @@ dependencies = [
 [[package]]
 name = "ledger-crypto-helpers"
 version = "0.2.0"
-source = "git+https://github.com/alamgu/ledger-crypto-helpers#4236733f0dcb2965af225ac406f42b9b4841ee64"
+source = "git+https://github.com/alamgu/ledger-crypto-helpers#17ad6868f9becfdab4208edd7f449689a931b2e0"
 dependencies = [
  "arrayvec",
  "base64",
  "ledger-log",
  "nanos_sdk",
- "nanos_ui",
  "zeroize",
 ]
 
 [[package]]
 name = "ledger-log"
 version = "0.2.0"
-source = "git+https://github.com/alamgu/ledger-log#02f702bbec9ca9802151fd261508580eb3826287"
+source = "git+https://github.com/alamgu/ledger-log#aa326b3078f5a470047b0d13bc2c00cec39e600c"
 dependencies = [
  "arrayvec",
  "nanos_sdk",

@@ -274,8 +274,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/alamgu/ledger-crypto-helpers";
-          rev = "4236733f0dcb2965af225ac406f42b9b4841ee64";
-          sha256 = "0iiqkrh3wr33srqxpzhzf2shrl38mi1pfl8dbnwy9zkslpvgamhg";
+          rev = "17ad6868f9becfdab4208edd7f449689a931b2e0";
+          sha256 = "0i9mxdw7rcpyi4ngh3prk0f05fyffwi210k6yz91fj2i8lpcfhi4";
         };
         dependencies = [
           {
@@ -297,18 +297,12 @@ rec {
             packageId = "nanos_sdk";
           }
           {
-            name = "nanos_ui";
-            packageId = "nanos_ui";
-          }
-          {
             name = "zeroize";
             packageId = "zeroize";
             usesDefaultFeatures = false;
           }
         ];
-        features = {
-          "speculos" = [ "nanos_sdk/speculos" ];
-        };
+
       };
       "ledger-log" = rec {
         crateName = "ledger-log";
@@ -317,8 +311,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/alamgu/ledger-log";
-          rev = "02f702bbec9ca9802151fd261508580eb3826287";
-          sha256 = "03qic29qkvis54bgh40wwja89kcp6kz6acd0ifzyvcqxicpmikmy";
+          rev = "aa326b3078f5a470047b0d13bc2c00cec39e600c";
+          sha256 = "016j013zq38zci0dz60y3daz3l7bj3jd5w17r18gpj450jkxkmb6";
         };
         dependencies = [
           {
