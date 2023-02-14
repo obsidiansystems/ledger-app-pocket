@@ -8,7 +8,7 @@ Install the Pocket app on your Ledger device to manage POKT Tokens with the [Poc
 - The latest firmware is [installed](https://support.ledgerwallet.com/hc/en-us/articles/360002731113).
 - Ledger Live is [ready to use](https://support.ledgerwallet.com/hc/en-us/articles/360006395233).
 
-### 2. Install the Kadena app
+### 2. Install the Pocket app
 
 1. Open the Manager in Ledger Live.
 2. Connect and unlock your Ledger device.
@@ -22,7 +22,7 @@ Install the Pocket app on your Ledger device to manage POKT Tokens with the [Poc
 
 ### **3. Obtain Ledger Account Number**
 
-- Open the Kadena app on your Ledger device, the screen will display "Pocket  0.1.0".
+- Open the Pocket app on your Ledger device, the screen will display "Pocket  0.1.0".
 
 - Open the Pocket web wallet [Import Account](https://wallet.pokt.network/import) page.
 
