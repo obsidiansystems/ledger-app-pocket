@@ -44,9 +44,13 @@ Install the Pocket app on your Ledger device to manage POKT Tokens with the [Poc
 
 - Verify the details on your device display.
 
-  - Token name: KDA
+  - Transfer POKT
 
-  - Amount, receiver's address, and receiver chainID (in case of cross-chain transfer)
+  - Sender's address
+
+  - Receiver's address
+
+  - Amount
   
   - Gas fees
 
@@ -56,9 +60,7 @@ Install the Pocket app on your Ledger device to manage POKT Tokens with the [Poc
 
 ### **6. Contact info**
 
-- Support:
-- Name:
-- Surname:
-- Legal Entity: 
-- URL: 
-- Phone number: 
+- Name: Arthur Sabintsev
+- Email: arthur@pokt.network
+- Legal Entity: Pocket Network, Inc.
+- URL: https://www.pokt.network/ 
