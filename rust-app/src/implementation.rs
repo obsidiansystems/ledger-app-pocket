@@ -339,7 +339,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                 scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
                 with_public_keys(path, |_, pkh: &PKH| {
                     scroller("For Account", |w| Ok(write!(w, "{}", pkh)?)).ok_or(ScrollerError)?;
-                    ed.init(path)?;
+                    ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
                     Ok::<_, SignTempError>(())
