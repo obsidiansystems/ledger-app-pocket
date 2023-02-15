@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { describe, it } from 'mocha';
 import Axios from 'axios';
 import Pokt from "hw-app-pokt";
-import * as ed from 'noble-ed25519';
+import * as ed from '@noble/ed25519';
 
 describe('basic tests', () => {
 
@@ -16,7 +16,7 @@ describe('basic tests', () => {
   it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
-      let rv = await pokt.getPublicKey("44'/635'/0");
+      const rv = await pokt.getPublicKey("44'/635'/0");
       expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, []);
@@ -24,7 +24,7 @@ describe('basic tests', () => {
 
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (client : Pokt) => {
-      let rv = await client.getPublicKey("44'/635'/0");
+      const rv = await client.getPublicKey("44'/635'/0");
       expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, []);
@@ -36,12 +36,12 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
        await sendCommandAndAccept(
          async (client : Pokt) => {
 
-           let pk = await client.getPublicKey(path);
+           const pk = await client.getPublicKey(path);
 
            // We don't want the prompts from getPublicKey in our result
            await Axios.delete(BASE_URL + "/events");
 
-           let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+           const sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 
            expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
          }, prompts);
@@ -50,7 +50,7 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
 
 // These tests have been extracted interacting with the testnet via the cli.
 
-let exampleSend = {
+const exampleSend = {
   "chain_id": "testnet",
   "entropy": "-7780543831205109370",
   "fee": [
@@ -70,7 +70,7 @@ let exampleSend = {
   }
 };
 
-let exampleUnjail = {
+const exampleUnjail = {
   "chain_id": "testnet",
   "entropy": "-8051161335943327787",
   "fee": [
@@ -89,7 +89,7 @@ let exampleUnjail = {
   }
 };
 
-let exampleStake = {
+const exampleStake = {
   "chain_id": "testnet",
   "entropy": "2417661502575469960",
   "fee": [
@@ -116,7 +116,7 @@ let exampleStake = {
   }
 };
 
-let exampleUnstake = {
+const exampleUnstake = {
   "chain_id": "testnet",
   "entropy": "-1105361304155186876",
   "fee": [
