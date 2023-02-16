@@ -8,14 +8,14 @@ use core::fmt::Write;
 use ledger_crypto_helpers::common::{try_option, Address, CryptographyError};
 use ledger_crypto_helpers::ed25519::*;
 use ledger_crypto_helpers::eddsa::{
-    ed25519_public_key_bytes, with_public_keys, Ed25519RawPubKeyAddress,
+    ed25519_public_key_bytes, with_public_keys,
 };
 use ledger_parser_combinators::interp_parser::{
     set_from_thunk, Action, DefaultInterp, DropInterp, DynBind, DynParser, InterpParser,
     MoveAction, ObserveLengthedBytes, ParseResult, ParserCommon, Preaction, SubInterp, OOB,
 };
 use ledger_parser_combinators::json::Json;
-use ledger_prompts_ui::{final_accept_prompt, write_scroller, ScrollerError};
+use ledger_prompts_ui::{final_accept_prompt, ScrollerError};
 
 use core::str::from_utf8;
 
