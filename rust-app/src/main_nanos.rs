@@ -334,6 +334,7 @@ fn handle_apdu(
 
     match ins {
         Ins::GetVersion => {
+            comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
             comm.append(&[
                 env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(),
                 env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
@@ -358,6 +359,7 @@ fn handle_apdu(
             comm,
         )?,
         Ins::GetVersionStr => {
+            comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
         }
         Ins::Exit => nanos_sdk::exit_app(0),
