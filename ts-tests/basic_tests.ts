@@ -17,7 +17,7 @@ describe('basic tests', () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
       const rv = await pokt.getPublicKey("44'/635'/0");
-      expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
+      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, []);
   });
@@ -25,7 +25,7 @@ describe('basic tests', () => {
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (client : Pokt) => {
       const rv = await client.getPublicKey("44'/635'/0");
-      expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
+      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
     }, []);
   });
