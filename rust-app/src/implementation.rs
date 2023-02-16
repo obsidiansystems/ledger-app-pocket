@@ -7,9 +7,7 @@ use core::fmt::Debug;
 use core::fmt::Write;
 use ledger_crypto_helpers::common::{try_option, Address, CryptographyError};
 use ledger_crypto_helpers::ed25519::*;
-use ledger_crypto_helpers::eddsa::{
-    ed25519_public_key_bytes, with_public_keys,
-};
+use ledger_crypto_helpers::eddsa::{ed25519_public_key_bytes, with_public_keys};
 use ledger_parser_combinators::interp_parser::{
     set_from_thunk, Action, DefaultInterp, DropInterp, DynBind, DynParser, InterpParser,
     MoveAction, ObserveLengthedBytes, ParseResult, ParserCommon, Preaction, SubInterp, OOB,
