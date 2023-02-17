@@ -142,28 +142,26 @@ describe("Signing tests", function() {
        JSON.stringify(exampleSend),
 [
          {
-        "header": "Signing",
-        "prompt": "Transaction",
+           "header": "Transfer",
+           "prompt": "POKT",
          },
          {
-        "header": "For Account",
-        "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
          },
          {
-        "header": "Send",
-        "prompt": "Transaction",
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
          },
          {
-        "header": "Value",
-        "prompt": "1000000",
+           "header": "Amount",
+           "prompt": "1000000",
          },
          {
-        "header": "Transfer from",
-        "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
-         },
-         {
-        "header": "Transfer To",
-        "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "header": "Fees",
+           "prompt": "10000",
          },
          {
            "text": "Confirm",
@@ -177,13 +175,6 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleUnjail),
        [
-        { "header": "Signing",
-          "prompt": "Transaction"
-        },
-        {
-          "header": "For Account",
-          "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
-        },
         {
           "header": "Unjail",
           "prompt": "Transaction"
@@ -209,14 +200,6 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleStake),
        [
-         {
-           "header": "Signing",
-          "prompt": "Transaction"
-         },
-         {
-           "header": "For Account",
-           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
-         },
          {
            "header": "Stake",
            "prompt": "Transaction",
@@ -255,13 +238,6 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleUnstake),
        [
-        { "header": "Signing",
-          "prompt": "Transaction"
-        },
-        {
-          "header": "For Account",
-          "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
-        },
         {
           "header": "Unstake",
           "prompt": "Transaction"

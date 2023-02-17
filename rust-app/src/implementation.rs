@@ -92,14 +92,48 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
         });
 */
 
-type SendMessageAction = impl JsonInterp<SendValueSchema, State: Debug>;
+type SendMessageAction = impl JsonInterp<SendValueSchema, State: Debug, Returning = ()>;
 const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
-    || scroller("Send", |w| Ok(write!(w, "Transaction")?)),
-    SendValueInterp {
-        field_amount: VALUE_ACTION,
-        field_from_address: show_address::<"Transfer from">(), // FROM_ADDRESS_ACTION,
-        field_to_address: show_address::<"Transfer To">(),
-    },
+    || scroller("Transfer", |w| Ok(write!(w, "POKT")?)),
+    Action(
+        SendValueInterp {
+            field_amount: JsonStringAccumulate::<64>,
+            field_from_address: JsonStringAccumulate::<64>,
+            field_to_address: JsonStringAccumulate::<64>,
+        },
+        mkfn(
+            |o: &SendValue<
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+            >,
+             destination: &mut Option<()>| {
+                scroller_paginated("From", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_from_address.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller_paginated("To", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_to_address.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Amount", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_amount.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                *destination = Some(());
+                Some(())
+            },
+        ),
+    ),
 ); // TO_ADDRESS_ACTION});
 
 const CHAIN_ACTION: Action<
@@ -328,15 +362,26 @@ impl From<CryptographyError> for SignTempError {
     }
 }
 
+// Only one fees field is supported at the moment, so no string -> number conversion/summation required
+#[derive(Clone, Debug)]
+struct TotalFees(pub Option<ArrayVec<u8, 64>>);
+
+impl Summable<TotalFees> for TotalFees {
+    fn zero() -> Self {
+        TotalFees(None)
+    }
+    fn add_and_set(&mut self, other: &TotalFees) {
+        *self = TotalFees(other.0.clone());
+    }
+}
+
 pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     Action(
         SubInterp(DefaultInterp),
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
                 with_public_keys(path, |_, pkh: &PKH| {
-                    scroller("For Account", |w| Ok(write!(w, "{}", pkh)?)).ok_or(ScrollerError)?;
                     ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
@@ -353,18 +398,71 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                 || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
                 |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 Action(
-                    Json(PoktCmdInterp {
-                        field_chain_id: DropInterp,
-                        field_entropy: DropInterp,
-                        field_fee: DropInterp,
-                        field_memo: DropInterp,
-                        field_msg: Message {
-                            send_message: SEND_MESSAGE_ACTION,
-                            unjail_message: UNJAIL_MESSAGE_ACTION,
-                            stake_message: STAKE_MESSAGE_ACTION,
-                            unstake_message: UNSTAKE_MESSAGE_ACTION,
+                    Json(Action(
+                        PoktCmdInterp {
+                            field_chain_id: DropInterp,
+                            field_entropy: DropInterp,
+                            field_fee: SubInterpMFold::new(Action(
+                                AmountTypeInterp {
+                                    field_amount: JsonStringAccumulate::<64>,
+                                    field_denom: JsonStringAccumulate::<64>,
+                                },
+                                mkfnc(
+                                    |o: &AmountType<
+                                        Option<ArrayVec<u8, 64>>,
+                                        Option<ArrayVec<u8, 64>>,
+                                    >,
+                                     destination: &mut Option<TotalFees>,
+                                     _| {
+                                        *destination = Some(TotalFees(o.field_amount.clone()));
+                                        Some(())
+                                    },
+                                ),
+                            )),
+                            field_memo: DropInterp,
+                            field_msg: Message {
+                                send_message: SEND_MESSAGE_ACTION,
+                                unjail_message: UNJAIL_MESSAGE_ACTION,
+                                stake_message: STAKE_MESSAGE_ACTION,
+                                unstake_message: UNSTAKE_MESSAGE_ACTION,
+                            },
                         },
-                    }),
+                        mkfn(
+                            |o: &PoktCmd<
+                                Option<()>,
+                                Option<()>,
+                                Option<TotalFees>,
+                                Option<()>,
+                                Option<MessageReturnT>,
+                            >,
+                             ret: &mut Option<()>| {
+                                let msg_kind = o.field_msg.as_ref()?;
+                                match msg_kind {
+                                    // We expect Fees to be specified for transfer transactions
+                                    MessageReturn::SendMessageReturn(_) => {
+                                        scroller("Fees", |w| {
+                                            Ok(write!(
+                                                w,
+                                                "{}",
+                                                from_utf8(
+                                                    &o.field_fee
+                                                        .as_ref()
+                                                        .ok_or(ScrollerError)?
+                                                        .0
+                                                        .as_ref()
+                                                        .ok_or(ScrollerError)?
+                                                )?
+                                            )?)
+                                        })?;
+                                    }
+                                    // Ignore the Fees altogether for other txs, for now
+                                    _ => {}
+                                }
+                                *ret = Some(());
+                                Some(())
+                            },
+                        ),
+                    )),
                     mkvfn(|_, ret| {
                         *ret = Some(());
                         Some(())
@@ -521,6 +619,12 @@ pub enum MessageReturn<
     StakeMessageReturn(Option<StakeMessageReturn>),
     UnstakeMessageReturn(Option<UnstakeMessageReturn>),
 }
+type MessageReturnT = MessageReturn<
+    <SendMessageAction as ParserCommon<SendValueSchema>>::Returning,
+    <UnjailMessageAction as ParserCommon<UnjailValueSchema>>::Returning,
+    <StakeMessageAction as ParserCommon<StakeValueSchema>>::Returning,
+    <UnstakeMessageAction as ParserCommon<UnstakeValueSchema>>::Returning,
+>;
 
 impl ParserCommon<MessageSchema> for DropInterp {
     type State = <DropInterp as ParserCommon<JsonAny>>::State;
