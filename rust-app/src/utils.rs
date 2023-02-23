@@ -30,6 +30,9 @@ pub const fn mkmvfn<A, B, C>(q: fn(A, &mut B) -> Option<C>) -> fn(A, &mut B) -> 
 pub const fn mkvfn<A, C>(q: fn(&A, &mut Option<()>) -> C) -> fn(&A, &mut Option<()>) -> C {
     q
 }
+pub const fn mkfnc<A, B, C>(q: fn(&A, &mut B, C) -> Option<()>) -> fn(&A, &mut B, C) -> Option<()> {
+    q
+}
 /*pub const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
   q
 }*/
