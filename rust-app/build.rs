@@ -11,7 +11,7 @@ fn main() {
         target.as_str(),
     ) {
         ("release", false, false, "nanos") => 1872,
-        ("release", false, false, "nanosplus") => 1912,
+        ("release", false, false, "nanosplus") => 1928,
         (_, _, true, _) => 1024 * 10,
         _ => 1024 * 7,
     };
