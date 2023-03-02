@@ -123,11 +123,9 @@ const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
                     )?)
                 })?;
                 scroller("Amount", |w| {
-                    Ok(write!(
-                        w,
-                        "{}",
-                        from_utf8(o.field_amount.as_ref().ok_or(ScrollerError)?)?
-                    )?)
+                    let x = get_amount_in_decimals(o.field_amount.as_ref().ok_or(ScrollerError)?)
+                        .map_err(|_| ScrollerError)?;
+                    Ok(write!(w, "{}", from_utf8(&x)?)?)
                 })?;
                 *destination = Some(());
                 Some(())
@@ -135,6 +133,71 @@ const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
         ),
     ),
 ); // TO_ADDRESS_ACTION});
+
+// "Divides" the amount by 1000000
+// Converts the input string in the following manner
+// 1 -> 0.000001
+// 10 -> 0.00001
+// 11 -> 0.000011
+// 1000000 -> 1.0
+// 10000000 -> 10.0
+// 10010000 -> 10.01
+// 010010000 -> 10.01
+fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>, ()> {
+    let mut found_first_non_zero = false;
+    let mut start_ix = 0;
+    let mut last_non_zero_ix = 0;
+    // check the amount for any invalid chars and get its length
+    for (ix, c) in amount.as_ref().iter().enumerate() {
+        if c < &b'0' || c > &b'9' {
+            return Err(());
+        }
+        if c != &b'0' {
+            last_non_zero_ix = ix;
+        }
+        if !found_first_non_zero {
+            if c == &b'0' {
+                // Highly unlikely to hit this, but skip any leading zeroes
+                continue;
+            }
+            start_ix = ix;
+            found_first_non_zero = true;
+        }
+    }
+
+    let mut dec_value: ArrayVec<u8, 64> = ArrayVec::new();
+    let amt_len = amount.len() - start_ix;
+    let chars_after_decimal = 6;
+    if amt_len > chars_after_decimal {
+        // value is more than 1
+        dec_value
+            .try_extend_from_slice(&amount.as_ref()[start_ix..(amount.len() - chars_after_decimal)])
+            .map_err(|_| ())?;
+        dec_value.try_push(b'.').map_err(|_| ())?;
+        if amount.len() - chars_after_decimal < last_non_zero_ix {
+            // there is non-zero decimal value
+            dec_value
+                .try_extend_from_slice(
+                    &amount.as_ref()[amount.len() - chars_after_decimal..(last_non_zero_ix + 1)],
+                )
+                .map_err(|_| ())?;
+        } else {
+            // add a zero at the end always "xyz.0"
+            dec_value.try_push(b'0').map_err(|_| ())?;
+        }
+    } else {
+        // value is less than 1
+        dec_value.try_push(b'0').map_err(|_| ())?;
+        dec_value.try_push(b'.').map_err(|_| ())?;
+        for i in 0..(chars_after_decimal - amt_len) {
+            dec_value.try_push(b'0').map_err(|_| ())?;
+        }
+        dec_value
+            .try_extend_from_slice(&amount.as_ref()[start_ix..(last_non_zero_ix + 1)])
+            .map_err(|_| ())?;
+    }
+    Ok(dec_value)
+}
 
 const CHAIN_ACTION: Action<
     JsonStringAccumulate<64>,
@@ -441,18 +504,16 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                     // We expect Fees to be specified for transfer transactions
                                     MessageReturn::SendMessageReturn(_) => {
                                         scroller("Fees", |w| {
-                                            Ok(write!(
-                                                w,
-                                                "{}",
-                                                from_utf8(
-                                                    &o.field_fee
-                                                        .as_ref()
-                                                        .ok_or(ScrollerError)?
-                                                        .0
-                                                        .as_ref()
-                                                        .ok_or(ScrollerError)?
-                                                )?
-                                            )?)
+                                            let x = get_amount_in_decimals(
+                                                o.field_fee
+                                                    .as_ref()
+                                                    .ok_or(ScrollerError)?
+                                                    .0
+                                                    .as_ref()
+                                                    .ok_or(ScrollerError)?,
+                                            )
+                                            .map_err(|_| ScrollerError)?;
+                                            Ok(write!(w, "{}", from_utf8(&x)?)?)
                                         })?;
                                     }
                                     // Ignore the Fees altogether for other txs, for now
