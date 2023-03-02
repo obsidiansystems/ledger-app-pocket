@@ -55,7 +55,7 @@ const exampleSend = {
   "entropy": "-7780543831205109370",
   "fee": [
     {
-      "amount": "10000",
+      "amount": "12000",
       "denom": "upokt"
     }
   ],
@@ -63,7 +63,47 @@ const exampleSend = {
   "msg": {
     "type": "pos/Send",
     "value": {
-      "amount": "1000000",
+      "amount": "10000000",
+      "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
+const exampleSend2 = {
+  "chain_id": "testnet",
+  "entropy": "-7780543831205109370",
+  "fee": [
+    {
+      "amount": "2",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "Fourth transaction",
+  "msg": {
+    "type": "pos/Send",
+    "value": {
+      "amount": "10203040",
+      "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
+const exampleSend3 = {
+  "chain_id": "testnet",
+  "entropy": "-7780543831205109370",
+  "fee": [
+    {
+      "amount": "0000010000",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "Fourth transaction",
+  "msg": {
+    "type": "pos/Send",
+    "value": {
+      "amount": "002000000000",
       "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
       "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
     }
@@ -140,6 +180,74 @@ describe("Signing tests", function() {
      testTransaction(
        "44'/635'/0/0",
        JSON.stringify(exampleSend),
+       [
+         {
+           "header": "Transfer",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "10.0",
+         },
+         {
+           "header": "Fees",
+           "prompt": "0.012",
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
+     ));
+  it("can sign a simple transfer 2",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify(exampleSend2),
+       [
+         {
+           "header": "Transfer",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "10.20304",
+         },
+         {
+           "header": "Fees",
+           "prompt": "0.000002",
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
+     ));
+  it("can sign a simple transfer, check decimal conversion",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify(exampleSend3),
 [
          {
            "header": "Transfer",
@@ -157,11 +265,11 @@ describe("Signing tests", function() {
          },
          {
            "header": "Amount",
-           "prompt": "1000000",
+           "prompt": "2000.0",
          },
          {
            "header": "Fees",
-           "prompt": "10000",
+           "prompt": "0.01",
          },
          {
            "text": "Confirm",
