@@ -41,7 +41,7 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT = Action(
                 // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
                 return None;
             }
-            with_public_keys(path, |key: &_, pkh: &PKH| {
+            with_public_keys(path, false, |key: &_, pkh: &PKH| {
                 try_option(|| -> Option<()> {
                     let rv = destination.insert(ArrayVec::new());
 
@@ -444,7 +444,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                with_public_keys(path, |_, pkh: &PKH| {
+                with_public_keys(path, false, |_, pkh: &PKH| {
                     ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
