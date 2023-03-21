@@ -189,7 +189,7 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
         // value is less than 1
         dec_value.try_push(b'0').map_err(|_| ())?;
         dec_value.try_push(b'.').map_err(|_| ())?;
-        for i in 0..(chars_after_decimal - amt_len) {
+        for _i in 0..(chars_after_decimal - amt_len) {
             dec_value.try_push(b'0').map_err(|_| ())?;
         }
         dec_value
@@ -444,7 +444,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                with_public_keys(path, false, |_, pkh: &PKH| {
+                with_public_keys(path, false, |_, _pkh: &PKH| {
                     ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());

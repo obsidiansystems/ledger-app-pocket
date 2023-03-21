@@ -35,6 +35,12 @@ pub mod utils;
 pub mod implementation;
 
 #[cfg(all(target_family = "bolos"))]
+pub mod menu;
+
+#[cfg(all(target_family = "bolos"))]
+pub mod settings;
+
+#[cfg(all(target_family = "bolos"))]
 pub mod main_nanos;
 
 #[cfg(all(target_family = "bolos", test))]

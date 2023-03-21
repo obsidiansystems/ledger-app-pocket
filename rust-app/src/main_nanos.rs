@@ -1,12 +1,13 @@
 use crate::implementation::*;
 use crate::interface::*;
+use crate::menu::*;
+use crate::settings::*;
 
 use ledger_crypto_helpers::hasher::{Base64Hash, Hasher, SHA256};
 use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
-use ledger_prompts_ui::RootMenu;
-
+use ledger_prompts_ui::{handle_menu_button_event, show_menu};
 use nanos_sdk::io;
 
 #[allow(dead_code)]
@@ -15,8 +16,11 @@ pub fn app_main() {
     let mut states = ParsersState::NoState;
     let mut block_state = BlockState::default();
 
-    let mut idle_menu = RootMenu::new([concat!("Pocket ", env!("CARGO_PKG_VERSION")), "Exit"]);
-    let mut busy_menu = RootMenu::new(["Working...", "Cancel"]);
+    let mut idle_menu = IdleMenuWithSettings {
+        idle_menu: IdleMenu::AppMain,
+        settings: Settings::new(),
+    };
+    let mut busy_menu = BusyMenu::Working;
 
     // not_a_real_fn();
 
@@ -28,15 +32,13 @@ pub fn app_main() {
         core::mem::size_of::<BlockState>()
     );
 
-    let // Draw some 'welcome' screen
-        menu = |states : &ParsersState, idle : & mut RootMenu<2>, busy : & mut RootMenu<2>| {
-            match states {
-                ParsersState::NoState => idle.show(),
-                _ => busy.show(),
-            }
-        };
+    let menu = |states: &ParsersState, idle: &IdleMenuWithSettings, busy: &BusyMenu| match states {
+        ParsersState::NoState => show_menu(idle),
+        _ => show_menu(busy),
+    };
 
-    menu(&states, &mut idle_menu, &mut busy_menu);
+    // Draw some 'welcome' screen
+    menu(&states, &idle_menu, &busy_menu);
     loop {
         // Wait for either a specific button push to exit the app
         // or an APDU command
@@ -51,26 +53,31 @@ pub fn app_main() {
                     }
                     Err(sw) => comm.reply(sw),
                 };
-                menu(&states, &mut idle_menu, &mut busy_menu);
+                // Reset BusyMenu if we are done handling APDU
+                match states {
+                    ParsersState::NoState => busy_menu = BusyMenu::Working,
+                    _ => {}
+                };
+                menu(&states, &idle_menu, &busy_menu);
                 trace!("Command done");
             }
             io::Event::Button(btn) => {
                 trace!("Button received");
                 match states {
                     ParsersState::NoState => {
-                        if let Some(1) = idle_menu.update(btn) {
+                        if let Some(DoExitApp) = handle_menu_button_event(&mut idle_menu, btn) {
                             info!("Exiting app at user direction via root menu");
                             nanos_sdk::exit_app(0)
                         }
                     }
                     _ => {
-                        if let Some(1) = idle_menu.update(btn) {
+                        if let Some(DoCancel) = handle_menu_button_event(&mut busy_menu, btn) {
                             info!("Resetting at user direction via busy menu");
                             reset_parsers_state(&mut states)
                         }
                     }
                 };
-                menu(&states, &mut idle_menu, &mut busy_menu);
+                menu(&states, &idle_menu, &busy_menu);
                 trace!("Button done");
             }
             io::Event::Ticker => {
