@@ -1,4 +1,4 @@
-import { sendCommandAndAccept, BASE_URL, sendCommandExpectFail, toggleBlindSigningSettings } from "./common";
+import { VERSION, sendCommandAndAccept, BASE_URL, sendCommandExpectFail, toggleBlindSigningSettings } from "./common";
 import { expect } from 'chai';
 import { describe, it } from 'mocha';
 import Axios from 'axios';
@@ -371,9 +371,9 @@ describe("get version tests", function() {
   it("can get app version", async () => {
     await sendCommandAndAccept(async (client : any) => {
       var rv = await client.getVersion();
-      expect(rv.major).to.equal(0);
-      expect(rv.minor).to.equal(0);
-      expect(rv.patch).to.equal(5);
+      expect(rv.major).to.equal(VERSION.major);
+      expect(rv.minor).to.equal(VERSION.minor);
+      expect(rv.patch).to.equal(VERSION.patch);
       }, []);
     });
 });

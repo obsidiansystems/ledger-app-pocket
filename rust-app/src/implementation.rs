@@ -1,4 +1,4 @@
-use crate::crypto_helpers::{BIP32_PREFIX, PKH};
+use crate::crypto_helpers::PKH;
 use crate::interface::*;
 use crate::utils::*;
 use crate::*;
@@ -32,6 +32,9 @@ const fn mktfn<A, B, C, D>(
 }
 
 pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 128>>;
+
+// Need a path of length 5, as make_bip32_path panics with smaller paths
+pub const BIP32_PREFIX: [u32; 2] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'");
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT = Action(
     SubInterp(DefaultInterp),

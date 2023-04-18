@@ -10,8 +10,8 @@ fn main() {
         extra_debug_print,
         target.as_str(),
     ) {
-        ("release", false, false, "nanos") => 2864,
-        ("release", false, false, "nanosplus") => 2864,
+        ("release", false, false, "nanos") => 2912,
+        ("release", false, false, "nanosplus") => 2912,
         (_, _, true, _) => 1024 * 10,
         _ => 1024 * 7,
     };
