@@ -7,7 +7,7 @@ import { expect } from 'chai';
 export const VERSION = {
   major: 0,
   minor: 0,
-  patch: 5,
+  patch: 6,
 };
 
 const ignoredScreens = [ "Cancel", "Working...", "Quit", "Version"

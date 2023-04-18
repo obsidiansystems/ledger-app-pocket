@@ -224,7 +224,7 @@ checksum = "d01a5bd0424d00070b0098dd17ebca6f961a959dead1dbcbbbc1d1cd8d3deeba"
 
 [[package]]
 name = "pocket"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "arrayvec",
  "enum-init",
