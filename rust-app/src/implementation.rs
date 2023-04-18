@@ -46,6 +46,12 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT = Action(
             }
             with_public_keys(path, false, |key: &_, pkh: &PKH| {
                 try_option(|| -> Option<()> {
+                    scroller("Provide Public Key", |w| {
+                        Ok(write!(w, "For Address     {pkh}")?)
+                    })?;
+
+                    final_accept_prompt(&[])?;
+
                     let rv = destination.insert(ArrayVec::new());
 
                     // Should return the format that the chain customarily uses for public keys; for
