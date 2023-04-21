@@ -18,7 +18,7 @@ let
     # We sed hw-app-alamgu to a constant here, so that the package.json can be whatever; we're overriding it anyways.
     ${yarn2nix}/bin/yarn2nix --template \
       <(sed \
-        -e 's/"hw-app-alamgu".*$/"hw-app-alamgu": "0.0.1",/' \
+        -e 's/"hw-app-alamgu".*$/"hw-app-alamgu": "0.1.1",/' \
         -e 's/"hw-app-pokt".*$/"hw-app-pokt": "0.0.0",/' \
         "${./package.json}") \
       > $out
@@ -86,9 +86,9 @@ let
           });
         };
 
-        "hw-app-alamgu@0.1.0" = super._buildNodePackage rec {
+        "hw-app-alamgu@0.1.1" = super._buildNodePackage rec {
           key = "hw-app-alamgu";
-          version = "0.0.1";
+          version = "0.1.1";
           src = thunkSource ../dep/hw-app-alamgu;
           buildPhase = ''
             ln -s $nodeModules node_modules
@@ -131,7 +131,7 @@ let
           NODE_PATH = nodeModules;
           nodeBuildInputs = [
             (s."@ledgerhq/hw-transport@^6.3.0")
-            (s."hw-app-alamgu@0.1.0")
+            (s."hw-app-alamgu@0.1.1")
             (s."@pokt-foundation/pocketjs-signer@^1.2.0")
           ];
         };
