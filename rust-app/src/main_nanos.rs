@@ -12,7 +12,6 @@ use nanos_sdk::io;
 
 #[allow(dead_code)]
 pub fn app_main() {
-    nanos_ui::ui::popup("Pending Review");
     let mut comm = io::Comm::new();
     let mut states = ParsersState::NoState;
     let mut block_state = BlockState::default();
