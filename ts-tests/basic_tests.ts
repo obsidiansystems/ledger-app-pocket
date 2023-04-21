@@ -18,34 +18,31 @@ describe('basic tests', () => {
     await sendCommandAndAccept(async (pokt : Pokt) => {
       const rv = await pokt.getPublicKey("44'/635'/0");
       expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
+      expect(new Buffer(rv.address).toString('hex')).to.equal("80e004848cd91888257d10e783420e923709e2d1");
+      return;
+    }, []);
+  });
+
+  it('does address verification', async () => {
+
+    await sendCommandAndAccept(async (client : Pokt) => {
+      const rv = await client.verifyAddress("44'/635'/0");
+      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
+      expect(new Buffer(rv.address).toString('hex')).to.equal("80e004848cd91888257d10e783420e923709e2d1");
       return;
     }, [
       {
         "header": "Provide Public Key",
-        "prompt": "For Address     80e004848cd91888257d10e783420e923709e2d1",
+        "prompt": "",
+      },
+      {
+        "header": "Address",
+        "prompt": "80e004848cd91888257d10e783420e923709e2d1",
       },
       {
         "text": "Confirm",
         "x": "<patched>",
         "y": "<patched>",
-      },
-    ]);
-  });
-
-  it('provides a public key', async () => {
-  await sendCommandAndAccept(async (client : Pokt) => {
-      const rv = await client.getPublicKey("44'/635'/0");
-      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
-      return;
-    }, [
-      {
-        "header": "Provide Public Key",
-        "prompt": "For Address     80e004848cd91888257d10e783420e923709e2d1",
-      },
-      {
-        "text": "Confirm",
-        "x": 43,
-        "y": 11,
       },
     ]);
   });

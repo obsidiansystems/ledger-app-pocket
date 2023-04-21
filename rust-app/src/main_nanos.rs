@@ -349,12 +349,20 @@ fn handle_apdu(
             ]);
             comm.append(b"Pocket");
         }
-        Ins::GetPubkey => run_parser_apdu::<_, Bip32Key, _>(
+        Ins::VerifyAddress => run_parser_apdu::<_, Bip32Key, _>(
             parser,
-            get_get_address_state,
+            get_get_address_state::<true>,
             block_state,
             &[0],
-            &GET_ADDRESS_IMPL,
+            &get_address_impl::<true>(),
+            comm,
+        )?,
+        Ins::GetPubkey => run_parser_apdu::<_, Bip32Key, _>(
+            parser,
+            get_get_address_state::<false>,
+            block_state,
+            &[0],
+            &get_address_impl::<false>(),
             comm,
         )?,
         Ins::Sign => run_parser_apdu::<_, DoubledSignParameters, _>(

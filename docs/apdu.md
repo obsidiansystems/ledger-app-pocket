@@ -8,6 +8,7 @@ The `P1` and `P2` fields are reserved for future use and must be set to `0` in a
 | CLA | INS | COMMAND NAME    | DESCRIPTION                                             |
 |-----|-----|-----------------|---------------------------------------------------------|
 | 00  | 00  | GET_VERSION     | Gets the app version in machine readable format (bytes) |
+| 00  | 01  | VERIFY_ADDRESS  | Shows the Address on device for a BIP32 path            |
 | 00  | 02  | GET_PUBKEY      | Gets the Public Key                                     |
 | 00  | 03  | SIGN_TX         | Sign Transaction                                        |
 | 00  | FE  | GET_VERSION_STR | Gets the app version in string                          |
@@ -34,9 +35,40 @@ Returns the version of the app currently running on the Ledger in machine readab
 | `1`          | Patch version   |
 | `<variable>` | Name of the app |
 
+### VERIFY_ADDRESS
+
+Shows the address for the given derivation path, and returns the public key and the address.
+
+#### Encoding
+
+**Command**
+
+| *CLA* | *INS* |
+|-------|-------|
+| 00    | 01    |
+
+**Input data**
+
+| Length | Name              | Description                         |
+|--------|-------------------|-------------------------------------|
+| `1`    | `n`               | Number of derivation steps          |
+| `4`    | `bip32_path[0]`   | First derivation step (big endian)  |
+| `4`    | `bip32_path[1]`   | Second derivation step (big endian) |
+|        | ...               |                                     |
+| `4`    | `bip32_path[n-1]` | `n`-th derivation step (big endian) |
+
+**Output data**
+
+| Length       | Description                  |
+|--------------|------------------------------|
+| `1`          | The length of the public key |
+| `<variable>` | Public key                   |
+| `1`          | The length of the address    |
+| `<variable>` | Address                      |
+
 ### GET_PUBKEY
 
-Returns the public key at the given derivation path.
+Returns the public key and the address for the given derivation path.
 
 #### Encoding
 
@@ -64,10 +96,12 @@ Returns the public key at the given derivation path.
 |--------------|------------------------------|
 | `1`          | The length of the public key |
 | `<variable>` | Public key                   |
+| `1`          | The length of the address    |
+| `<variable>` | Address                      |
 
 ### SIGN_TX
 
-Sign a Transaction in JSON format encoded in hexadecimal string (utf8), using the key for the given derivation path
+Sign a Transaction, using the key for the given derivation path
 
 #### Encoding
 
@@ -84,7 +118,7 @@ Sign a Transaction in JSON format encoded in hexadecimal string (utf8), using th
 | Length    | Name              | Description                         |
 |-----------|-------------------|-------------------------------------|
 | `4`       | `tx_size`         | Size of transaction                 |
-| `tx_size` | `tx`              | Transaction in hexadecimal string   |
+| `tx_size` | `tx`              | Transaction                         |
 
 ##### Parameter 2
 
@@ -101,6 +135,24 @@ Sign a Transaction in JSON format encoded in hexadecimal string (utf8), using th
 | Length       | Description     |
 |--------------|-----------------|
 | `<variable>` | Signature bytes |
+
+##### GET_VERSION_STR
+
+Returns the name of the app currently running on the Ledger, including its version, like 'Kadena 0.1.2'
+
+#### Encoding
+
+**Command**
+
+| *CLA* | *INS* |
+|-------|-------|
+| 00    | FF    |
+
+**Output data**
+
+| Length       | Description               |
+|--------------|---------------------------|
+| `<variable>` | Name of the app + version |
 
 ## Status Words
 
