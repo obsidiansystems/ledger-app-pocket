@@ -1,119 +1,9 @@
+import { VERSION, sendCommandAndAccept, BASE_URL, sendCommandExpectFail, toggleBlindSigningSettings } from "./common";
 import { expect } from 'chai';
 import { describe, it } from 'mocha';
-import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
 import Axios from 'axios';
-import Transport from "./common";
 import Pokt from "hw-app-pokt";
-import * as ed from 'noble-ed25519';
-
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Pocket 0.0.5"]
-
-const API_PORT: number = 5005;
-
-const BASE_URL: string = `http://127.0.0.1:${API_PORT}`;
-
-let setAcceptAutomationRules = async function() {
-    await Axios.post(BASE_URL + "/automation", {
-      version: 1,
-      rules: [
-        ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
-        { "y": 16, "actions": [] },
-        { "y": 31, "actions": [] },
-        { "y": 46, "actions": [] },
-        { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
-        { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
-      ]
-    });
-}
-
-let processPrompts = function(prompts: any[]) {
-  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])); // .values();
-  let header = "";
-  let prompt = "";
-  let rv = [];
-  for (var ii in i) {
-    let value = i[ii];
-    if(value["y"] == 1) {
-      if(value["text"] != header) {
-        if(header || prompt) rv.push({ header, prompt });
-        header = value["text"];
-        prompt = "";
-      }
-    } else if(value["y"] == 16) {
-      prompt += value["text"];
-    } else if((value["y"] == 31)) {
-      prompt += value["text"];
-    } else if((value["y"] == 46)) {
-      prompt += value["text"];
-    } else {
-      if(header || prompt) rv.push({ header, prompt });
-      rv.push(value);
-      header = "";
-      prompt = "";
-    }
-  }
-  if (header || prompt) rv.push({ header, prompt });
-  return rv;
-}
-
-let fixActualPromptsForSPlus = function(prompts: any[]) {
-  return prompts.map ( (value) => {
-    if (value["text"]) {
-      value["x"] = "<patched>";
-    }
-    return value;
-  });
-}
-
-// HACK to workaround the OCR bug https://github.com/LedgerHQ/speculos/issues/204
-let fixRefPromptsForSPlus = function(prompts: any[]) {
-  return prompts.map ( (value) => {
-    let fixF = (str: string) => {
-      return str.replace(/S/g,"").replace(/I/g, "l");
-    };
-    if (value["header"]) {
-      value["header"] = fixF(value["header"]);
-      value["prompt"] = fixF(value["prompt"]);
-    } else if (value["text"]) {
-      value["text"] = fixF(value["text"]);
-      value["x"] = "<patched>";
-    }
-    return value;
-  });
-}
-
-let sendCommandAndAccept = async function(command : any, prompts : any) {
-    await setAcceptAutomationRules();
-    await Axios.delete(BASE_URL + "/events");
-
-    let transport = await Transport.open(BASE_URL + "/apdu");
-    let client = new Pokt(transport);
-    client.sendChunks = client.sendWithBlocks;
-
-    //await new Promise(resolve => setTimeout(resolve, 100));
-
-    let err = null;
-
-    try { await command(client); } catch(e) {
-      err = e;
-    }
-
-    //await new Promise(resolve => setTimeout(resolve, 100));
-
-    if(err) throw(err);
-
-    let actual_prompts = processPrompts((await Axios.get(BASE_URL + "/events")).data["events"] as [any]);
-    try {
-      expect(actual_prompts).to.deep.equal(prompts);
-    } catch(e) {
-      try {
-        expect(fixActualPromptsForSPlus(actual_prompts)).to.deep.equal(fixRefPromptsForSPlus(prompts));
-      } catch (_) {
-        // Throw the original error if there is a mismatch as it is generally more useful
-        throw(e);
-      }
-    }
-}
+import * as ed from '@noble/ed25519';
 
 describe('basic tests', () => {
 
@@ -126,32 +16,52 @@ describe('basic tests', () => {
   it('provides a public key', async () => {
 
     await sendCommandAndAccept(async (pokt : Pokt) => {
-      let rv = await pokt.getPublicKey("44'/635'/0");
-      expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
+      const rv = await pokt.getPublicKey("44'/635'/0");
+      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
-    }, []);
+    }, [
+      {
+        "header": "Provide Public Key",
+        "prompt": "For Address     80e004848cd91888257d10e783420e923709e2d1",
+      },
+      {
+        "text": "Confirm",
+        "x": "<patched>",
+        "y": "<patched>",
+      },
+    ]);
   });
 
   it('provides a public key', async () => {
   await sendCommandAndAccept(async (client : Pokt) => {
-      let rv = await client.getPublicKey("44'/635'/0");
-      expect(rv.publicKey).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
+      const rv = await client.getPublicKey("44'/635'/0");
+      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
       return;
-    }, []);
+    }, [
+      {
+        "header": "Provide Public Key",
+        "prompt": "For Address     80e004848cd91888257d10e783420e923709e2d1",
+      },
+      {
+        "text": "Confirm",
+        "x": 43,
+        "y": 11,
+      },
+    ]);
   });
 });
 
 function testTransaction(path: string, txn: string, prompts: any[]) {
      return async () => {
-       let sig = await sendCommandAndAccept(
+       await sendCommandAndAccept(
          async (client : Pokt) => {
 
-           let pk = await client.getPublicKey(path);
+           const pk = await client.getPublicKey(path);
 
            // We don't want the prompts from getPublicKey in our result
            await Axios.delete(BASE_URL + "/events");
 
-           let sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+           const sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
 
            expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
          }, prompts);
@@ -160,12 +70,12 @@ function testTransaction(path: string, txn: string, prompts: any[]) {
 
 // These tests have been extracted interacting with the testnet via the cli.
 
-let exampleSend = {
+const exampleSend = {
   "chain_id": "testnet",
   "entropy": "-7780543831205109370",
   "fee": [
     {
-      "amount": "10000",
+      "amount": "12000",
       "denom": "upokt"
     }
   ],
@@ -173,14 +83,54 @@ let exampleSend = {
   "msg": {
     "type": "pos/Send",
     "value": {
-      "amount": "1000000",
+      "amount": "10000000",
       "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
       "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
     }
   }
 };
 
-let exampleUnjail = {
+const exampleSend2 = {
+  "chain_id": "testnet",
+  "entropy": "-7780543831205109370",
+  "fee": [
+    {
+      "amount": "2",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "Fourth transaction",
+  "msg": {
+    "type": "pos/Send",
+    "value": {
+      "amount": "10203040",
+      "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
+const exampleSend3 = {
+  "chain_id": "testnet",
+  "entropy": "-7780543831205109370",
+  "fee": [
+    {
+      "amount": "0000010000",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "Fourth transaction",
+  "msg": {
+    "type": "pos/Send",
+    "value": {
+      "amount": "002000000000",
+      "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
+const exampleUnjail = {
   "chain_id": "testnet",
   "entropy": "-8051161335943327787",
   "fee": [
@@ -199,7 +149,7 @@ let exampleUnjail = {
   }
 };
 
-let exampleStake = {
+const exampleStake = {
   "chain_id": "testnet",
   "entropy": "2417661502575469960",
   "fee": [
@@ -226,7 +176,7 @@ let exampleStake = {
   }
 };
 
-let exampleUnstake = {
+const exampleUnstake = {
   "chain_id": "testnet",
   "entropy": "-1105361304155186876",
   "fee": [
@@ -250,30 +200,96 @@ describe("Signing tests", function() {
      testTransaction(
        "44'/635'/0/0",
        JSON.stringify(exampleSend),
+       [
+         {
+           "header": "Transfer",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "10.0",
+         },
+         {
+           "header": "Fees",
+           "prompt": "0.012",
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
+     ));
+  it("can sign a simple transfer 2",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify(exampleSend2),
+       [
+         {
+           "header": "Transfer",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "10.20304",
+         },
+         {
+           "header": "Fees",
+           "prompt": "0.000002",
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
+     ));
+  it("can sign a simple transfer, check decimal conversion",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify(exampleSend3),
 [
          {
-        "header": "Signing",
-        "prompt": "Transaction",
+           "header": "Transfer",
+           "prompt": "POKT",
          },
          {
-        "header": "For Account",
-        "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
          },
          {
-        "header": "Send",
-        "prompt": "Transaction",
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
          },
          {
-        "header": "Value",
-        "prompt": "1000000",
+           "header": "Amount",
+           "prompt": "2000.0",
          },
          {
-        "header": "Transfer from",
-        "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
-         },
-         {
-        "header": "Transfer To",
-        "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "header": "Fees",
+           "prompt": "0.01",
          },
          {
            "text": "Confirm",
@@ -287,13 +303,6 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleUnjail),
        [
-        { "header": "Signing",
-          "prompt": "Transaction"
-        },
-        {
-          "header": "For Account",
-          "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
-        },
         {
           "header": "Unjail",
           "prompt": "Transaction"
@@ -319,14 +328,6 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleStake),
        [
-         {
-           "header": "Signing",
-          "prompt": "Transaction"
-         },
-         {
-           "header": "For Account",
-           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
-         },
          {
            "header": "Stake",
            "prompt": "Transaction",
@@ -365,13 +366,6 @@ describe("Signing tests", function() {
        "44'/635'/0/0",
        JSON.stringify(exampleUnstake),
        [
-        { "header": "Signing",
-          "prompt": "Transaction"
-        },
-        {
-          "header": "For Account",
-          "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488"
-        },
         {
           "header": "Unstake",
           "prompt": "Transaction"
@@ -391,4 +385,15 @@ describe("Signing tests", function() {
         }
        ]
      ));
+});
+
+describe("get version tests", function() {
+  it("can get app version", async () => {
+    await sendCommandAndAccept(async (client : any) => {
+      var rv = await client.getVersion();
+      expect(rv.major).to.equal(VERSION.major);
+      expect(rv.minor).to.equal(VERSION.minor);
+      expect(rv.patch).to.equal(VERSION.patch);
+      }, []);
+    });
 });

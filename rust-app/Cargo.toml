@@ -1,6 +1,6 @@
 [package]
 name = "pocket"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["jonored", "yhql"]
 edition = "2021"
 autobins = false
@@ -13,6 +13,8 @@ ledger-crypto-helpers = { git = "https://github.com/alamgu/ledger-crypto-helpers
 ledger-log = { git = "https://github.com/alamgu/ledger-log" }
 ledger-parser-combinators = { git = "https://github.com/alamgu/ledger-parser-combinators" }
 zeroize = { version = "1.5.2", default-features = false }
+num_enum = { version = "0.5", default-features = false }
+include_gif = { git = "https://github.com/LedgerHQ/sdk_include_gif" }
 
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable
 # speculos logging and change log level.
@@ -21,6 +23,7 @@ default = [ ]
 # Pass --features speculos,ledger-log/log_info (or log_trace, etc) to enable speculos logging and change log level.
 speculos = [ "nanos_sdk/speculos", "ledger-log/speculos", "ledger-log/log_error", "ledger-parser-combinators/logging" ]
 extra_debug = ["ledger-log/log_trace"]
+pending_review_screen = ["nanos_sdk/pending_review_screen"]
 
 [target.'cfg(target_family = "bolos")'.dependencies]
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git" }
@@ -41,10 +44,7 @@ path = "bin-src/main.rs"
 
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk.git".nanos_sdk]
 git = "https://github.com/alamgu/ledger-nanos-sdk.git"
-branch = "memory-fixes"
-[patch."https://github.com/LedgerHQ/ledger-nanos-ui.git".nanos_ui]
-git = "https://github.com/obsidiansystems/ledger-nanos-ui"
-branch = "use-lib-bagl-for-x-and-splus"
+branch = "relocating-loader-w-fixes"
 
 [profile.dev]
 # We need this to ensure stack usage is minimal even on speculos
@@ -58,8 +58,9 @@ overflow-checks = false
 
 [package.metadata.nanos]
 name = "Pocket"
-path = "44'/635'"
-curve = "ed25519"
+api_level = "1"
+path = ["44'/635'"]
+curve = ["ed25519"]
 flags = "0"
 icon = "pocket.gif"
 icon_small = "pocket-small.gif"

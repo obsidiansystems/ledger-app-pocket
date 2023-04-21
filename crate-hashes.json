@@ -1,10 +1,11 @@
 {
-  "enum-init 0.1.0 (git+https://github.com/alamgu/enum-init#a831c2fbbe00af926ae87c064bfe4da58d26777c)": "1daqa7i1778rpvk8d442flk6bak6jxi6hrcc5j4maaa7ipjc6xlr",
-  "ledger-crypto-helpers 0.2.0 (git+https://github.com/alamgu/ledger-crypto-helpers#4c4881b7db90349ed9829f2c93b1faaa0a68adc5)": "0v3wxakmrjgi0y4nrr1iqb1x1kac7nrkf31975jaxamgdy7ng5i0",
-  "ledger-log 0.2.0 (git+https://github.com/alamgu/ledger-log#02f702bbec9ca9802151fd261508580eb3826287)": "03qic29qkvis54bgh40wwja89kcp6kz6acd0ifzyvcqxicpmikmy",
-  "ledger-parser-combinators 0.1.0 (git+https://github.com/alamgu/ledger-parser-combinators#c7ee244c322d42cfaf2ef124170a6e695d208b6b)": "1h7aghm8zvs3ymv19h6rczripgsa13n27cqwzzz2jnc7r2463n34",
-  "ledger-prompts-ui 0.1.0 (git+https://github.com/alamgu/ledger-prompts-ui#24d2f36da07131074211559cd28f235c3f7c9984)": "0gy73gv2vrajyrzigr2iwfnw0gmj1wfpig0xlbhw1vpkpjg23w0q",
-  "nanos_sdk 0.2.0 (git+https://github.com/alamgu/ledger-nanos-sdk.git?branch=memory-fixes#5d48e028bad62262ddde1d0b0331335bd3109286)": "0nayaj19qzng94yl0rwyiccj22mc6msb5lbxar4dljvdqhiildkr",
-  "nanos_ui 0.1.0 (git+https://github.com/obsidiansystems/ledger-nanos-ui?branch=use-lib-bagl-for-x-and-splus#6ab6938354e73d3a8aacc941e9c7bc7f83c1081e)": "0pi2albb8ly52c9y451w872lxz3b7ivi9s1hfpld46qi8q7m5v2h",
+  "enum-init 0.1.0 (git+https://github.com/alamgu/enum-init#5706da92215f1a5816d704229f8924d95d954a77)": "0vh10l6glg4fry3z8am9skdlg2xcs0maqz5f24awwd9vl4ac6fv6",
+  "include_gif 0.1.0 (git+https://github.com/LedgerHQ/sdk_include_gif#699d28c6157518c4493899e2eeaa8af08346e5e7)": "185gra3i4s8cbmdhrxk2fyww0l6zlmyf2l04zbkvl9n9b6hd04pl",
+  "ledger-crypto-helpers 0.2.0 (git+https://github.com/alamgu/ledger-crypto-helpers#0f4beea77b87cb665496120b8fb7d935ff08cba3)": "1xvhcralindwh7r98l8bj1vph4wmjrhjr9wp1m95jy3dpkacpbqq",
+  "ledger-log 0.2.0 (git+https://github.com/alamgu/ledger-log#a417ebe6a426bbc6f92e92272c944b89765c384d)": "1qg502avfqiy30k17xi8gwwnawx5p53v0rcd3c566s4s5ga746jb",
+  "ledger-parser-combinators 0.1.0 (git+https://github.com/alamgu/ledger-parser-combinators#42e75ab7b8cd900889c553dab7908acd6cd8b9c9)": "0qvyf2xswi0k5fhbm1wln76j4ymd6wp407ywwy66gdp8sc9kybsr",
+  "ledger-prompts-ui 0.1.0 (git+https://github.com/alamgu/ledger-prompts-ui#8d510e62f4d53ee999c3db510cc2e932c188de13)": "1ckza8qvivhk5jpc9cq31yny7kwj9rw35x1lsjgr1v5wjvgyx1i7",
+  "nanos_sdk 0.2.0 (git+https://github.com/alamgu/ledger-nanos-sdk.git?branch=relocating-loader-w-fixes#975537f0bff0f349a7e59b4e315a0760710cd7c2)": "0czcsnlqr6yqlacxibjv2cnl55vyiqks6qwi29mv76lx8101hhgc",
+  "nanos_ui 0.2.0 (git+https://github.com/LedgerHQ/ledger-nanos-ui.git#c7fe3dff2417f9a118ad176d578c5c1ee07e83cd)": "0j0p2vqph3yzrq9cq6838qk3fw2mz4h6inqwkk4kahp0g3z3q8kv",
   "testmacro 0.1.0 (git+https://github.com/yhql/testmacro#29a16cb8718d61b67c6c391e60c8347c064e921e)": "0agl46ilx2psfvwvg8iwfmq203xapw435h03qskxqf5dnwhy1kir"
 }

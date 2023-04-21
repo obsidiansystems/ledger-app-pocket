@@ -1,20 +1,19 @@
-use crate::crypto_helpers::{BIP32_PREFIX, PKH};
+use crate::crypto_helpers::PKH;
 use crate::interface::*;
+use crate::utils::*;
 use crate::*;
 use arrayvec::ArrayVec;
 use core::fmt::Debug;
 use core::fmt::Write;
 use ledger_crypto_helpers::common::{try_option, Address, CryptographyError};
 use ledger_crypto_helpers::ed25519::*;
-use ledger_crypto_helpers::eddsa::{
-    ed25519_public_key_bytes, with_public_keys, Ed25519RawPubKeyAddress,
-};
+use ledger_crypto_helpers::eddsa::{ed25519_public_key_bytes, with_public_keys};
 use ledger_parser_combinators::interp_parser::{
     set_from_thunk, Action, DefaultInterp, DropInterp, DynBind, DynParser, InterpParser,
     MoveAction, ObserveLengthedBytes, ParseResult, ParserCommon, Preaction, SubInterp, OOB,
 };
 use ledger_parser_combinators::json::Json;
-use ledger_prompts_ui::{final_accept_prompt, write_scroller, PromptWrite, ScrollerError};
+use ledger_prompts_ui::{final_accept_prompt, ScrollerError};
 
 use core::str::from_utf8;
 
@@ -26,49 +25,16 @@ use ledger_parser_combinators::json_interp::*;
 
 use enum_init::InPlaceInit;
 
-// A couple type ascription functions to help the compiler along.
-const fn mkfn<A, B, C>(q: fn(&A, &mut B) -> Option<C>) -> fn(&A, &mut B) -> Option<C> {
-    q
-}
-const fn mkmvfn<A, B, C>(q: fn(A, &mut B) -> Option<C>) -> fn(A, &mut B) -> Option<C> {
-    q
-}
 const fn mktfn<A, B, C, D>(
     q: fn(&A, &mut B, DynamicStackBox<D>) -> Option<C>,
 ) -> fn(&A, &mut B, DynamicStackBox<D>) -> Option<C> {
     q
 }
-const fn mkvfn<A, C>(q: fn(&A, &mut Option<()>) -> C) -> fn(&A, &mut Option<()>) -> C {
-    q
-}
-/*const fn mkbindfn<A,C>(q: fn(&A)->C) -> fn(&A)->C {
-  q
-}*/
-/*
-const fn mkvfn<A>(q: fn(&A,&mut Option<()>)->Option<()>) -> fn(&A,&mut Option<()>)->Option<()> {
-    q
-}
-*/
-
-#[cfg(not(target_os = "nanos"))]
-#[inline(never)]
-fn scroller<F: for<'b> Fn(&mut PromptWrite<'b, 16>) -> Result<(), ScrollerError>>(
-    title: &str,
-    prompt_function: F,
-) -> Option<()> {
-    ledger_prompts_ui::write_scroller_three_rows(title, prompt_function)
-}
-
-#[cfg(target_os = "nanos")]
-#[inline(never)]
-fn scroller<F: for<'b> Fn(&mut PromptWrite<'b, 16>) -> Result<(), ScrollerError>>(
-    title: &str,
-    prompt_function: F,
-) -> Option<()> {
-    ledger_prompts_ui::write_scroller(title, prompt_function)
-}
 
 pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 128>>;
+
+// Need a path of length 5, as make_bip32_path panics with smaller paths
+pub const BIP32_PREFIX: [u32; 2] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'");
 
 pub const GET_ADDRESS_IMPL: GetAddressImplT = Action(
     SubInterp(DefaultInterp),
@@ -78,8 +44,14 @@ pub const GET_ADDRESS_IMPL: GetAddressImplT = Action(
                 // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
                 return None;
             }
-            with_public_keys(path, |key: &_, pkh: &PKH| {
+            with_public_keys(path, false, |key: &_, pkh: &PKH| {
                 try_option(|| -> Option<()> {
+                    scroller("Provide Public Key", |w| {
+                        Ok(write!(w, "For Address     {pkh}")?)
+                    })?;
+
+                    final_accept_prompt(&[])?;
+
                     let rv = destination.insert(ArrayVec::new());
 
                     // Should return the format that the chain customarily uses for public keys; for
@@ -129,15 +101,112 @@ const AMOUNT_ACTION: Action<AmountType<JsonStringAccumulate<64>, JsonStringAccum
         });
 */
 
-type SendMessageAction = impl JsonInterp<SendValueSchema, State: Debug>;
+type SendMessageAction = impl JsonInterp<SendValueSchema, State: Debug, Returning = ()>;
 const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
-    || scroller("Send", |w| Ok(write!(w, "Transaction")?)),
-    SendValueInterp {
-        field_amount: VALUE_ACTION,
-        field_from_address: show_address::<"Transfer from">(), // FROM_ADDRESS_ACTION,
-        field_to_address: show_address::<"Transfer To">(),
-    },
+    || scroller("Transfer", |w| Ok(write!(w, "POKT")?)),
+    Action(
+        SendValueInterp {
+            field_amount: JsonStringAccumulate::<64>,
+            field_from_address: JsonStringAccumulate::<64>,
+            field_to_address: JsonStringAccumulate::<64>,
+        },
+        mkfn(
+            |o: &SendValue<
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+            >,
+             destination: &mut Option<()>| {
+                scroller_paginated("From", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_from_address.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller_paginated("To", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_to_address.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Amount", |w| {
+                    let x = get_amount_in_decimals(o.field_amount.as_ref().ok_or(ScrollerError)?)
+                        .map_err(|_| ScrollerError)?;
+                    Ok(write!(w, "{}", from_utf8(&x)?)?)
+                })?;
+                *destination = Some(());
+                Some(())
+            },
+        ),
+    ),
 ); // TO_ADDRESS_ACTION});
+
+// "Divides" the amount by 1000000
+// Converts the input string in the following manner
+// 1 -> 0.000001
+// 10 -> 0.00001
+// 11 -> 0.000011
+// 1000000 -> 1.0
+// 10000000 -> 10.0
+// 10010000 -> 10.01
+// 010010000 -> 10.01
+fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>, ()> {
+    let mut found_first_non_zero = false;
+    let mut start_ix = 0;
+    let mut last_non_zero_ix = 0;
+    // check the amount for any invalid chars and get its length
+    for (ix, c) in amount.as_ref().iter().enumerate() {
+        if c < &b'0' || c > &b'9' {
+            return Err(());
+        }
+        if c != &b'0' {
+            last_non_zero_ix = ix;
+        }
+        if !found_first_non_zero {
+            if c == &b'0' {
+                // Highly unlikely to hit this, but skip any leading zeroes
+                continue;
+            }
+            start_ix = ix;
+            found_first_non_zero = true;
+        }
+    }
+
+    let mut dec_value: ArrayVec<u8, 64> = ArrayVec::new();
+    let amt_len = amount.len() - start_ix;
+    let chars_after_decimal = 6;
+    if amt_len > chars_after_decimal {
+        // value is more than 1
+        dec_value
+            .try_extend_from_slice(&amount.as_ref()[start_ix..(amount.len() - chars_after_decimal)])
+            .map_err(|_| ())?;
+        dec_value.try_push(b'.').map_err(|_| ())?;
+        if amount.len() - chars_after_decimal < last_non_zero_ix {
+            // there is non-zero decimal value
+            dec_value
+                .try_extend_from_slice(
+                    &amount.as_ref()[amount.len() - chars_after_decimal..(last_non_zero_ix + 1)],
+                )
+                .map_err(|_| ())?;
+        } else {
+            // add a zero at the end always "xyz.0"
+            dec_value.try_push(b'0').map_err(|_| ())?;
+        }
+    } else {
+        // value is less than 1
+        dec_value.try_push(b'0').map_err(|_| ())?;
+        dec_value.try_push(b'.').map_err(|_| ())?;
+        for _i in 0..(chars_after_decimal - amt_len) {
+            dec_value.try_push(b'0').map_err(|_| ())?;
+        }
+        dec_value
+            .try_extend_from_slice(&amount.as_ref()[start_ix..(last_non_zero_ix + 1)])
+            .map_err(|_| ())?;
+    }
+    Ok(dec_value)
+}
 
 const CHAIN_ACTION: Action<
     JsonStringAccumulate<64>,
@@ -365,16 +434,27 @@ impl From<CryptographyError> for SignTempError {
     }
 }
 
+// Only one fees field is supported at the moment, so no string -> number conversion/summation required
+#[derive(Clone, Debug)]
+struct TotalFees(pub Option<ArrayVec<u8, 64>>);
+
+impl Summable<TotalFees> for TotalFees {
+    fn zero() -> Self {
+        TotalFees(None)
+    }
+    fn add_and_set(&mut self, other: &TotalFees) {
+        *self = TotalFees(other.0.clone());
+    }
+}
+
 pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     Action(
         SubInterp(DefaultInterp),
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                scroller("Signing", |w| Ok(write!(w, "Transaction")?))?;
-                with_public_keys(path, |_, pkh: &PKH| {
-                    scroller("For Account", |w| Ok(write!(w, "{}", pkh)?)).ok_or(ScrollerError)?;
-                    ed.init(path)?;
+                with_public_keys(path, false, |_, _pkh: &PKH| {
+                    ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
                     Ok::<_, SignTempError>(())
@@ -390,18 +470,69 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                 || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
                 |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 Action(
-                    Json(PoktCmdInterp {
-                        field_chain_id: DropInterp,
-                        field_entropy: DropInterp,
-                        field_fee: DropInterp,
-                        field_memo: DropInterp,
-                        field_msg: Message {
-                            send_message: SEND_MESSAGE_ACTION,
-                            unjail_message: UNJAIL_MESSAGE_ACTION,
-                            stake_message: STAKE_MESSAGE_ACTION,
-                            unstake_message: UNSTAKE_MESSAGE_ACTION,
+                    Json(Action(
+                        PoktCmdInterp {
+                            field_chain_id: DropInterp,
+                            field_entropy: DropInterp,
+                            field_fee: SubInterpMFold::new(Action(
+                                AmountTypeInterp {
+                                    field_amount: JsonStringAccumulate::<64>,
+                                    field_denom: JsonStringAccumulate::<64>,
+                                },
+                                mkfnc(
+                                    |o: &AmountType<
+                                        Option<ArrayVec<u8, 64>>,
+                                        Option<ArrayVec<u8, 64>>,
+                                    >,
+                                     destination: &mut Option<TotalFees>,
+                                     _| {
+                                        *destination = Some(TotalFees(o.field_amount.clone()));
+                                        Some(())
+                                    },
+                                ),
+                            )),
+                            field_memo: DropInterp,
+                            field_msg: Message {
+                                send_message: SEND_MESSAGE_ACTION,
+                                unjail_message: UNJAIL_MESSAGE_ACTION,
+                                stake_message: STAKE_MESSAGE_ACTION,
+                                unstake_message: UNSTAKE_MESSAGE_ACTION,
+                            },
                         },
-                    }),
+                        mkfn(
+                            |o: &PoktCmd<
+                                Option<()>,
+                                Option<()>,
+                                Option<TotalFees>,
+                                Option<()>,
+                                Option<MessageReturnT>,
+                            >,
+                             ret: &mut Option<()>| {
+                                let msg_kind = o.field_msg.as_ref()?;
+                                match msg_kind {
+                                    // We expect Fees to be specified for transfer transactions
+                                    MessageReturn::SendMessageReturn(_) => {
+                                        scroller("Fees", |w| {
+                                            let x = get_amount_in_decimals(
+                                                o.field_fee
+                                                    .as_ref()
+                                                    .ok_or(ScrollerError)?
+                                                    .0
+                                                    .as_ref()
+                                                    .ok_or(ScrollerError)?,
+                                            )
+                                            .map_err(|_| ScrollerError)?;
+                                            Ok(write!(w, "{}", from_utf8(&x)?)?)
+                                        })?;
+                                    }
+                                    // Ignore the Fees altogether for other txs, for now
+                                    _ => {}
+                                }
+                                *ret = Some(());
+                                Some(())
+                            },
+                        ),
+                    )),
                     mkvfn(|_, ret| {
                         *ret = Some(());
                         Some(())
@@ -558,6 +689,12 @@ pub enum MessageReturn<
     StakeMessageReturn(Option<StakeMessageReturn>),
     UnstakeMessageReturn(Option<UnstakeMessageReturn>),
 }
+type MessageReturnT = MessageReturn<
+    <SendMessageAction as ParserCommon<SendValueSchema>>::Returning,
+    <UnjailMessageAction as ParserCommon<UnjailValueSchema>>::Returning,
+    <StakeMessageAction as ParserCommon<StakeValueSchema>>::Returning,
+    <UnstakeMessageAction as ParserCommon<UnstakeValueSchema>>::Returning,
+>;
 
 impl ParserCommon<MessageSchema> for DropInterp {
     type State = <DropInterp as ParserCommon<JsonAny>>::State;
@@ -797,22 +934,23 @@ pub fn get_sign_state(
         ParsersState::SignState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
+            /*
             unsafe {
                 let s_ptr = s as *mut ParsersState;
                 core::ptr::drop_in_place(s_ptr);
                 // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
                 // fill it; we rely on init_in_place to not panic.
-                ParsersState::init_sign_state(core::mem::transmute(s_ptr), |a| {
+                ParsersState::init_sign_state(core::mem::transmute(s_ptr): *mut core::mem::MaybeUninit<ParsersState>, |a| {
                     <SignImplT as ParserCommon<DoubledSignParameters>>::init_in_place(
                         &SIGN_IMPL, a,
                     );
                 });
                 trace!("Get_sign_stated");
             }
-            /*
+            */
             *s = ParsersState::SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
-            )); */
+            ));
         }
     }
     match s {

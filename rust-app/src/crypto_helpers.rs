@@ -1,17 +1,9 @@
-use crate::info;
-use core::default::Default;
 //use core::option::NoneError;
-use arrayvec::{ArrayVec, CapacityError};
 use core::fmt;
-use core::ops::{Deref, DerefMut};
 use ledger_crypto_helpers::common::*;
 use ledger_crypto_helpers::eddsa::*;
-use ledger_log::*;
 use nanos_sdk::bindings::*;
 use nanos_sdk::io::SyscallError;
-use zeroize::{DefaultIsZeroes, Zeroizing};
-
-pub const BIP32_PREFIX: [u32; 3] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'");
 
 // Public Key Hash type; update this to match the target chain's notion of an address and how to
 // format one.
