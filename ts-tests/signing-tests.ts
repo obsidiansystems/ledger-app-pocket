@@ -84,6 +84,26 @@ const exampleSend3 = {
   }
 };
 
+const exampleSend4 = {
+  "chain_id": "testnet",
+  "entropy": "-7780543831205109370",
+  "fee": [
+    {
+      "amount": "12000",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "Fourth transaction",
+  "msg": {
+    "type": "pos/Send",
+    "value": {
+      "amount": "10100000",
+      "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
 const exampleUnjail = {
   "chain_id": "testnet",
   "entropy": "-8051161335943327787",
@@ -251,6 +271,40 @@ describe("Signing tests", function() {
            "y": 11,
          }
 ]
+     ));
+  it("can sign a simple transfer, check decimal conversion 2",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify(exampleSend4),
+       [
+         {
+           "header": "Transfer",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "10.1",
+         },
+         {
+           "header": "Fees",
+           "prompt": "0.012",
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
      ));
   it("can sign a simple unjail",
      testTransaction(

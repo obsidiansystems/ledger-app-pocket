@@ -185,7 +185,7 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
             .try_extend_from_slice(&amount.as_ref()[start_ix..(amount.len() - chars_after_decimal)])
             .map_err(|_| ())?;
         dec_value.try_push(b'.').map_err(|_| ())?;
-        if amount.len() - chars_after_decimal < last_non_zero_ix {
+        if amount.len() - chars_after_decimal <= last_non_zero_ix {
             // there is non-zero decimal value
             dec_value
                 .try_extend_from_slice(
