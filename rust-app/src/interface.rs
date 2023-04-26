@@ -90,6 +90,14 @@ pub type DoubledSignParameters = (
     ),
 );
 
+pub type DoubledBlindSignParameters = (
+    Bip32Key,
+    (
+        LengthFallback<U32<{ Endianness::Little }>, JsonAny>,
+        LengthFallback<U32<{ Endianness::Little }>, JsonAny>,
+    ),
+);
+
 #[repr(u8)]
 #[derive(Debug, TryFromPrimitive)]
 pub enum Ins {
@@ -97,6 +105,7 @@ pub enum Ins {
     VerifyAddress = 1,
     GetPubkey = 2,
     Sign = 3,
+    BlindSign = 4,
     GetVersionStr = 0xfe,
     Exit = 0xff,
 }

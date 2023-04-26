@@ -372,6 +372,14 @@ fn handle_apdu(
             &SIGN_IMPL,
             comm,
         )?,
+        Ins::BlindSign => run_parser_apdu::<_, DoubledBlindSignParameters, _>(
+            parser,
+            get_blind_sign_state,
+            block_state,
+            &SIGN_SEQ,
+            &BLIND_SIGN_IMPL,
+            comm,
+        )?,
         Ins::GetVersionStr => {
             comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
