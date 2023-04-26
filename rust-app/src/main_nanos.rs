@@ -117,7 +117,7 @@ enum LedgerToHostCmd {
 #[repr(u8)]
 #[derive(Debug)]
 enum HostToLedgerCmd {
-    START = 0,
+    Start = 0,
     GetChunkResponseSuccess = 1,
     GetChunkResponseFailure = 2,
     PutChunkResponse = 3,
@@ -128,7 +128,7 @@ impl TryFrom<u8> for HostToLedgerCmd {
     type Error = Reply;
     fn try_from(a: u8) -> Result<HostToLedgerCmd, Reply> {
         match a {
-            0 => Ok(HostToLedgerCmd::START),
+            0 => Ok(HostToLedgerCmd::Start),
             1 => Ok(HostToLedgerCmd::GetChunkResponseSuccess),
             2 => Ok(HostToLedgerCmd::GetChunkResponseFailure),
             3 => Ok(HostToLedgerCmd::PutChunkResponse),
@@ -211,7 +211,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
 
     trace!("Host cmd: {:?}", host_cmd);
     match host_cmd {
-        HostToLedgerCmd::START => {
+        HostToLedgerCmd::Start => {
             *block_state = BlockState::default();
             reset_parsers_state(states);
             block_state.params.clear();

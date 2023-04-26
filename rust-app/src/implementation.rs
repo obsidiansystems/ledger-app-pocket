@@ -770,7 +770,7 @@ where
             }
             MessageState::TypeLabel(ref mut temp_string_state, ref mut temp_string_return) => {
                 call_str::<4>(temp_string_state, token, temp_string_return)?;
-                if temp_string_return.as_ref().unwrap().as_slice() == b"type" {
+                if temp_string_return.as_ref().expect("should be set by now").as_slice() == b"type" {
                     set_from_thunk(state, || MessageState::KeySep1);
                 } else {
                     return Err(Some(OOB::Reject));
@@ -781,7 +781,7 @@ where
             }
             MessageState::Type(ref mut temp_string_state, ref mut temp_string_return) => {
                 call_str::<64>(temp_string_state, token, temp_string_return)?;
-                match temp_string_return.as_ref().unwrap().as_slice() {
+                match temp_string_return.as_ref().expect("should be set by now").as_slice() {
                     b"pos/Send" => {
                         set_from_thunk(state, || MessageState::ValueSep(MessageType::SendMessage));
                     }
@@ -809,7 +809,7 @@ where
             }
             MessageState::ValueLabel(msg_type, temp_string_state, temp_string_return) => {
                 call_str::<5>(temp_string_state, token, temp_string_return)?;
-                if temp_string_return.as_ref().unwrap().as_slice() == b"value" {
+                if temp_string_return.as_ref().expect("should be set by now").as_slice() == b"value" {
                     let new_msg_type = *msg_type;
                     set_from_thunk(state, || MessageState::KeySep2(new_msg_type));
                 } else {
