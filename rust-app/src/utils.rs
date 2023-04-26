@@ -1,14 +1,14 @@
 use core::char;
 
-const HexLength: usize = 64;
+const HEX_LENGTH: usize = 64;
 
 /// Convert to hex. Returns a static buffer of 64 bytes
 #[inline]
-pub fn to_hex(m: &[u8]) -> Result<[u8; HexLength], ()> {
-    if m.len() > HexLength / 2 {
+pub fn to_hex(m: &[u8]) -> Result<[u8; HEX_LENGTH], ()> {
+    if m.len() > HEX_LENGTH / 2 {
         return Err(());
     }
-    let mut hex = [0u8; HexLength];
+    let mut hex = [0u8; HEX_LENGTH];
     let mut i = 0;
     for c in m {
         let c0 = char::from_digit((c >> 4).into(), 16).unwrap();
