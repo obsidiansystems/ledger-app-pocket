@@ -54,10 +54,9 @@ pub fn app_main() {
                     Err(sw) => comm.reply(sw),
                 };
                 // Reset BusyMenu if we are done handling APDU
-                match states {
-                    ParsersState::NoState => busy_menu = BusyMenu::Working,
-                    _ => {}
-                };
+                if let ParsersState::NoState = states {
+                    busy_menu = BusyMenu::Working;
+                }
                 menu(&states, &idle_menu, &busy_menu);
                 trace!("Command done");
             }

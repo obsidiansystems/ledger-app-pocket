@@ -49,7 +49,7 @@ pub const fn get_address_impl<const PROMPT: bool>() -> GetAddressImplT {
                     try_option(|| -> Option<()> {
                         if PROMPT {
                             scroller("Provide Public Key", |_w| Ok(()))?;
-                            scroller("Address", |w| Ok(write!(w, "{pkh}")?))?;
+                            scroller_paginated("Address", |w| Ok(write!(w, "{pkh}")?))?;
                             final_accept_prompt(&[])?;
                         }
 
@@ -923,7 +923,7 @@ pub fn get_get_address_state<const PROMPT: bool>(
     match s {
         ParsersState::GetAddressState(ref mut a) => a,
         _ => {
-            panic!("")
+            unreachable!("Should be impossible because assignment right above")
         }
     }
 }
@@ -958,8 +958,7 @@ pub fn get_sign_state(
     match s {
         ParsersState::SignState(ref mut a) => a,
         _ => {
-            trace!("PANICKING");
-            panic!("DOOO PANIC")
+            unreachable!("Should be impossible because assignment right above")
         }
     }
 }
