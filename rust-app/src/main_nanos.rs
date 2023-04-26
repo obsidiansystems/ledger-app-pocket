@@ -266,7 +266,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                 // Explicit rejection; reset the parser. Possibly send error message to host?
                 Err((Some(OOB::Reject), _)) => {
                     reset_parsers_state(states);
-                    return Err(io::StatusWords::Unknown.into());
+                    Err(io::StatusWords::Unknown.into())
                 }
                 // Deliberately no catch-all on the Err((Some case; we'll get error messages if we
                 // add to OOB's out-of-band actions and forget to implement them.
@@ -276,7 +276,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     trace!("Parser needs more; get more.");
                     // Request the next chunk of our input.
                     let our_next_block: &[u8] = if next_block == [0; 32] {
-                        block_state.state = block_state.state + 1;
+                        block_state.state += 1;
                         if block_state.state > seq.len() {
                             return Err(io::StatusWords::Unknown.into());
                         }
@@ -285,7 +285,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                         }
                         &block_state.params[seq[block_state.state]]
                     } else {
-                        &next_block
+                        next_block
                     };
                     trace!("Next block: {:x?}", our_next_block);
 
@@ -293,12 +293,12 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     comm.append(&[LedgerToHostCmd::GetChunk as u8]);
                     comm.append(&block_state.requested_block);
                     trace!("Requesting next block from host");
-                    return Ok(());
+                    Ok(())
                 }
                 // Didn't consume the whole chunk; reset and error message.
                 Err((None, _)) => {
                     reset_parsers_state(states);
-                    return Err(io::StatusWords::Unknown.into());
+                    Err(io::StatusWords::Unknown.into())
                 }
                 // Consumed the whole chunk and parser finished; send response.
                 Ok([]) => {
@@ -312,12 +312,12 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     }
                     // Parse finished; reset.
                     reset_parsers_state(states);
-                    return Ok(());
+                    Ok(())
                 }
                 // Parse ended before the chunk did; reset.
                 Ok(_) => {
                     reset_parsers_state(states);
-                    return Err(io::StatusWords::Unknown.into());
+                    Err(io::StatusWords::Unknown.into())
                 }
             }
         }

@@ -160,7 +160,7 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
     let mut last_non_zero_ix = 0;
     // check the amount for any invalid chars and get its length
     for (ix, c) in amount.as_ref().iter().enumerate() {
-        if c < &b'0' || c > &b'9' {
+        if !(&b'0'..=&b'9').contains(&c) {
             return Err(());
         }
         if c != &b'0' {
@@ -393,8 +393,7 @@ impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>>> ParserCommo
     type State = WithStackBoxedState<S::State, Q>;
     type Returning = S::Returning;
     fn init(&self) -> Self::State {
-        let rv = WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false);
-        rv
+        WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false)
     }
 }
 
@@ -469,7 +468,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     DynBind(
         MoveAction(
             ObserveLengthedBytes(
-                || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
+                DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
                 |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 Action(
                     Json(Action(
@@ -554,7 +553,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         ),
         MoveAction(
             ObserveLengthedBytes(
-                || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
+                DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
                 |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 /*  || Ed25519::default(), // move || edward.clone(),
                 Ed25519::update,*/
