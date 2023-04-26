@@ -158,7 +158,6 @@ Returns the name of the app currently running on the Ledger, including its versi
 
 | SW     | SW name                       | Description                                                |
 |--------|-------------------------------|------------------------------------------------------------|
-| 0x6808 | `SW_NOT_SUPPORTED`            | `INS` is disabled  (Blind Signing)                         |
 | 0x6982 | `SW_NOTHING_RECEIVED`         | No input was received by the app                           |
 | 0x6D00 | `SW_ERROR`                    | Error has occured due to bad input or user rejectected     |
 | 0x6E00 | `SW_CLA_OR_INS_NOT_SUPPORTED` | No command exists for the `CLA` and `INS`                  |
