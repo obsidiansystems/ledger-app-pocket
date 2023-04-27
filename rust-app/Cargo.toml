@@ -1,6 +1,6 @@
 [package]
 name = "pocket"
-version = "0.0.6"
+version = "0.1.0"
 authors = ["jonored", "yhql"]
 edition = "2021"
 autobins = false
