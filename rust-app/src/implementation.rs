@@ -609,7 +609,7 @@ pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
                 ObserveLengthedBytes(
                     DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
                     |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
-                    DropInterp,
+                    Json(DropInterp),
                     true,
                 ),
                 mkmvfn(
@@ -628,7 +628,7 @@ pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
                     |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                     /*  || Ed25519::default(), // move || edward.clone(),
                     Ed25519::update,*/
-                    DropInterp,
+                    Json(DropInterp),
                     true,
                 ),
                 mkmvfn(

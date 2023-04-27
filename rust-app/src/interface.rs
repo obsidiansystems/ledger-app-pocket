@@ -93,8 +93,8 @@ pub type DoubledSignParameters = (
 pub type DoubledBlindSignParameters = (
     Bip32Key,
     (
-        LengthFallback<U32<{ Endianness::Little }>, JsonAny>,
-        LengthFallback<U32<{ Endianness::Little }>, JsonAny>,
+        LengthFallback<U32<{ Endianness::Little }>, Json<JsonAny>>,
+        LengthFallback<U32<{ Endianness::Little }>, Json<JsonAny>>,
     ),
 );
 
