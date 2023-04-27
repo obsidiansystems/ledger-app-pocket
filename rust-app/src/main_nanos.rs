@@ -3,11 +3,12 @@ use crate::interface::*;
 use crate::menu::*;
 use crate::settings::*;
 
+use core::fmt::Write;
 use ledger_crypto_helpers::hasher::{Base64Hash, Hasher, SHA256};
 use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
-use ledger_prompts_ui::{handle_menu_button_event, show_menu};
+use ledger_prompts_ui::{handle_menu_button_event, show_menu, write_scroller};
 use nanos_sdk::io;
 
 #[allow(dead_code)]
@@ -45,7 +46,13 @@ pub fn app_main() {
         match comm.next_event::<Ins>() {
             io::Event::Command(ins) => {
                 trace!("Command received");
-                match handle_apdu(&mut comm, ins, &mut states, &mut block_state) {
+                match handle_apdu(
+                    &mut comm,
+                    ins,
+                    &mut states,
+                    &mut block_state,
+                    idle_menu.settings,
+                ) {
                     Ok(()) => {
                         trace!("APDU accepted; sending response");
                         comm.reply_ok();
@@ -332,6 +339,7 @@ fn handle_apdu(
     ins: Ins,
     parser: &mut ParsersState,
     block_state: &mut BlockState,
+    settings: Settings,
 ) -> Result<(), Reply> {
     info!("entering handle_apdu with command {:?}", ins);
     if comm.rx == 0 {
@@ -372,14 +380,23 @@ fn handle_apdu(
             &SIGN_IMPL,
             comm,
         )?,
-        Ins::BlindSign => run_parser_apdu::<_, DoubledBlindSignParameters, _>(
-            parser,
-            get_blind_sign_state,
-            block_state,
-            &SIGN_SEQ,
-            &BLIND_SIGN_IMPL,
-            comm,
-        )?,
+        Ins::BlindSign => {
+            if settings.get() != 1 {
+                write_scroller(false, "Blind Signing must", |w| {
+                    Ok(write!(w, "be enabled")?)
+                });
+                return Err(io::SyscallError::NotSupported.into());
+            } else {
+                run_parser_apdu::<_, DoubledBlindSignParameters, _>(
+                    parser,
+                    get_blind_sign_state,
+                    block_state,
+                    &SIGN_SEQ,
+                    &BLIND_SIGN_IMPL,
+                    comm,
+                )?
+            }
+        }
         Ins::GetVersionStr => {
             comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
