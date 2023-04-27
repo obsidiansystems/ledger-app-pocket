@@ -415,8 +415,6 @@ impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>> + InterpPars
     }
 }
 
-pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8, 128>>;
-
 pub const SIGN_SEQ: [usize; 3] = [1, 0, 0];
 
 enum SignTempError {
@@ -447,6 +445,8 @@ impl Summable<TotalFees> for TotalFees {
         *self = TotalFees(other.0.clone());
     }
 }
+
+pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8, 128>>;
 
 pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     Action(
@@ -578,15 +578,92 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     ),
 ));
 
+pub type BlindSignImplT =
+    impl InterpParser<DoubledBlindSignParameters, Returning = ArrayVec<u8, 128_usize>>;
+
+pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
+    || -> Option<()> {
+        scroller("WARNING", |w| {
+            Ok(write!(w, "Blind Signing a Transaction is a very unusual operation. Do not continue unless you know what you are doing")?)
+        })
+    },
+    WithStackBoxed(DynBind(
+        Action(
+            SubInterp(DefaultInterp),
+            // And ask the user if this is the key the meant to sign with:
+            mktfn(
+                |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
+                    with_public_keys(path, false, |_, pkh: &PKH| {
+                        ed.init(path.clone())?;
+                        try_option(|| -> Option<()> {
+                            scroller("Sign for Address", |w| Ok(write!(w, "{pkh}")?))?;
+                            Some(())
+                        }())?;
+                        // *destination = Some(ed);
+                        set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
+                        Ok::<_, SignTempError>(())
+                    })
+                    .ok()?;
+                    Some(())
+                },
+            ),
+        ),
+        DynBind(
+            MoveAction(
+                ObserveLengthedBytes(
+                    DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
+                    |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
+                    Json(DropInterp),
+                    true,
+                ),
+                mkmvfn(
+                    |(_, initial_edward): (Option<()>, DynamicStackBox<Ed25519>),
+                     destination: &mut Option<DynamicStackBox<Ed25519>>|
+                     -> Option<()> {
+                        *destination = Some(initial_edward);
+                        destination.as_mut()?.done_with_r().ok()?;
+                        Some(())
+                    },
+                ),
+            ),
+            MoveAction(
+                ObserveLengthedBytes(
+                    DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
+                    |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
+                    /*  || Ed25519::default(), // move || edward.clone(),
+                    Ed25519::update,*/
+                    Json(DropInterp),
+                    true,
+                ),
+                mkmvfn(
+                    |(_, mut final_edward): (_, DynamicStackBox<Ed25519>),
+                     destination: &mut Option<ArrayVec<u8, 128>>| {
+                        final_accept_prompt(&["Blind Sign Transaction?"])?;
+                        // let mut final_edward_copy = final_edward.clone();
+                        let sig = final_edward.finalize();
+                        *destination = Some(ArrayVec::new());
+                        destination
+                            .as_mut()?
+                            .try_extend_from_slice(&sig.ok()?.0)
+                            .ok()?;
+                        Some(())
+                    },
+                ),
+            ),
+        ),
+    )),
+);
+
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU
 // must have a field here.
 
 #[derive(InPlaceInit)]
 #[repr(u8)]
-pub enum ParsersStateInner<A, B> {
+pub enum ParsersStateInner<A, B, C> {
     NoState,
     GetAddressState(A),
     SignState(B),
+    BlindSignState(C),
     /*GetAddressState(<GetAddressImplT as ParserCommon<Bip32Key>>::State),
     SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::State),*/
 }
@@ -594,6 +671,7 @@ pub enum ParsersStateInner<A, B> {
 pub type ParsersState = ParsersStateInner<
     <GetAddressImplT as ParserCommon<Bip32Key>>::State,
     <SignImplT as ParserCommon<DoubledSignParameters>>::State,
+    <BlindSignImplT as ParserCommon<DoubledBlindSignParameters>>::State,
 >;
 
 pub fn reset_parsers_state(state: &mut ParsersState) {
@@ -949,20 +1027,6 @@ pub fn get_sign_state(
         ParsersState::SignState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
-            /*
-            unsafe {
-                let s_ptr = s as *mut ParsersState;
-                core::ptr::drop_in_place(s_ptr);
-                // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
-                // fill it; we rely on init_in_place to not panic.
-                ParsersState::init_sign_state(core::mem::transmute(s_ptr): *mut core::mem::MaybeUninit<ParsersState>, |a| {
-                    <SignImplT as ParserCommon<DoubledSignParameters>>::init_in_place(
-                        &SIGN_IMPL, a,
-                    );
-                });
-                trace!("Get_sign_stated");
-            }
-            */
             *s = ParsersState::SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
             ));
@@ -970,6 +1034,27 @@ pub fn get_sign_state(
     }
     match s {
         ParsersState::SignState(ref mut a) => a,
+        _ => {
+            unreachable!("Should be impossible because assignment right above")
+        }
+    }
+}
+
+#[inline(never)]
+pub fn get_blind_sign_state(
+    s: &mut ParsersState,
+) -> &mut <BlindSignImplT as ParserCommon<DoubledBlindSignParameters>>::State {
+    match s {
+        ParsersState::BlindSignState(_) => {}
+        _ => {
+            trace!("Non-same state found; initializing state.");
+            *s = ParsersState::BlindSignState(<BlindSignImplT as ParserCommon<
+                DoubledBlindSignParameters,
+            >>::init(&BLIND_SIGN_IMPL));
+        }
+    }
+    match s {
+        ParsersState::BlindSignState(ref mut a) => a,
         _ => {
             unreachable!("Should be impossible because assignment right above")
         }

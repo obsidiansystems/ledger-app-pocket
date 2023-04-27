@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "hw-app-pokt",
-  "branch": "develop",
+  "branch": "blind-sign-apdu",
   "private": false,
-  "rev": "6b37e0714c08b8d33f52b2dbfcd483582e323535",
-  "sha256": "0b5al3b7ldykjfmgcs1wi5216mrja2zx3w8wnx5qb02dndc9m2c7"
+  "rev": "f97e5c17dfeffdd70ea318915490576d394703c2",
+  "sha256": "0rkkab9hljxkxjfk7s2n8kj9832wyxlr8hc49rjmhs51i8wrsa7n"
 }

@@ -5,22 +5,34 @@ import Axios from 'axios';
 import Pokt from "hw-app-pokt";
 import * as ed from '@noble/ed25519';
 
-function testTransaction(path: string, txn: string, prompts: any[]) {
-     return async () => {
-       await sendCommandAndAccept(
-         async (client : Pokt) => {
+function testTransactionInternal(path: string, txn0: any, blind: boolean, prompts: any[]) {
+  const txn = Buffer.from(JSON.stringify(txn0), "utf-8");
+  return async () => {
+    await sendCommandAndAccept(async (client : Pokt) => {
 
-           const pk = await client.getPublicKey(path);
+      const pk = await client.getPublicKey(path);
 
-           // We don't want the prompts from getPublicKey in our result
-           await Axios.delete(BASE_URL + "/events");
+      if (blind) {
+        await toggleBlindSigningSettings();
+      }
 
-           const sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+      // We don't want the prompts from getPublicKey in our result
+      await Axios.delete(BASE_URL + "/events");
 
-           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
-         }, prompts);
-     }
+      const sig = blind
+          ? await client.blindSignTransaction(path, txn)
+          : await client.signTransaction(path, txn);
+
+      expect(await ed.verify(sig.signature, txn, pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
+    }, prompts);
+  }
 }
+
+const testTransaction = (path: string, txn: any, prompts: any[]) =>
+    testTransactionInternal(path, txn, false, prompts);
+
+const testBlindTransaction = (path: string, txn: any, prompts: any[]) =>
+    testTransactionInternal(path, txn, true, prompts);
 
 // These tests have been extracted interacting with the testnet via the cli.
 
@@ -173,7 +185,7 @@ describe("Signing tests", function() {
   it("can sign a simple transfer",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend),
+       exampleSend,
        [
          {
            "header": "Transfer",
@@ -207,7 +219,7 @@ describe("Signing tests", function() {
   it("can sign a simple transfer 2",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend2),
+       exampleSend2,
        [
          {
            "header": "Transfer",
@@ -241,8 +253,8 @@ describe("Signing tests", function() {
   it("can sign a simple transfer, check decimal conversion",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend3),
-[
+       exampleSend3,
+       [
          {
            "header": "Transfer",
            "prompt": "POKT",
@@ -275,7 +287,7 @@ describe("Signing tests", function() {
   it("can sign a simple transfer, check decimal conversion 2",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend4),
+       exampleSend4,
        [
          {
            "header": "Transfer",
@@ -309,7 +321,7 @@ describe("Signing tests", function() {
   it("can sign a simple unjail",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleUnjail),
+       exampleUnjail,
        [
         {
           "header": "Unjail",
@@ -334,7 +346,7 @@ describe("Signing tests", function() {
   it("can sign a simple stake",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleStake),
+       exampleStake,
        [
          {
            "header": "Stake",
@@ -372,7 +384,7 @@ describe("Signing tests", function() {
   it("can sign a simple unstake",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleUnstake),
+       exampleUnstake,
        [
         {
           "header": "Unstake",
@@ -391,6 +403,96 @@ describe("Signing tests", function() {
           "x": 43,
           "y": 11
         }
+       ]
+     ));
+
+  it("can sign a simple unstake",
+     testTransaction(
+       "44'/635'/0/0",
+       exampleUnstake,
+       [
+        {
+          "header": "Unstake",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "Signer address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
+        },
+        {
+          "header": "Unstake address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "text": "Confirm",
+          "x": 43,
+          "y": 11
+        }
+       ]
+     ));
+});
+
+function testBlindSignFail(path: string, hash: string) {
+  return async () => {
+    await sendCommandExpectFail(
+      async (client : Pokt) => {
+        await client.blindSignTransaction(path, hash);
+      });
+  }
+}
+
+function testBlindSignFail2(path: string, hash: string) {
+  return async () => {
+    await sendCommandExpectFail(
+      async (client : Pokt) => {
+        // Enable and then disable
+        await toggleBlindSigningSettings();
+        await toggleBlindSigningSettings();
+        await Axios.delete(BASE_URL + "/events");
+        await client.blindSignTransaction(path, hash);
+      });
+  }
+}
+
+describe.only("Blind signing tests", function() {
+
+  it("cannot sign arbitary JSON without settings enabled",
+     testBlindSignFail(
+       "44'/635'/0/0",
+       '"ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c"'
+     ));
+  it("cannot sign abitrary JSON without settings enabled 2",
+     testBlindSignFail2(
+       "44'/635'/0/0",
+       '"ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c"'
+     ));
+
+  it("can blind sign nonsense JSON",
+     testBlindTransaction(
+       "44'/635'/0/0",
+       {
+         foo: 1,
+         bar: null,
+       },
+       [
+         {
+           "header": "WARNING",
+           "prompt": "Blind Signing a Transaction is a very unusual operation. Do not continue unless you know what you are doing",
+         },
+         {
+           "header": "Sign for Address",
+           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488",
+         },
+         {
+           "text": "Blind Sign Transaction?",
+           "x": 4,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
        ]
      ));
 });
