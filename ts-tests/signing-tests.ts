@@ -5,17 +5,23 @@ import Axios from 'axios';
 import Pokt from "hw-app-pokt";
 import * as ed from '@noble/ed25519';
 
-function testTransaction(path: string, txn: string, prompts: any[]) {
+function testTransaction(path: string, txn: string, prompts: any[], blind: boolean = false) {
      return async () => {
        await sendCommandAndAccept(
          async (client : Pokt) => {
 
            const pk = await client.getPublicKey(path);
 
+           if (blind) {
+             await toggleBlindSigningSettings();
+		   }
+
            // We don't want the prompts from getPublicKey in our result
            await Axios.delete(BASE_URL + "/events");
 
-           const sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
+           const sig = await
+             (blind ? client.blindSignTransaction : client.signTransaction)
+             (path, Buffer.from(txn, "utf-8").toString("hex"));
 
            expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
          }, prompts);
@@ -392,5 +398,94 @@ describe("Signing tests", function() {
           "y": 11
         }
        ]
+     ));
+
+  it("can sign a simple unstake",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify(exampleUnstake),
+       [
+        {
+          "header": "Unstake",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "Signer address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
+        },
+        {
+          "header": "Unstake address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "text": "Confirm",
+          "x": 43,
+          "y": 11
+        }
+       ]
+     ));
+});
+
+function testBlindSignFail(path: string, hash: string) {
+  return async () => {
+    await sendCommandExpectFail(
+      async (client : Pokt) => {
+        await client.blindSignTransaction(path, hash);
+      });
+  }
+}
+
+function testBlindSignFail2(path: string, hash: string) {
+  return async () => {
+    await sendCommandExpectFail(
+      async (client : Pokt) => {
+        // Enable and then disable
+        await toggleBlindSigningSettings();
+        await toggleBlindSigningSettings();
+        await Axios.delete(BASE_URL + "/events");
+        await client.blindSignTransaction(path, hash);
+      });
+  }
+}
+
+describe("Blind signing tests", function() {
+
+  it("cannot sign a hash without settings enabled",
+     testBlindSignFail(
+       "44'/635'/0/0",
+       'ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c'
+     ));
+  it("cannot sign a hash without settings enabled 2",
+     testBlindSignFail2(
+       "44'/635'/0/0",
+       'ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c'
+     ));
+
+  it("can blind sign nonsense JSON",
+     testTransaction(
+       "44'/635'/0/0",
+       JSON.stringify({
+         foo: 1,
+         bar: null,
+       }),
+       [
+         {
+           "header": "WARNING",
+           "prompt": "Blind Signing a Transaction Hash is a very unusual operation. Do not continue unless you know what you are doing",
+         },
+         { "header": "Transaction hash", "prompt": "_9jNed65Vvo8fZvg-DbyCshLFAFooIeoQr5HYOQOKxw" },
+         { "header": "Sign for Address", "prompt": "ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c" },
+         {
+           "text": "Sign Transaction Hash?",
+           "x": 4,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ],
+       true
      ));
 });
