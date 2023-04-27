@@ -584,7 +584,7 @@ pub type BlindSignImplT =
 pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
     || -> Option<()> {
         scroller("WARNING", |w| {
-            Ok(write!(w, "Blind Signing a Transaction Hash is a very unusual operation. Do not continue unless you know what you are doing")?)
+            Ok(write!(w, "Blind Signing a Transaction is a very unusual operation. Do not continue unless you know what you are doing")?)
         })
     },
     WithStackBoxed(DynBind(
@@ -593,8 +593,12 @@ pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
             // And ask the user if this is the key the meant to sign with:
             mktfn(
                 |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                    with_public_keys(path, false, |_, _pkh: &PKH| {
+                    with_public_keys(path, false, |_, pkh: &PKH| {
                         ed.init(path.clone())?;
+                        try_option(|| -> Option<()> {
+                            scroller("Sign for Address", |w| Ok(write!(w, "{pkh}")?))?;
+                            Some(())
+                        }())?;
                         // *destination = Some(ed);
                         set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
                         Ok::<_, SignTempError>(())
@@ -634,7 +638,7 @@ pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
                 mkmvfn(
                     |(_, mut final_edward): (_, DynamicStackBox<Ed25519>),
                      destination: &mut Option<ArrayVec<u8, 128>>| {
-                        final_accept_prompt(&[])?;
+                        final_accept_prompt(&["Blind Sign Transaction?"])?;
                         // let mut final_edward_copy = final_edward.clone();
                         let sig = final_edward.finalize();
                         *destination = Some(ArrayVec::new());
