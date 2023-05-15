@@ -3,11 +3,12 @@ use crate::interface::*;
 use crate::menu::*;
 use crate::settings::*;
 
+use core::fmt::Write;
 use ledger_crypto_helpers::hasher::{Base64Hash, Hasher, SHA256};
 use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
-use ledger_prompts_ui::{handle_menu_button_event, show_menu};
+use ledger_prompts_ui::{handle_menu_button_event, show_menu, write_scroller};
 use nanos_sdk::io;
 
 #[allow(dead_code)]
@@ -45,7 +46,13 @@ pub fn app_main() {
         match comm.next_event::<Ins>() {
             io::Event::Command(ins) => {
                 trace!("Command received");
-                match handle_apdu(&mut comm, ins, &mut states, &mut block_state) {
+                match handle_apdu(
+                    &mut comm,
+                    ins,
+                    &mut states,
+                    &mut block_state,
+                    idle_menu.settings,
+                ) {
                     Ok(()) => {
                         trace!("APDU accepted; sending response");
                         comm.reply_ok();
@@ -54,10 +61,9 @@ pub fn app_main() {
                     Err(sw) => comm.reply(sw),
                 };
                 // Reset BusyMenu if we are done handling APDU
-                match states {
-                    ParsersState::NoState => busy_menu = BusyMenu::Working,
-                    _ => {}
-                };
+                if let ParsersState::NoState = states {
+                    busy_menu = BusyMenu::Working;
+                }
                 menu(&states, &idle_menu, &busy_menu);
                 trace!("Command done");
             }
@@ -118,7 +124,7 @@ enum LedgerToHostCmd {
 #[repr(u8)]
 #[derive(Debug)]
 enum HostToLedgerCmd {
-    START = 0,
+    Start = 0,
     GetChunkResponseSuccess = 1,
     GetChunkResponseFailure = 2,
     PutChunkResponse = 3,
@@ -129,7 +135,7 @@ impl TryFrom<u8> for HostToLedgerCmd {
     type Error = Reply;
     fn try_from(a: u8) -> Result<HostToLedgerCmd, Reply> {
         match a {
-            0 => Ok(HostToLedgerCmd::START),
+            0 => Ok(HostToLedgerCmd::Start),
             1 => Ok(HostToLedgerCmd::GetChunkResponseSuccess),
             2 => Ok(HostToLedgerCmd::GetChunkResponseFailure),
             3 => Ok(HostToLedgerCmd::PutChunkResponse),
@@ -212,7 +218,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
 
     trace!("Host cmd: {:?}", host_cmd);
     match host_cmd {
-        HostToLedgerCmd::START => {
+        HostToLedgerCmd::Start => {
             *block_state = BlockState::default();
             reset_parsers_state(states);
             block_state.params.clear();
@@ -267,7 +273,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                 // Explicit rejection; reset the parser. Possibly send error message to host?
                 Err((Some(OOB::Reject), _)) => {
                     reset_parsers_state(states);
-                    return Err(io::StatusWords::Unknown.into());
+                    Err(io::StatusWords::Unknown.into())
                 }
                 // Deliberately no catch-all on the Err((Some case; we'll get error messages if we
                 // add to OOB's out-of-band actions and forget to implement them.
@@ -277,7 +283,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     trace!("Parser needs more; get more.");
                     // Request the next chunk of our input.
                     let our_next_block: &[u8] = if next_block == [0; 32] {
-                        block_state.state = block_state.state + 1;
+                        block_state.state += 1;
                         if block_state.state > seq.len() {
                             return Err(io::StatusWords::Unknown.into());
                         }
@@ -286,7 +292,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                         }
                         &block_state.params[seq[block_state.state]]
                     } else {
-                        &next_block
+                        next_block
                     };
                     trace!("Next block: {:x?}", our_next_block);
 
@@ -294,12 +300,12 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     comm.append(&[LedgerToHostCmd::GetChunk as u8]);
                     comm.append(&block_state.requested_block);
                     trace!("Requesting next block from host");
-                    return Ok(());
+                    Ok(())
                 }
                 // Didn't consume the whole chunk; reset and error message.
                 Err((None, _)) => {
                     reset_parsers_state(states);
-                    return Err(io::StatusWords::Unknown.into());
+                    Err(io::StatusWords::Unknown.into())
                 }
                 // Consumed the whole chunk and parser finished; send response.
                 Ok([]) => {
@@ -313,12 +319,12 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
                     }
                     // Parse finished; reset.
                     reset_parsers_state(states);
-                    return Ok(());
+                    Ok(())
                 }
                 // Parse ended before the chunk did; reset.
                 Ok(_) => {
                     reset_parsers_state(states);
-                    return Err(io::StatusWords::Unknown.into());
+                    Err(io::StatusWords::Unknown.into())
                 }
             }
         }
@@ -333,6 +339,7 @@ fn handle_apdu(
     ins: Ins,
     parser: &mut ParsersState,
     block_state: &mut BlockState,
+    settings: Settings,
 ) -> Result<(), Reply> {
     info!("entering handle_apdu with command {:?}", ins);
     if comm.rx == 0 {
@@ -349,12 +356,20 @@ fn handle_apdu(
             ]);
             comm.append(b"Pocket");
         }
-        Ins::GetPubkey => run_parser_apdu::<_, Bip32Key, _>(
+        Ins::VerifyAddress => run_parser_apdu::<_, Bip32Key, _>(
             parser,
-            get_get_address_state,
+            get_get_address_state::<true>,
             block_state,
             &[0],
-            &GET_ADDRESS_IMPL,
+            &get_address_impl::<true>(),
+            comm,
+        )?,
+        Ins::GetPubkey => run_parser_apdu::<_, Bip32Key, _>(
+            parser,
+            get_get_address_state::<false>,
+            block_state,
+            &[0],
+            &get_address_impl::<false>(),
             comm,
         )?,
         Ins::Sign => run_parser_apdu::<_, DoubledSignParameters, _>(
@@ -365,6 +380,23 @@ fn handle_apdu(
             &SIGN_IMPL,
             comm,
         )?,
+        Ins::BlindSign => {
+            if settings.get() != 1 {
+                write_scroller(false, "Blind Signing must", |w| {
+                    Ok(write!(w, "be enabled")?)
+                });
+                return Err(io::SyscallError::NotSupported.into());
+            } else {
+                run_parser_apdu::<_, DoubledBlindSignParameters, _>(
+                    parser,
+                    get_blind_sign_state,
+                    block_state,
+                    &SIGN_SEQ,
+                    &BLIND_SIGN_IMPL,
+                    comm,
+                )?
+            }
+        }
         Ins::GetVersionStr => {
             comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());

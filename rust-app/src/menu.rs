@@ -4,7 +4,7 @@ use ledger_prompts_ui::*;
 use nanos_ui::bagls::*;
 use nanos_ui::bitmaps::Glyph;
 
-pub const APP_ICON_GLYPH: Glyph = Glyph::from_include(include_gif!("crab-small.gif"));
+pub const APP_ICON_GLYPH: Glyph = Glyph::from_include(include_gif!("pocket-small.gif"));
 
 pub const APP_ICON: Icon = Icon::from(&APP_ICON_GLYPH)
     .set_x(MENU_ICON_X)

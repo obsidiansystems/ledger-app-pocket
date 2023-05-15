@@ -36,44 +36,46 @@ pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 
 // Need a path of length 5, as make_bip32_path panics with smaller paths
 pub const BIP32_PREFIX: [u32; 2] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'");
 
-pub const GET_ADDRESS_IMPL: GetAddressImplT = Action(
-    SubInterp(DefaultInterp),
-    mkfn(
-        |path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
-            if !path.starts_with(&BIP32_PREFIX[0..2]) {
-                // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
-                return None;
-            }
-            with_public_keys(path, false, |key: &_, pkh: &PKH| {
-                try_option(|| -> Option<()> {
-                    scroller("Provide Public Key", |w| {
-                        Ok(write!(w, "For Address     {pkh}")?)
-                    })?;
+pub const fn get_address_impl<const PROMPT: bool>() -> GetAddressImplT {
+    Action(
+        SubInterp(DefaultInterp),
+        mkfn(
+            |path: &ArrayVec<u32, 10>, destination: &mut Option<ArrayVec<u8, 128>>| -> Option<()> {
+                if !path.starts_with(&BIP32_PREFIX[0..2]) {
+                    // There isn't a _no_throw variation of the below, so avoid a throw on incorrect input.
+                    return None;
+                }
+                with_public_keys(path, false, |key: &_, pkh: &PKH| {
+                    try_option(|| -> Option<()> {
+                        if PROMPT {
+                            scroller("Provide Public Key", |_w| Ok(()))?;
+                            scroller_paginated("Address", |w| Ok(write!(w, "{pkh}")?))?;
+                            final_accept_prompt(&[])?;
+                        }
 
-                    final_accept_prompt(&[])?;
+                        let rv = destination.insert(ArrayVec::new());
 
-                    let rv = destination.insert(ArrayVec::new());
+                        // Should return the format that the chain customarily uses for public keys; for
+                        // ed25519 that's usually r | s with no prefix, which isn't quite our internal
+                        // representation.
+                        let key_bytes = ed25519_public_key_bytes(key);
 
-                    // Should return the format that the chain customarily uses for public keys; for
-                    // ed25519 that's usually r | s with no prefix, which isn't quite our internal
-                    // representation.
-                    let key_bytes = ed25519_public_key_bytes(key);
+                        rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;
+                        rv.try_extend_from_slice(key_bytes).ok()?;
 
-                    rv.try_push(u8::try_from(key_bytes.len()).ok()?).ok()?;
-                    rv.try_extend_from_slice(key_bytes).ok()?;
-
-                    // And we'll send the address along; in our case it happens to be the same as the
-                    // public key, but in general it's something computed from the public key.
-                    let binary_address = pkh.get_binary_address();
-                    rv.try_push(u8::try_from(binary_address.len()).ok()?).ok()?;
-                    rv.try_extend_from_slice(binary_address).ok()?;
-                    Some(())
-                }())
-            })
-            .ok()
-        },
-    ),
-);
+                        // And we'll send the address along; in our case it happens to be the same as the
+                        // public key, but in general it's something computed from the public key.
+                        let binary_address = pkh.get_binary_address();
+                        rv.try_push(u8::try_from(binary_address.len()).ok()?).ok()?;
+                        rv.try_extend_from_slice(binary_address).ok()?;
+                        Some(())
+                    }())
+                })
+                .ok()
+            },
+        ),
+    )
+}
 
 //const fn show_address<const TITLE: &'static str>() -> impl JsonInterp<JsonString, State: Debug, Returning: Debug>
 const fn show_address<const TITLE: &'static str>(
@@ -158,7 +160,7 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
     let mut last_non_zero_ix = 0;
     // check the amount for any invalid chars and get its length
     for (ix, c) in amount.as_ref().iter().enumerate() {
-        if c < &b'0' || c > &b'9' {
+        if !(&b'0'..=&b'9').contains(&c) {
             return Err(());
         }
         if c != &b'0' {
@@ -183,7 +185,7 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
             .try_extend_from_slice(&amount.as_ref()[start_ix..(amount.len() - chars_after_decimal)])
             .map_err(|_| ())?;
         dec_value.try_push(b'.').map_err(|_| ())?;
-        if amount.len() - chars_after_decimal < last_non_zero_ix {
+        if amount.len() - chars_after_decimal <= last_non_zero_ix {
             // there is non-zero decimal value
             dec_value
                 .try_extend_from_slice(
@@ -391,8 +393,7 @@ impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>>> ParserCommo
     type State = WithStackBoxedState<S::State, Q>;
     type Returning = S::Returning;
     fn init(&self) -> Self::State {
-        let rv = WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false);
-        rv
+        WithStackBoxedState(self.0.init(), DynamicStackBoxSlot::new(Q::default()), false)
     }
 }
 
@@ -413,8 +414,6 @@ impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>> + InterpPars
         self.0.parse(&mut state.0, chunk, destination)
     }
 }
-
-pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8, 128>>;
 
 pub const SIGN_SEQ: [usize; 3] = [1, 0, 0];
 
@@ -447,6 +446,8 @@ impl Summable<TotalFees> for TotalFees {
     }
 }
 
+pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8, 128>>;
+
 pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     Action(
         SubInterp(DefaultInterp),
@@ -467,7 +468,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     DynBind(
         MoveAction(
             ObserveLengthedBytes(
-                || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
+                DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
                 |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 Action(
                     Json(Action(
@@ -552,7 +553,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         ),
         MoveAction(
             ObserveLengthedBytes(
-                || DynamicStackBox::<Ed25519>::default(), // move || edward.clone(),
+                DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
                 |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
                 /*  || Ed25519::default(), // move || edward.clone(),
                 Ed25519::update,*/
@@ -577,15 +578,92 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
     ),
 ));
 
+pub type BlindSignImplT =
+    impl InterpParser<DoubledBlindSignParameters, Returning = ArrayVec<u8, 128_usize>>;
+
+pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
+    || -> Option<()> {
+        scroller("WARNING", |w| {
+            Ok(write!(w, "Blind Signing a Transaction is a very unusual operation. Do not continue unless you know what you are doing")?)
+        })
+    },
+    WithStackBoxed(DynBind(
+        Action(
+            SubInterp(DefaultInterp),
+            // And ask the user if this is the key the meant to sign with:
+            mktfn(
+                |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
+                    with_public_keys(path, false, |_, pkh: &PKH| {
+                        ed.init(path.clone())?;
+                        try_option(|| -> Option<()> {
+                            scroller("Sign for Address", |w| Ok(write!(w, "{pkh}")?))?;
+                            Some(())
+                        }())?;
+                        // *destination = Some(ed);
+                        set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
+                        Ok::<_, SignTempError>(())
+                    })
+                    .ok()?;
+                    Some(())
+                },
+            ),
+        ),
+        DynBind(
+            MoveAction(
+                ObserveLengthedBytes(
+                    DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
+                    |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
+                    Json(DropInterp),
+                    true,
+                ),
+                mkmvfn(
+                    |(_, initial_edward): (Option<()>, DynamicStackBox<Ed25519>),
+                     destination: &mut Option<DynamicStackBox<Ed25519>>|
+                     -> Option<()> {
+                        *destination = Some(initial_edward);
+                        destination.as_mut()?.done_with_r().ok()?;
+                        Some(())
+                    },
+                ),
+            ),
+            MoveAction(
+                ObserveLengthedBytes(
+                    DynamicStackBox::<Ed25519>::default, // move || edward.clone(),
+                    |s: &mut DynamicStackBox<Ed25519>, b: &[u8]| s.update(b),
+                    /*  || Ed25519::default(), // move || edward.clone(),
+                    Ed25519::update,*/
+                    Json(DropInterp),
+                    true,
+                ),
+                mkmvfn(
+                    |(_, mut final_edward): (_, DynamicStackBox<Ed25519>),
+                     destination: &mut Option<ArrayVec<u8, 128>>| {
+                        final_accept_prompt(&["Blind Sign Transaction?"])?;
+                        // let mut final_edward_copy = final_edward.clone();
+                        let sig = final_edward.finalize();
+                        *destination = Some(ArrayVec::new());
+                        destination
+                            .as_mut()?
+                            .try_extend_from_slice(&sig.ok()?.0)
+                            .ok()?;
+                        Some(())
+                    },
+                ),
+            ),
+        ),
+    )),
+);
+
 // The global parser state enum; any parser above that'll be used as the implementation for an APDU
 // must have a field here.
 
 #[derive(InPlaceInit)]
 #[repr(u8)]
-pub enum ParsersStateInner<A, B> {
+pub enum ParsersStateInner<A, B, C> {
     NoState,
     GetAddressState(A),
     SignState(B),
+    BlindSignState(C),
     /*GetAddressState(<GetAddressImplT as ParserCommon<Bip32Key>>::State),
     SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::State),*/
 }
@@ -593,6 +671,7 @@ pub enum ParsersStateInner<A, B> {
 pub type ParsersState = ParsersStateInner<
     <GetAddressImplT as ParserCommon<Bip32Key>>::State,
     <SignImplT as ParserCommon<DoubledSignParameters>>::State,
+    <BlindSignImplT as ParserCommon<DoubledBlindSignParameters>>::State,
 >;
 
 pub fn reset_parsers_state(state: &mut ParsersState) {
@@ -769,7 +848,12 @@ where
             }
             MessageState::TypeLabel(ref mut temp_string_state, ref mut temp_string_return) => {
                 call_str::<4>(temp_string_state, token, temp_string_return)?;
-                if temp_string_return.as_ref().unwrap().as_slice() == b"type" {
+                if temp_string_return
+                    .as_ref()
+                    .expect("should be set by now")
+                    .as_slice()
+                    == b"type"
+                {
                     set_from_thunk(state, || MessageState::KeySep1);
                 } else {
                     return Err(Some(OOB::Reject));
@@ -780,7 +864,11 @@ where
             }
             MessageState::Type(ref mut temp_string_state, ref mut temp_string_return) => {
                 call_str::<64>(temp_string_state, token, temp_string_return)?;
-                match temp_string_return.as_ref().unwrap().as_slice() {
+                match temp_string_return
+                    .as_ref()
+                    .expect("should be set by now")
+                    .as_slice()
+                {
                     b"pos/Send" => {
                         set_from_thunk(state, || MessageState::ValueSep(MessageType::SendMessage));
                     }
@@ -808,7 +896,12 @@ where
             }
             MessageState::ValueLabel(msg_type, temp_string_state, temp_string_return) => {
                 call_str::<5>(temp_string_state, token, temp_string_return)?;
-                if temp_string_return.as_ref().unwrap().as_slice() == b"value" {
+                if temp_string_return
+                    .as_ref()
+                    .expect("should be set by now")
+                    .as_slice()
+                    == b"value"
+                {
                     let new_msg_type = *msg_type;
                     set_from_thunk(state, || MessageState::KeySep2(new_msg_type));
                 } else {
@@ -906,7 +999,7 @@ where
 pokt_cmd_definition! {}
 
 #[inline(never)]
-pub fn get_get_address_state(
+pub fn get_get_address_state<const PROMPT: bool>(
     s: &mut ParsersState,
 ) -> &mut <GetAddressImplT as ParserCommon<Bip32Key>>::State {
     match s {
@@ -914,14 +1007,14 @@ pub fn get_get_address_state(
         _ => {
             trace!("Non-same state found; initializing state.");
             *s = ParsersState::GetAddressState(<GetAddressImplT as ParserCommon<Bip32Key>>::init(
-                &GET_ADDRESS_IMPL,
+                &get_address_impl::<PROMPT>(),
             ));
         }
     }
     match s {
         ParsersState::GetAddressState(ref mut a) => a,
         _ => {
-            panic!("")
+            unreachable!("Should be impossible because assignment right above")
         }
     }
 }
@@ -934,20 +1027,6 @@ pub fn get_sign_state(
         ParsersState::SignState(_) => {}
         _ => {
             trace!("Non-same state found; initializing state.");
-            /*
-            unsafe {
-                let s_ptr = s as *mut ParsersState;
-                core::ptr::drop_in_place(s_ptr);
-                // casting s_ptr to MaybeUninit here _could_ produce UB if init_in_place doesn't
-                // fill it; we rely on init_in_place to not panic.
-                ParsersState::init_sign_state(core::mem::transmute(s_ptr): *mut core::mem::MaybeUninit<ParsersState>, |a| {
-                    <SignImplT as ParserCommon<DoubledSignParameters>>::init_in_place(
-                        &SIGN_IMPL, a,
-                    );
-                });
-                trace!("Get_sign_stated");
-            }
-            */
             *s = ParsersState::SignState(<SignImplT as ParserCommon<DoubledSignParameters>>::init(
                 &SIGN_IMPL,
             ));
@@ -956,8 +1035,28 @@ pub fn get_sign_state(
     match s {
         ParsersState::SignState(ref mut a) => a,
         _ => {
-            trace!("PANICKING");
-            panic!("DOOO PANIC")
+            unreachable!("Should be impossible because assignment right above")
+        }
+    }
+}
+
+#[inline(never)]
+pub fn get_blind_sign_state(
+    s: &mut ParsersState,
+) -> &mut <BlindSignImplT as ParserCommon<DoubledBlindSignParameters>>::State {
+    match s {
+        ParsersState::BlindSignState(_) => {}
+        _ => {
+            trace!("Non-same state found; initializing state.");
+            *s = ParsersState::BlindSignState(<BlindSignImplT as ParserCommon<
+                DoubledBlindSignParameters,
+            >>::init(&BLIND_SIGN_IMPL));
+        }
+    }
+    match s {
+        ParsersState::BlindSignState(ref mut a) => a,
+        _ => {
+            unreachable!("Should be impossible because assignment right above")
         }
     }
 }

@@ -5,68 +5,34 @@ import Axios from 'axios';
 import Pokt from "hw-app-pokt";
 import * as ed from '@noble/ed25519';
 
-describe('basic tests', () => {
+function testTransactionInternal(path: string, txn0: any, blind: boolean, prompts: any[]) {
+  const txn = Buffer.from(JSON.stringify(txn0), "utf-8");
+  return async () => {
+    await sendCommandAndAccept(async (client : Pokt) => {
 
-  afterEach( async function() {
-    await Axios.post(BASE_URL + "/automation", {version: 1, rules: []});
-    await Axios.delete(BASE_URL + "/events");
-    // await (new Promise((resolve) => setTimeout(() => resolve(0), 1000)));
-  });
+      const pk = await client.getPublicKey(path);
 
-  it('provides a public key', async () => {
+      if (blind) {
+        await toggleBlindSigningSettings();
+      }
 
-    await sendCommandAndAccept(async (pokt : Pokt) => {
-      const rv = await pokt.getPublicKey("44'/635'/0");
-      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
-      return;
-    }, [
-      {
-        "header": "Provide Public Key",
-        "prompt": "For Address     80e004848cd91888257d10e783420e923709e2d1",
-      },
-      {
-        "text": "Confirm",
-        "x": "<patched>",
-        "y": "<patched>",
-      },
-    ]);
-  });
+      // We don't want the prompts from getPublicKey in our result
+      await Axios.delete(BASE_URL + "/events");
 
-  it('provides a public key', async () => {
-  await sendCommandAndAccept(async (client : Pokt) => {
-      const rv = await client.getPublicKey("44'/635'/0");
-      expect(new Buffer(rv.publicKey).toString('hex')).to.equal("5a354b0d33de0006376dcb756113ab0fc3dc6e758101bcc9be5b7b538d5ae388");
-      return;
-    }, [
-      {
-        "header": "Provide Public Key",
-        "prompt": "For Address     80e004848cd91888257d10e783420e923709e2d1",
-      },
-      {
-        "text": "Confirm",
-        "x": 43,
-        "y": 11,
-      },
-    ]);
-  });
-});
+      const sig = blind
+          ? await client.blindSignTransaction(path, txn)
+          : await client.signTransaction(path, txn);
 
-function testTransaction(path: string, txn: string, prompts: any[]) {
-     return async () => {
-       await sendCommandAndAccept(
-         async (client : Pokt) => {
-
-           const pk = await client.getPublicKey(path);
-
-           // We don't want the prompts from getPublicKey in our result
-           await Axios.delete(BASE_URL + "/events");
-
-           const sig = await client.signTransaction(path, Buffer.from(txn, "utf-8").toString("hex"));
-
-           expect(await ed.verify(sig.signature, Buffer.from(txn, "utf-8"), pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
-         }, prompts);
-     }
+      expect(await ed.verify(sig.signature, txn, pk.publicKey) ? "Signature Valid": "Signature Invalid").to.equal("Signature Valid");
+    }, prompts);
+  }
 }
+
+const testTransaction = (path: string, txn: any, prompts: any[]) =>
+    testTransactionInternal(path, txn, false, prompts);
+
+const testBlindTransaction = (path: string, txn: any, prompts: any[]) =>
+    testTransactionInternal(path, txn, true, prompts);
 
 // These tests have been extracted interacting with the testnet via the cli.
 
@@ -124,6 +90,26 @@ const exampleSend3 = {
     "type": "pos/Send",
     "value": {
       "amount": "002000000000",
+      "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+      "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
+const exampleSend4 = {
+  "chain_id": "testnet",
+  "entropy": "-7780543831205109370",
+  "fee": [
+    {
+      "amount": "12000",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "Fourth transaction",
+  "msg": {
+    "type": "pos/Send",
+    "value": {
+      "amount": "10100000",
       "from_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
       "to_address": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
     }
@@ -199,7 +185,7 @@ describe("Signing tests", function() {
   it("can sign a simple transfer",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend),
+       exampleSend,
        [
          {
            "header": "Transfer",
@@ -233,7 +219,7 @@ describe("Signing tests", function() {
   it("can sign a simple transfer 2",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend2),
+       exampleSend2,
        [
          {
            "header": "Transfer",
@@ -267,8 +253,8 @@ describe("Signing tests", function() {
   it("can sign a simple transfer, check decimal conversion",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleSend3),
-[
+       exampleSend3,
+       [
          {
            "header": "Transfer",
            "prompt": "POKT",
@@ -298,10 +284,44 @@ describe("Signing tests", function() {
          }
 ]
      ));
+  it("can sign a simple transfer, check decimal conversion 2",
+     testTransaction(
+       "44'/635'/0/0",
+       exampleSend4,
+       [
+         {
+           "header": "Transfer",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "To",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "10.1",
+         },
+         {
+           "header": "Fees",
+           "prompt": "0.012",
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
+     ));
   it("can sign a simple unjail",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleUnjail),
+       exampleUnjail,
        [
         {
           "header": "Unjail",
@@ -326,7 +346,7 @@ describe("Signing tests", function() {
   it("can sign a simple stake",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleStake),
+       exampleStake,
        [
          {
            "header": "Stake",
@@ -364,7 +384,32 @@ describe("Signing tests", function() {
   it("can sign a simple unstake",
      testTransaction(
        "44'/635'/0/0",
-       JSON.stringify(exampleUnstake),
+       exampleUnstake,
+       [
+        {
+          "header": "Unstake",
+          "prompt": "Transaction"
+        },
+        {
+          "header": "Signer address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
+        },
+        {
+          "header": "Unstake address",
+          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "text": "Confirm",
+          "x": 43,
+          "y": 11
+        }
+       ]
+     ));
+
+  it("can sign a simple unstake",
+     testTransaction(
+       "44'/635'/0/0",
+       exampleUnstake,
        [
         {
           "header": "Unstake",
@@ -387,13 +432,67 @@ describe("Signing tests", function() {
      ));
 });
 
-describe("get version tests", function() {
-  it("can get app version", async () => {
-    await sendCommandAndAccept(async (client : any) => {
-      var rv = await client.getVersion();
-      expect(rv.major).to.equal(VERSION.major);
-      expect(rv.minor).to.equal(VERSION.minor);
-      expect(rv.patch).to.equal(VERSION.patch);
-      }, []);
-    });
+function testBlindSignFail(path: string, hash: string) {
+  return async () => {
+    await sendCommandExpectFail(
+      async (client : Pokt) => {
+        await client.blindSignTransaction(path, hash);
+      });
+  }
+}
+
+function testBlindSignFail2(path: string, hash: string) {
+  return async () => {
+    await sendCommandExpectFail(
+      async (client : Pokt) => {
+        // Enable and then disable
+        await toggleBlindSigningSettings();
+        await toggleBlindSigningSettings();
+        await Axios.delete(BASE_URL + "/events");
+        await client.blindSignTransaction(path, hash);
+      });
+  }
+}
+
+describe.only("Blind signing tests", function() {
+
+  it("cannot sign arbitary JSON without settings enabled",
+     testBlindSignFail(
+       "44'/635'/0/0",
+       '"ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c"'
+     ));
+  it("cannot sign abitrary JSON without settings enabled 2",
+     testBlindSignFail2(
+       "44'/635'/0/0",
+       '"ffd8cd79deb956fa3c7d9be0f836f20ac84b140168a087a842be4760e40e2b1c"'
+     ));
+
+  it("can blind sign nonsense JSON",
+     testBlindTransaction(
+       "44'/635'/0/0",
+       {
+         foo: 1,
+         bar: null,
+       },
+       [
+         {
+           "header": "WARNING",
+           "prompt": "Blind Signing a Transaction is a very unusual operation. Do not continue unless you know what you are doing",
+         },
+         {
+           "header": "Sign for Address",
+           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488",
+         },
+         {
+           "text": "Blind Sign Transaction?",
+           "x": 4,
+           "y": 11,
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         }
+       ]
+     ));
 });

@@ -147,13 +147,19 @@ where `DEVICE` is one of
 
 Then, one can use `generic-cli` like this:
 
-- Get a public key for a BIP-32 derivation:
+- Get a public key for a BIP-32 derivation without prompting the user:
   ```shell-session
-  $ generic-cli getAddress --use-block "44'/635'/0'/0/0" --json
+  $ generic-cli getAddress --use-block "44'/635'/0'/0/0"
   {
     "publicKey": "3f903a00b0b9634b61de1fedee53dcd02ef6c94ec63529a20565b17f306ff0a9",
     "address": "e8ed4e23ebb4d59444fa8fe1a0e3a1171dfe6af2"
   }
+  ```
+
+- Show the address on device for a BIP-32 derivation and obtain the public key:
+  ```shell-session
+  $ generic-cli getAddress --verify --use-block "44'/635'/0'/0/0"
+  a42e71c004770d1a48956090248a8d7d86ee02726b5aab2a5cd15ca9f57cbd71
   ```
 
 - Sign a transaction:
