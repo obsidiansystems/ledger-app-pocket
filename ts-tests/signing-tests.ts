@@ -454,7 +454,7 @@ function testBlindSignFail2(path: string, hash: string) {
   }
 }
 
-describe.only("Blind signing tests", function() {
+describe("Blind signing tests", function() {
 
   it("cannot sign arbitary JSON without settings enabled",
      testBlindSignFail(
