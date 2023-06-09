@@ -210,6 +210,11 @@ describe("Signing tests", function() {
            "prompt": "POKT 0.012",
          },
          {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
+         },
+         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -242,6 +247,11 @@ describe("Signing tests", function() {
          {
            "header": "Fee",
            "prompt": "POKT 0.000002",
+         },
+         {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
          },
          {
            "text": "Confirm",
@@ -278,6 +288,11 @@ describe("Signing tests", function() {
            "prompt": "POKT 0.01",
          },
          {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
+         },
+         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -312,6 +327,11 @@ describe("Signing tests", function() {
            "prompt": "POKT 0.012",
          },
          {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
+         },
+         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -335,11 +355,16 @@ describe("Signing tests", function() {
           "header": "Signer address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         }
+        {
+          "text": "Sign Transaction?",
+          "x": 19,
+          "y": 11
+        },
+        {
+          "text": "Confirm",
+          "x": 43,
+          "y": 11,
+        }
        ]
        ));
 
@@ -373,6 +398,11 @@ describe("Signing tests", function() {
            "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
          },
          {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
+         },
+         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -399,6 +429,11 @@ describe("Signing tests", function() {
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
         },
         {
+          "text": "Sign Transaction?",
+          "x": 19,
+          "y": 11
+        },
+        {
           "text": "Confirm",
           "x": 43,
           "y": 11
@@ -422,6 +457,11 @@ describe("Signing tests", function() {
         {
           "header": "Unstake address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "text": "Sign Transaction?",
+          "x": 19,
+          "y": 11
         },
         {
           "text": "Confirm",

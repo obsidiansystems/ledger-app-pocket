@@ -563,7 +563,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
             mkmvfn(
                 |(_, mut final_edward): (_, DynamicStackBox<Ed25519>),
                  destination: &mut Option<ArrayVec<u8, 128>>| {
-                    final_accept_prompt(&[])?;
+                    final_accept_prompt(&["Sign Transaction?"])?;
                     // let mut final_edward_copy = final_edward.clone();
                     let sig = final_edward.finalize();
                     *destination = Some(ArrayVec::new());
