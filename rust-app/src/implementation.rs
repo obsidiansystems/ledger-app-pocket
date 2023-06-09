@@ -136,7 +136,7 @@ const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
                 scroller("Amount", |w| {
                     let x = get_amount_in_decimals(o.field_amount.as_ref().ok_or(ScrollerError)?)
                         .map_err(|_| ScrollerError)?;
-                    Ok(write!(w, "{}", from_utf8(&x)?)?)
+                    Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
                 })?;
                 *destination = Some(());
                 Some(())
@@ -513,7 +513,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                 match msg_kind {
                                     // We expect Fees to be specified for transfer transactions
                                     MessageReturn::SendMessageReturn(_) => {
-                                        scroller("Fees", |w| {
+                                        scroller("Fee", |w| {
                                             let x = get_amount_in_decimals(
                                                 o.field_fee
                                                     .as_ref()
@@ -523,7 +523,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                                     .ok_or(ScrollerError)?,
                                             )
                                             .map_err(|_| ScrollerError)?;
-                                            Ok(write!(w, "{}", from_utf8(&x)?)?)
+                                            Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
                                         })?;
                                     }
                                     // Ignore the Fees altogether for other txs, for now
@@ -563,7 +563,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
             mkmvfn(
                 |(_, mut final_edward): (_, DynamicStackBox<Ed25519>),
                  destination: &mut Option<ArrayVec<u8, 128>>| {
-                    final_accept_prompt(&[])?;
+                    final_accept_prompt(&["Sign Transaction?"])?;
                     // let mut final_edward_copy = final_edward.clone();
                     let sig = final_edward.finalize();
                     *destination = Some(ArrayVec::new());
