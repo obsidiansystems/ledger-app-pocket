@@ -136,7 +136,7 @@ const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
                 scroller("Amount", |w| {
                     let x = get_amount_in_decimals(o.field_amount.as_ref().ok_or(ScrollerError)?)
                         .map_err(|_| ScrollerError)?;
-                    Ok(write!(w, "{}", from_utf8(&x)?)?)
+                    Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
                 })?;
                 *destination = Some(());
                 Some(())
