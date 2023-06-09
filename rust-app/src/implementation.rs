@@ -513,7 +513,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                 match msg_kind {
                                     // We expect Fees to be specified for transfer transactions
                                     MessageReturn::SendMessageReturn(_) => {
-                                        scroller("Fees", |w| {
+                                        scroller("Fee", |w| {
                                             let x = get_amount_in_decimals(
                                                 o.field_fee
                                                     .as_ref()
@@ -523,7 +523,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                                     .ok_or(ScrollerError)?,
                                             )
                                             .map_err(|_| ScrollerError)?;
-                                            Ok(write!(w, "{}", from_utf8(&x)?)?)
+                                            Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
                                         })?;
                                     }
                                     // Ignore the Fees altogether for other txs, for now

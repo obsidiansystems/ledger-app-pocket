@@ -206,8 +206,8 @@ describe("Signing tests", function() {
            "prompt": "10.0",
          },
          {
-           "header": "Fees",
-           "prompt": "0.012",
+           "header": "Fee",
+           "prompt": "POKT 0.012",
          },
          {
            "text": "Confirm",
@@ -240,8 +240,8 @@ describe("Signing tests", function() {
            "prompt": "10.20304",
          },
          {
-           "header": "Fees",
-           "prompt": "0.000002",
+           "header": "Fee",
+           "prompt": "POKT 0.000002",
          },
          {
            "text": "Confirm",
@@ -274,8 +274,8 @@ describe("Signing tests", function() {
            "prompt": "2000.0",
          },
          {
-           "header": "Fees",
-           "prompt": "0.01",
+           "header": "Fee",
+           "prompt": "POKT 0.01",
          },
          {
            "text": "Confirm",
@@ -308,8 +308,8 @@ describe("Signing tests", function() {
            "prompt": "10.1",
          },
          {
-           "header": "Fees",
-           "prompt": "0.012",
+           "header": "Fee",
+           "prompt": "POKT 0.012",
          },
          {
            "text": "Confirm",
