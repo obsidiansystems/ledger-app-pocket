@@ -203,11 +203,16 @@ describe("Signing tests", function() {
          },
          {
            "header": "Amount",
-           "prompt": "10.0",
+           "prompt": "POKT 10.0",
          },
          {
-           "header": "Fees",
-           "prompt": "0.012",
+           "header": "Fee",
+           "prompt": "POKT 0.012",
+         },
+         {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
          },
          {
            "text": "Confirm",
@@ -237,11 +242,16 @@ describe("Signing tests", function() {
          },
          {
            "header": "Amount",
-           "prompt": "10.20304",
+           "prompt": "POKT 10.20304",
          },
          {
-           "header": "Fees",
-           "prompt": "0.000002",
+           "header": "Fee",
+           "prompt": "POKT 0.000002",
+         },
+         {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
          },
          {
            "text": "Confirm",
@@ -271,11 +281,16 @@ describe("Signing tests", function() {
          },
          {
            "header": "Amount",
-           "prompt": "2000.0",
+           "prompt": "POKT 2000.0",
          },
          {
-           "header": "Fees",
-           "prompt": "0.01",
+           "header": "Fee",
+           "prompt": "POKT 0.01",
+         },
+         {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
          },
          {
            "text": "Confirm",
@@ -305,11 +320,16 @@ describe("Signing tests", function() {
          },
          {
            "header": "Amount",
-           "prompt": "10.1",
+           "prompt": "POKT 10.1",
          },
          {
-           "header": "Fees",
-           "prompt": "0.012",
+           "header": "Fee",
+           "prompt": "POKT 0.012",
+         },
+         {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
          },
          {
            "text": "Confirm",
@@ -335,11 +355,16 @@ describe("Signing tests", function() {
           "header": "Signer address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
         },
-         {
-           "text": "Confirm",
-           "x": 43,
-           "y": 11,
-         }
+        {
+          "text": "Sign Transaction?",
+          "x": 19,
+          "y": 11
+        },
+        {
+          "text": "Confirm",
+          "x": 43,
+          "y": 11,
+        }
        ]
        ));
 
@@ -373,6 +398,11 @@ describe("Signing tests", function() {
            "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
          },
          {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
+         },
+         {
            "text": "Confirm",
            "x": 43,
            "y": 11,
@@ -399,6 +429,11 @@ describe("Signing tests", function() {
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
         },
         {
+          "text": "Sign Transaction?",
+          "x": 19,
+          "y": 11
+        },
+        {
           "text": "Confirm",
           "x": 43,
           "y": 11
@@ -422,6 +457,11 @@ describe("Signing tests", function() {
         {
           "header": "Unstake address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "text": "Sign Transaction?",
+          "x": 19,
+          "y": 11
         },
         {
           "text": "Confirm",
