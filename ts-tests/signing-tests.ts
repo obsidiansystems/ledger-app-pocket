@@ -379,27 +379,28 @@ describe("Signing tests", function() {
        [
          {
            "header": "Stake",
-           "prompt": "Transaction",
+           "prompt": "POKT",
          },
          {
-           "header": "Chain",
-           "prompt": "0034",
+           "header": "Amount",
+           "prompt": "POKT 1.0",
          },
          {
            "header": "Public Key",
            "prompt": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0 (crypto/ed25519_public_key)",
+           "paginate": true,
+         },
+         {
+           "header": "Output Address",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
          },
          {
            "header": "Service URL",
            "prompt": "https://serviceURI.com:3000",
          },
          {
-           "header": "Value",
-           "prompt": "1000000",
-         },
-         {
-           "header": "Output Address",
-           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+           "header": "Chain ID(s)",
+           "prompt": "0034",
          },
          {
            "header": "Fee",

@@ -210,77 +210,70 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
     Ok(dec_value)
 }
 
-const CHAIN_ACTION: Action<
-    JsonStringAccumulate<64>,
-    fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>,
-> = Action(JsonStringAccumulate::<64>, |chain, destination| {
-    scroller("Chain", |w| {
-        Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?)
-    })?;
-    *destination = Some(());
-    Some(())
-});
-
-const VALUE_ACTION: Action<
-    JsonStringAccumulate<64>,
-    fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>,
-> = Action(JsonStringAccumulate::<64>, |value, destination| {
-    scroller("Value", |w| {
-        Ok(write!(w, "{}", from_utf8(value.as_ref())?)?)
-    })?;
-    *destination = Some(());
-    Some(())
-});
-
-type PublicKeyAction = impl JsonInterp<PublicKeySchema, State: Debug>;
-const PUBLICKEY_ACTION: PublicKeyAction = Action(
-    PublicKeyInterp {
-        field_type: JsonStringAccumulate::<64>,
-        field_value: JsonStringAccumulate::<64>,
-    },
-    mkfn(
-        |PublicKey {
-             field_type: ty,
-             field_value: val,
-         }: &PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>,
-         destination| {
-            scroller("Public Key", |w| {
-                Ok(write!(
-                    w,
-                    "{} ({})",
-                    from_utf8(val.as_ref().ok_or(ScrollerError)?)?,
-                    from_utf8(ty.as_ref().ok_or(ScrollerError)?)?
-                )?)
-            })?;
-            *destination = Some(());
-            Some(())
-        },
-    ),
-);
-
-const SERVICE_URL_ACTION: Action<
-    JsonStringAccumulate<64>,
-    fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>,
-> = Action(JsonStringAccumulate::<64>, |service_url, destination| {
-    scroller("Service URL", |w| {
-        Ok(write!(w, "{}", from_utf8(service_url)?)?)
-    })?;
-    *destination = Some(());
-    Some(())
-});
-
 type StakeMessageAction = impl JsonInterp<StakeValueSchema, State: Debug>;
 const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
-    || scroller("Stake", |w| Ok(write!(w, "Transaction")?)),
-    StakeValueInterp {
-        field_chains: SubInterp(CHAIN_ACTION),
-        field_public_key: PUBLICKEY_ACTION,
-        field_service_url: SERVICE_URL_ACTION,
-        field_value: VALUE_ACTION,
-        field_output_address: show_address::<"Output Address">(),
-    },
+    || scroller("Stake", |w| Ok(write!(w, "POKT")?)),
+    Action(
+        StakeValueInterp {
+            field_chains: AccumulateArray(JsonStringAccumulate::<64>),
+            field_public_key: PublicKeyInterp {
+                field_type: JsonStringAccumulate::<64>,
+                field_value: JsonStringAccumulate::<64>,
+            },
+            field_service_url: JsonStringAccumulate::<64>,
+            field_value: JsonStringAccumulate::<64>,
+            field_output_address: JsonStringAccumulate::<64>,
+        },
+        mkfn(
+            |o: &StakeValue<
+                Option<ArrayVec<ArrayVec<u8, 64>, 1>>,
+                Option<PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>>,
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+            >,
+             destination: &mut Option<()>| {
+                let chains = o.field_chains.as_ref()?.as_slice();
+                if chains.len() != 1 {
+                    return None;
+                }
+                scroller("Amount", |w| {
+                    let x = get_amount_in_decimals(o.field_value.as_ref().ok_or(ScrollerError)?)
+                        .map_err(|_| ScrollerError)?;
+                    Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
+                })?;
+                scroller_paginated("Public Key", |w| {
+                    let x = o.field_public_key.as_ref().ok_or(ScrollerError)?;
+                    Ok(write!(
+                        w,
+                        "{} ({})",
+                        from_utf8(x.field_value.as_ref().ok_or(ScrollerError)?)?,
+                        from_utf8(x.field_type.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Output Address", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_output_address.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Service URL", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_service_url.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Chain ID(s)", |w| {
+                    Ok(write!(w, "{}", from_utf8(chains[0].as_ref())?)?)
+                })?;
+                *destination = Some(());
+                Some(())
+            },
+        ),
+    ),
 );
-
 type UnstakeMessageAction = impl JsonInterp<UnstakeValueSchema, State: Debug>;
 const UNSTAKE_MESSAGE_ACTION: UnstakeMessageAction = Preaction(
     || scroller("Unstake", |w| Ok(write!(w, "Transaction")?)),
