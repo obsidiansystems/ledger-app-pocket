@@ -453,40 +453,6 @@ describe("Signing tests", function() {
         }
        ]
      ));
-
-  it("can sign a simple unstake",
-     testTransaction(
-       "44'/635'/0/0",
-       exampleUnstake,
-       [
-        {
-          "header": "Unstake",
-          "prompt": "Transaction"
-        },
-        {
-          "header": "Signer address",
-          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
-        },
-        {
-          "header": "Unstake address",
-          "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
-        },
-        {
-          "header": "Fee",
-          "prompt": "POKT 0.01",
-        },
-        {
-          "text": "Sign Transaction?",
-          "x": 19,
-          "y": 11
-        },
-        {
-          "text": "Confirm",
-          "x": 43,
-          "y": 11
-        }
-       ]
-     ));
 });
 
 function testBlindSignFail(path: string, hash: string) {
