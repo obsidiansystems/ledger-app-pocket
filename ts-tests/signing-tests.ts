@@ -356,6 +356,10 @@ describe("Signing tests", function() {
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8bb"
         },
         {
+          "header": "Fee",
+          "prompt": "POKT 0.01",
+        },
+        {
           "text": "Sign Transaction?",
           "x": 19,
           "y": 11
@@ -398,6 +402,10 @@ describe("Signing tests", function() {
            "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
          },
          {
+           "header": "Fee",
+           "prompt": "POKT 0.01",
+         },
+         {
            "text": "Sign Transaction?",
            "x": 19,
            "y": 11
@@ -429,6 +437,10 @@ describe("Signing tests", function() {
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
         },
         {
+          "header": "Fee",
+          "prompt": "POKT 0.01",
+        },
+        {
           "text": "Sign Transaction?",
           "x": 19,
           "y": 11
@@ -457,6 +469,10 @@ describe("Signing tests", function() {
         {
           "header": "Unstake address",
           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+        },
+        {
+          "header": "Fee",
+          "prompt": "POKT 0.01",
         },
         {
           "text": "Sign Transaction?",

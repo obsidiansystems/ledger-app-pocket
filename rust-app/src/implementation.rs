@@ -509,25 +509,14 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                 Option<MessageReturnT>,
                             >,
                              ret: &mut Option<()>| {
-                                let msg_kind = o.field_msg.as_ref()?;
-                                match msg_kind {
-                                    // We expect Fees to be specified for transfer transactions
-                                    MessageReturn::SendMessageReturn(_) => {
-                                        scroller("Fee", |w| {
-                                            let x = get_amount_in_decimals(
-                                                o.field_fee
-                                                    .as_ref()
-                                                    .ok_or(ScrollerError)?
-                                                    .0
-                                                    .as_ref()
-                                                    .ok_or(ScrollerError)?,
-                                            )
-                                            .map_err(|_| ScrollerError)?;
-                                            Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
-                                        })?;
-                                    }
-                                    // Ignore the Fees altogether for other txs, for now
-                                    _ => {}
+                                if let Some(fee) = &o.field_fee {
+                                    scroller("Fee", |w| {
+                                        let x = get_amount_in_decimals(
+                                            fee.0.as_ref().ok_or(ScrollerError)?,
+                                        )
+                                        .map_err(|_| ScrollerError)?;
+                                        Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
+                                    })?;
                                 }
                                 *ret = Some(());
                                 Some(())
