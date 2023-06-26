@@ -215,7 +215,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
     || scroller("Stake", |w| Ok(write!(w, "POKT")?)),
     Action(
         StakeValueInterp {
-            field_chains: AccumulateArray(JsonStringAccumulate::<64>),
+            field_chains: AccumulateArray(JsonStringAccumulate::<4>),
             field_public_key: PublicKeyInterp {
                 field_type: JsonStringAccumulate::<64>,
                 field_value: JsonStringAccumulate::<64>,
@@ -226,7 +226,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
         },
         mkfn(
             |o: &StakeValue<
-                Option<ArrayVec<ArrayVec<u8, 64>, 1>>,
+                Option<ArrayVec<ArrayVec<u8, 4>, 1>>,
                 Option<PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>>,
                 Option<ArrayVec<u8, 64>>,
                 Option<ArrayVec<u8, 64>>,
