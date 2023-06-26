@@ -427,7 +427,7 @@ describe("Signing tests", function() {
        [
         {
           "header": "Unstake",
-          "prompt": "Transaction"
+          "prompt": "POKT"
         },
         {
           "header": "Signer address",

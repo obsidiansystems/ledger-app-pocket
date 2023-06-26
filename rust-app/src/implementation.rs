@@ -276,7 +276,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
 );
 type UnstakeMessageAction = impl JsonInterp<UnstakeValueSchema, State: Debug>;
 const UNSTAKE_MESSAGE_ACTION: UnstakeMessageAction = Preaction(
-    || scroller("Unstake", |w| Ok(write!(w, "Transaction")?)),
+    || scroller("Unstake", |w| Ok(write!(w, "POKT")?)),
     UnstakeValueInterp {
         field_validator_address: show_address::<"Unstake address">(),
         field_signer_address: SIGNER_ADDRESS_ACTION,
