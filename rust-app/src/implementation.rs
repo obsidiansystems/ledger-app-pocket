@@ -245,7 +245,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
                         .map_err(|_| ScrollerError)?;
                     Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
                 })?;
-                scroller_paginated("Public Key", |w| {
+                scroller("Node Operator", |w| {
                     let x = o.field_public_key.as_ref().ok_or(ScrollerError)?;
                     Ok(write!(
                         w,

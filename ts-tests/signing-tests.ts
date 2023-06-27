@@ -391,9 +391,8 @@ describe("Signing tests", function() {
            "prompt": "POKT 1.0",
          },
          {
-           "header": "Public Key",
+           "header": "Node Operator",
            "prompt": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0 (crypto/ed25519_public_key)",
-           "paginate": true,
          },
          {
            "header": "Output Address",
