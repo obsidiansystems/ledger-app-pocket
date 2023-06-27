@@ -237,6 +237,9 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
                 if chains.len() != 1 {
                     return None;
                 }
+                unsafe {
+                    scroller_paginated("From", |w| Ok(write!(w, "{}", SIGNING_ADDRESS)?))?;
+                }
                 scroller("Amount", |w| {
                     let x = get_amount_in_decimals(o.field_value.as_ref().ok_or(ScrollerError)?)
                         .map_err(|_| ScrollerError)?;
@@ -439,6 +442,8 @@ impl Summable<TotalFees> for TotalFees {
     }
 }
 
+static mut SIGNING_ADDRESS: PKH = PKH([0; 20]);
+
 pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8, 128>>;
 
 pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
@@ -447,7 +452,10 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                with_public_keys(path, false, |_, _pkh: &PKH| {
+                with_public_keys(path, false, |_, pkh: &PKH| {
+                    unsafe {
+                        SIGNING_ADDRESS.0 = pkh.0.clone();
+                    }
                     ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());

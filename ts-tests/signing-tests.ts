@@ -382,6 +382,11 @@ describe("Signing tests", function() {
            "prompt": "POKT",
          },
          {
+           "header": "From",
+           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488",
+           "paginate": true,
+         },
+         {
            "header": "Amount",
            "prompt": "POKT 1.0",
          },
