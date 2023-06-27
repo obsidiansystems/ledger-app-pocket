@@ -162,6 +162,33 @@ const exampleStake = {
   }
 };
 
+const exampleStakeMultipleChains = {
+  "chain_id": "testnet",
+  "entropy": "2417661502575469960",
+  "fee": [
+    {
+      "amount": "10000",
+      "denom": "upokt"
+    }
+  ],
+  "memo": "",
+  "msg": {
+    "type": "pos/8.0MsgStake",
+    "value": {
+      "chains": [
+        "0011", "0022", "0033", "0044"
+      ],
+      "public_key": {
+        "type": "crypto/ed25519_public_key",
+        "value": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0"
+      },
+      "service_url": "https://serviceURI.com:3000",
+      "value": "1000000",
+      "output_address":"db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba"
+    }
+  }
+};
+
 const exampleUnstake = {
   "chain_id": "testnet",
   "entropy": "-1105361304155186876",
@@ -403,8 +430,72 @@ describe("Signing tests", function() {
            "prompt": "https://serviceURI.com:3000",
          },
          {
-           "header": "Chain ID(s)",
+           "header": "Chain ID",
            "prompt": "0034",
+         },
+         {
+           "header": "Fee",
+           "prompt": "POKT 0.01",
+         },
+         {
+           "text": "Sign Transaction?",
+           "x": 19,
+           "y": 11
+         },
+         {
+           "text": "Confirm",
+           "x": 43,
+           "y": 11,
+         },
+       ]
+
+     ));
+
+  it("can sign a stake with multiple chains",
+     testTransaction(
+       "44'/635'/0/0",
+       exampleStakeMultipleChains,
+       [
+         {
+           "header": "Stake",
+           "prompt": "POKT",
+         },
+         {
+           "header": "From",
+           "prompt": "c2fc52e0bf6fa0686eb1b7afa8d6ab22d7138488",
+           "paginate": true,
+         },
+         {
+           "header": "Amount",
+           "prompt": "POKT 1.0",
+         },
+         {
+           "header": "Node Operator",
+           "prompt": "6b62a590bab42ea01383d3209fa719254977fb83624fbd6755d102264ba1adc0 (crypto/ed25519_public_key)",
+         },
+         {
+           "header": "Output Address",
+           "prompt": "db987ccfa2a71b2ec9a56c88c77a7cf66d01d8ba",
+         },
+         {
+           "header": "Service URL",
+           "prompt": "https://serviceURI.com:3000",
+         },
+         {
+           "header": "Chain ID (1/4)",
+           "prompt": "0011",
+         },
+         {
+           "header": "Chain ID (2/4)",
+           "prompt": "0022",
+         },
+         {
+           "header": "Chain ID (3/4)",
+           "prompt": "0033",
+         },
+         {
+           "header": "Chain ID (4/4)",
+           "prompt": "0044",
          },
          {
            "header": "Fee",

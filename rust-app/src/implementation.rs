@@ -2,6 +2,7 @@ use crate::crypto_helpers::PKH;
 use crate::interface::*;
 use crate::utils::*;
 use crate::*;
+use arrayvec::ArrayString;
 use arrayvec::ArrayVec;
 use core::fmt::Debug;
 use core::fmt::Write;
@@ -13,7 +14,7 @@ use ledger_parser_combinators::interp_parser::{
     MoveAction, ObserveLengthedBytes, ParseResult, ParserCommon, Preaction, SubInterp, OOB,
 };
 use ledger_parser_combinators::json::Json;
-use ledger_prompts_ui::{final_accept_prompt, ScrollerError};
+use ledger_prompts_ui::{final_accept_prompt, mk_prompt_write, ScrollerError};
 
 use core::str::from_utf8;
 
@@ -226,7 +227,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
         },
         mkfn(
             |o: &StakeValue<
-                Option<ArrayVec<ArrayVec<u8, 4>, 1>>,
+                Option<ArrayVec<ArrayVec<u8, 4>, 4>>,
                 Option<PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>>,
                 Option<ArrayVec<u8, 64>>,
                 Option<ArrayVec<u8, 64>>,
@@ -234,7 +235,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
             >,
              destination: &mut Option<()>| {
                 let chains = o.field_chains.as_ref()?.as_slice();
-                if chains.len() != 1 {
+                if chains.len() == 0 {
                     return None;
                 }
                 unsafe {
@@ -268,9 +269,23 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
                         from_utf8(o.field_service_url.as_ref().ok_or(ScrollerError)?)?
                     )?)
                 })?;
-                scroller("Chain ID(s)", |w| {
-                    Ok(write!(w, "{}", from_utf8(chains[0].as_ref())?)?)
-                })?;
+                for (i, chain) in chains.iter().enumerate() {
+                    let mut buffer: ArrayString<22> = ArrayString::new();
+                    write!(mk_prompt_write(&mut buffer), "Chain ID",).ok()?;
+                    if chains.len() > 1 {
+                        write!(
+                            mk_prompt_write(&mut buffer),
+                            " ({}/{})",
+                            i + 1,
+                            chains.len()
+                        )
+                        .ok()?;
+                    } else {
+                    }
+                    scroller(&buffer, |w| {
+                        Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?)
+                    })?;
+                }
                 *destination = Some(());
                 Some(())
             },
