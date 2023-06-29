@@ -211,6 +211,16 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
     Ok(dec_value)
 }
 
+#[cfg(target_os = "nanos")]
+const STAKE_CHAINS_LIST_SIZE: usize = 4;
+#[cfg(not(target_os = "nanos"))]
+const STAKE_CHAINS_LIST_SIZE: usize = 50;
+
+#[cfg(target_os = "nanos")]
+const STAKE_SERVICE_URL_SIZE: usize = 64;
+#[cfg(not(target_os = "nanos"))]
+const STAKE_SERVICE_URL_SIZE: usize = 256;
+
 type StakeMessageAction = impl JsonInterp<StakeValueSchema, State: Debug>;
 const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
     || scroller("Stake", |w| Ok(write!(w, "POKT")?)),
@@ -221,15 +231,15 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
                 field_type: JsonStringAccumulate::<64>,
                 field_value: JsonStringAccumulate::<64>,
             },
-            field_service_url: JsonStringAccumulate::<64>,
+            field_service_url: JsonStringAccumulate::<STAKE_SERVICE_URL_SIZE>,
             field_value: JsonStringAccumulate::<64>,
             field_output_address: JsonStringAccumulate::<64>,
         },
         mkfn(
             |o: &StakeValue<
-                Option<ArrayVec<ArrayVec<u8, 4>, 4>>,
+                Option<ArrayVec<ArrayVec<u8, 4>, STAKE_CHAINS_LIST_SIZE>>,
                 Option<PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>>,
-                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, STAKE_SERVICE_URL_SIZE>>,
                 Option<ArrayVec<u8, 64>>,
                 Option<ArrayVec<u8, 64>>,
             >,
@@ -280,7 +290,6 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
                             chains.len()
                         )
                         .ok()?;
-                    } else {
                     }
                     scroller(&buffer, |w| {
                         Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?)
