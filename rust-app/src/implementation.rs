@@ -2,6 +2,7 @@ use crate::crypto_helpers::PKH;
 use crate::interface::*;
 use crate::utils::*;
 use crate::*;
+use arrayvec::ArrayString;
 use arrayvec::ArrayVec;
 use core::fmt::Debug;
 use core::fmt::Write;
@@ -13,7 +14,7 @@ use ledger_parser_combinators::interp_parser::{
     MoveAction, ObserveLengthedBytes, ParseResult, ParserCommon, Preaction, SubInterp, OOB,
 };
 use ledger_parser_combinators::json::Json;
-use ledger_prompts_ui::{final_accept_prompt, ScrollerError};
+use ledger_prompts_ui::{final_accept_prompt, mk_prompt_write, ScrollerError};
 
 use core::str::from_utf8;
 
@@ -210,80 +211,99 @@ fn get_amount_in_decimals(amount: &ArrayVec<u8, 64>) -> Result<ArrayVec<u8, 64>,
     Ok(dec_value)
 }
 
-const CHAIN_ACTION: Action<
-    JsonStringAccumulate<64>,
-    fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>,
-> = Action(JsonStringAccumulate::<64>, |chain, destination| {
-    scroller("Chain", |w| {
-        Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?)
-    })?;
-    *destination = Some(());
-    Some(())
-});
+#[cfg(target_os = "nanos")]
+const STAKE_CHAINS_LIST_SIZE: usize = 4;
+#[cfg(not(target_os = "nanos"))]
+const STAKE_CHAINS_LIST_SIZE: usize = 50;
 
-const VALUE_ACTION: Action<
-    JsonStringAccumulate<64>,
-    fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>,
-> = Action(JsonStringAccumulate::<64>, |value, destination| {
-    scroller("Value", |w| {
-        Ok(write!(w, "{}", from_utf8(value.as_ref())?)?)
-    })?;
-    *destination = Some(());
-    Some(())
-});
-
-type PublicKeyAction = impl JsonInterp<PublicKeySchema, State: Debug>;
-const PUBLICKEY_ACTION: PublicKeyAction = Action(
-    PublicKeyInterp {
-        field_type: JsonStringAccumulate::<64>,
-        field_value: JsonStringAccumulate::<64>,
-    },
-    mkfn(
-        |PublicKey {
-             field_type: ty,
-             field_value: val,
-         }: &PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>,
-         destination| {
-            scroller("Public Key", |w| {
-                Ok(write!(
-                    w,
-                    "{} ({})",
-                    from_utf8(val.as_ref().ok_or(ScrollerError)?)?,
-                    from_utf8(ty.as_ref().ok_or(ScrollerError)?)?
-                )?)
-            })?;
-            *destination = Some(());
-            Some(())
-        },
-    ),
-);
-
-const SERVICE_URL_ACTION: Action<
-    JsonStringAccumulate<64>,
-    fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>,
-> = Action(JsonStringAccumulate::<64>, |service_url, destination| {
-    scroller("Service URL", |w| {
-        Ok(write!(w, "{}", from_utf8(service_url)?)?)
-    })?;
-    *destination = Some(());
-    Some(())
-});
+#[cfg(target_os = "nanos")]
+const STAKE_SERVICE_URL_SIZE: usize = 64;
+#[cfg(not(target_os = "nanos"))]
+const STAKE_SERVICE_URL_SIZE: usize = 256;
 
 type StakeMessageAction = impl JsonInterp<StakeValueSchema, State: Debug>;
 const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
-    || scroller("Stake", |w| Ok(write!(w, "Transaction")?)),
-    StakeValueInterp {
-        field_chains: SubInterp(CHAIN_ACTION),
-        field_public_key: PUBLICKEY_ACTION,
-        field_service_url: SERVICE_URL_ACTION,
-        field_value: VALUE_ACTION,
-        field_output_address: show_address::<"Output Address">(),
-    },
+    || scroller("Stake", |w| Ok(write!(w, "POKT")?)),
+    Action(
+        StakeValueInterp {
+            field_chains: AccumulateArray(JsonStringAccumulate::<4>),
+            field_public_key: PublicKeyInterp {
+                field_type: JsonStringAccumulate::<64>,
+                field_value: JsonStringAccumulate::<64>,
+            },
+            field_service_url: JsonStringAccumulate::<STAKE_SERVICE_URL_SIZE>,
+            field_value: JsonStringAccumulate::<64>,
+            field_output_address: JsonStringAccumulate::<64>,
+        },
+        mkfn(
+            |o: &StakeValue<
+                Option<ArrayVec<ArrayVec<u8, 4>, STAKE_CHAINS_LIST_SIZE>>,
+                Option<PublicKey<Option<ArrayVec<u8, 64>>, Option<ArrayVec<u8, 64>>>>,
+                Option<ArrayVec<u8, STAKE_SERVICE_URL_SIZE>>,
+                Option<ArrayVec<u8, 64>>,
+                Option<ArrayVec<u8, 64>>,
+            >,
+             destination: &mut Option<()>| {
+                let chains = o.field_chains.as_ref()?.as_slice();
+                if chains.len() == 0 {
+                    return None;
+                }
+                unsafe {
+                    scroller_paginated("From", |w| Ok(write!(w, "{}", SIGNING_ADDRESS)?))?;
+                }
+                scroller("Amount", |w| {
+                    let x = get_amount_in_decimals(o.field_value.as_ref().ok_or(ScrollerError)?)
+                        .map_err(|_| ScrollerError)?;
+                    Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
+                })?;
+                scroller("Node Operator", |w| {
+                    let x = o.field_public_key.as_ref().ok_or(ScrollerError)?;
+                    Ok(write!(
+                        w,
+                        "{} ({})",
+                        from_utf8(x.field_value.as_ref().ok_or(ScrollerError)?)?,
+                        from_utf8(x.field_type.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Output Address", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_output_address.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                scroller("Service URL", |w| {
+                    Ok(write!(
+                        w,
+                        "{}",
+                        from_utf8(o.field_service_url.as_ref().ok_or(ScrollerError)?)?
+                    )?)
+                })?;
+                for (i, chain) in chains.iter().enumerate() {
+                    let mut buffer: ArrayString<22> = ArrayString::new();
+                    write!(mk_prompt_write(&mut buffer), "Chain ID",).ok()?;
+                    if chains.len() > 1 {
+                        write!(
+                            mk_prompt_write(&mut buffer),
+                            " ({}/{})",
+                            i + 1,
+                            chains.len()
+                        )
+                        .ok()?;
+                    }
+                    scroller(&buffer, |w| {
+                        Ok(write!(w, "{}", from_utf8(chain.as_ref())?)?)
+                    })?;
+                }
+                *destination = Some(());
+                Some(())
+            },
+        ),
+    ),
 );
-
 type UnstakeMessageAction = impl JsonInterp<UnstakeValueSchema, State: Debug>;
 const UNSTAKE_MESSAGE_ACTION: UnstakeMessageAction = Preaction(
-    || scroller("Unstake", |w| Ok(write!(w, "Transaction")?)),
+    || scroller("Unstake", |w| Ok(write!(w, "POKT")?)),
     UnstakeValueInterp {
         field_validator_address: show_address::<"Unstake address">(),
         field_signer_address: SIGNER_ADDRESS_ACTION,
@@ -446,6 +466,8 @@ impl Summable<TotalFees> for TotalFees {
     }
 }
 
+static mut SIGNING_ADDRESS: PKH = PKH([0; 20]);
+
 pub type SignImplT = impl InterpParser<DoubledSignParameters, Returning = ArrayVec<u8, 128>>;
 
 pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
@@ -454,7 +476,10 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
-                with_public_keys(path, false, |_, _pkh: &PKH| {
+                with_public_keys(path, false, |_, pkh: &PKH| {
+                    unsafe {
+                        SIGNING_ADDRESS.0 = pkh.0.clone();
+                    }
                     ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
@@ -509,25 +534,14 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                 Option<MessageReturnT>,
                             >,
                              ret: &mut Option<()>| {
-                                let msg_kind = o.field_msg.as_ref()?;
-                                match msg_kind {
-                                    // We expect Fees to be specified for transfer transactions
-                                    MessageReturn::SendMessageReturn(_) => {
-                                        scroller("Fee", |w| {
-                                            let x = get_amount_in_decimals(
-                                                o.field_fee
-                                                    .as_ref()
-                                                    .ok_or(ScrollerError)?
-                                                    .0
-                                                    .as_ref()
-                                                    .ok_or(ScrollerError)?,
-                                            )
-                                            .map_err(|_| ScrollerError)?;
-                                            Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
-                                        })?;
-                                    }
-                                    // Ignore the Fees altogether for other txs, for now
-                                    _ => {}
+                                if let Some(fee) = &o.field_fee {
+                                    scroller("Fee", |w| {
+                                        let x = get_amount_in_decimals(
+                                            fee.0.as_ref().ok_or(ScrollerError)?,
+                                        )
+                                        .map_err(|_| ScrollerError)?;
+                                        Ok(write!(w, "POKT {}", from_utf8(&x)?)?)
+                                    })?;
                                 }
                                 *ret = Some(());
                                 Some(())
