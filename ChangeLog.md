@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.1.2
+
+- Improvements to stake/unstake prompts.
+- Increase size of service_url and max number of chain_id's for Nano X/S+ 
+
+
 ## 0.1.1
 
 - Show "POKT" in amount and fee prompts.
