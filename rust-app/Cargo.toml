@@ -56,11 +56,17 @@ overflow-checks = false
 opt-level = 3
 overflow-checks = false
 
-[package.metadata.nanos]
+[package.metadata.ledger]
 name = "Pocket"
-api_level = "1"
 path = ["44'/635'"]
 curve = ["ed25519"]
 flags = "0"
+
+[package.metadata.ledger.nanos]
 icon = "pocket.gif"
-icon_small = "pocket-small.gif"
+
+[package.metadata.ledger.nanox]
+icon = "pocket-small.gif"
+
+[package.metadata.ledger.nanosplus]
+icon = "pocket-small.gif"
