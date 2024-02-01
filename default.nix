@@ -274,7 +274,7 @@ rec {
       sha256 = "0h6yl6rv8xkc81gzs1xs1gl6aw5k2xaz63avg0rxbj6nnl7qdr8l";
     };
     patches = [ ./pocket-core.patch ];
-    vendorSha256 = "04rwxmmk2za27ylyxidd499bb2c0ssrishgnfnq7wm6f1b99vbs0";
+    vendorHash = "sha256-RJk7lUkqshH8eKmkx6swDRKXjF1rabHwnZLJppj+Nss=";
     doCheck = false;
   };
   pocket-cli-cmd-renamed = pkgs.linkFarm "pocket-cmd" [
