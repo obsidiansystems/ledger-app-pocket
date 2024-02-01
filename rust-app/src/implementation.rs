@@ -35,7 +35,7 @@ const fn mktfn<A, B, C, D>(
 pub type GetAddressImplT = impl InterpParser<Bip32Key, Returning = ArrayVec<u8, 128>>;
 
 // Need a path of length 5, as make_bip32_path panics with smaller paths
-pub const BIP32_PREFIX: [u32; 2] = nanos_sdk::ecc::make_bip32_path(b"m/44'/635'");
+pub const BIP32_PREFIX: [u32; 2] = ledger_device_sdk::ecc::make_bip32_path(b"m/44'/635'");
 
 pub const fn get_address_impl<const PROMPT: bool>() -> GetAddressImplT {
     Action(

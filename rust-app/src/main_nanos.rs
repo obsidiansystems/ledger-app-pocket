@@ -9,7 +9,7 @@ use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
 use ledger_prompts_ui::{handle_menu_button_event, show_menu, write_scroller};
-use nanos_sdk::io;
+use ledger_device_sdk::io;
 
 #[allow(dead_code)]
 pub fn app_main() {
@@ -73,7 +73,7 @@ pub fn app_main() {
                     ParsersState::NoState => {
                         if let Some(DoExitApp) = handle_menu_button_event(&mut idle_menu, btn) {
                             info!("Exiting app at user direction via root menu");
-                            nanos_sdk::exit_app(0)
+                            ledger_device_sdk::exit_app(0)
                         }
                     }
                     _ => {
@@ -94,7 +94,7 @@ pub fn app_main() {
 }
 
 use arrayvec::ArrayVec;
-use nanos_sdk::io::Reply;
+use ledger_device_sdk::io::Reply;
 
 use ledger_parser_combinators::interp_parser::InterpParser;
 
@@ -401,7 +401,7 @@ fn handle_apdu(
             comm.append(&[LedgerToHostCmd::ResultFinal as u8]);
             comm.append(concat!("Pocket ", env!("CARGO_PKG_VERSION")).as_ref());
         }
-        Ins::Exit => nanos_sdk::exit_app(0),
+        Ins::Exit => ledger_device_sdk::exit_app(0),
     }
     Ok(())
 }
