@@ -27,6 +27,7 @@ pending_review_screen = ["ledger_device_sdk/pending_review_screen"]
 
 [target.'cfg(target_family = "bolos")'.dependencies]
 ledger_device_sdk = "1.4.3"
+ledger_secure_sdk_sys = "1.1.0"
 ledger-prompts-ui = { git = "https://github.com/alamgu/ledger-prompts-ui" }
 
 [target.'cfg(target_family = "bolos")'.dev-dependencies.ledger_device_sdk]
