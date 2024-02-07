@@ -2,8 +2,8 @@
 use core::fmt;
 use ledger_crypto_helpers::common::*;
 use ledger_crypto_helpers::eddsa::*;
-use ledger_secure_sdk_sys::*;
 use ledger_device_sdk::io::SyscallError;
+use ledger_secure_sdk_sys::*;
 
 // Public Key Hash type; update this to match the target chain's notion of an address and how to
 // format one.
@@ -11,7 +11,9 @@ use ledger_device_sdk::io::SyscallError;
 pub struct PKH(pub [u8; 20]);
 
 impl Address<PKH, ledger_device_sdk::ecc::ECPublicKey<65, 'E'>> for PKH {
-    fn get_address(key: &ledger_device_sdk::ecc::ECPublicKey<65, 'E'>) -> Result<Self, SyscallError> {
+    fn get_address(
+        key: &ledger_device_sdk::ecc::ECPublicKey<65, 'E'>,
+    ) -> Result<Self, SyscallError> {
         get_pkh(key)
     }
     fn get_binary_address(&self) -> &[u8] {
