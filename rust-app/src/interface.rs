@@ -1,9 +1,9 @@
 use core::convert::TryFrom;
+use ledger_device_sdk::io::{ApduHeader, StatusWords};
 use ledger_parser_combinators::core_parsers::*;
 use ledger_parser_combinators::define_json_struct;
 use ledger_parser_combinators::endianness::*;
 use ledger_parser_combinators::json::*;
-use ledger_device_sdk::io::{ApduHeader, StatusWords};
 use num_enum::TryFromPrimitive;
 
 // Payload for a public key request
