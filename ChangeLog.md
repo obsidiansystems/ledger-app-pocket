@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.1.3
+
+- Update SDK
+
 ## 0.1.2
 
 - Improvements to stake/unstake prompts.
