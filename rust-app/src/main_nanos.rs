@@ -6,6 +6,7 @@ use crate::settings::*;
 use core::fmt::Write;
 use ledger_crypto_helpers::hasher::{Base64Hash, Hasher, SHA256};
 use ledger_device_sdk::io;
+use ledger_device_sdk::uxapp::{UxEvent, BOLOS_UX_OK};
 use ledger_log::{info, trace};
 use ledger_parser_combinators::interp_parser::call_me_maybe;
 use ledger_parser_combinators::interp_parser::OOB;
@@ -87,6 +88,11 @@ pub fn app_main() {
                 trace!("Button done");
             }
             io::Event::Ticker => {
+                if UxEvent::Event.request() != BOLOS_UX_OK {
+                    UxEvent::block();
+                    // Redisplay application menu here
+                    menu(&states, &idle_menu, &busy_menu);
+                }
                 //trace!("Ignoring ticker event");
             }
         }
