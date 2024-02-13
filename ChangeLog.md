@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.1.3
+
+- Update SDK
+- Allow the app to auto lock for PIN, and show screensaver.
+- Make the settings persist across app restarts.
+
 ## 0.1.2
 
 - Improvements to stake/unstake prompts.
