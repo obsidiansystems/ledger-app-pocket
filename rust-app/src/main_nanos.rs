@@ -220,7 +220,7 @@ fn run_parser_apdu<P: InterpParser<A, Returning = ArrayVec<u8, 128>>, A, const N
     let block: &[u8] = comm.get_data()?;
 
     let host_cmd: HostToLedgerCmd =
-        HostToLedgerCmd::try_from(*block.get(0).ok_or(io::StatusWords::Unknown)?)?;
+        HostToLedgerCmd::try_from(*block.first().ok_or(io::StatusWords::Unknown)?)?;
 
     trace!("Host cmd: {:?}", host_cmd);
     match host_cmd {

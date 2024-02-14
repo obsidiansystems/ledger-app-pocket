@@ -245,7 +245,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
             >,
              destination: &mut Option<()>| {
                 let chains = o.field_chains.as_ref()?.as_slice();
-                if chains.len() == 0 {
+                if chains.is_empty() {
                     return None;
                 }
                 unsafe {
@@ -330,7 +330,7 @@ impl<S> DynamicStackBoxSlot<S> {
     fn new(s: S) -> DynamicStackBoxSlot<S> {
         DynamicStackBoxSlot(s, false)
     }
-    fn to_box(&mut self) -> DynamicStackBox<S> {
+    fn convert_to_box(&mut self) -> DynamicStackBox<S> {
         if self.1 {
             panic!();
         }
@@ -420,15 +420,15 @@ impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>>> ParserCommo
 impl<Q: Default, T, S: DynParser<T, Parameter = DynamicStackBox<Q>> + InterpParser<T>>
     InterpParser<T> for WithStackBoxed<S>
 {
-    fn parse<'a, 'b>(
+    fn parse<'a>(
         &self,
-        state: &'b mut Self::State,
+        state: &mut Self::State,
         chunk: &'a [u8],
         destination: &mut Option<Self::Returning>,
     ) -> ParseResult<'a> {
         if !state.2 {
             self.0
-                .init_param(state.1.to_box(), &mut state.0, destination);
+                .init_param(state.1.convert_to_box(), &mut state.0, destination);
         }
         state.2 = true;
         self.0.parse(&mut state.0, chunk, destination)
@@ -478,7 +478,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
                 with_public_keys(path, false, |_, pkh: &PKH| {
                     unsafe {
-                        SIGNING_ADDRESS.0 = pkh.0.clone();
+                        SIGNING_ADDRESS.0 = pkh.0;
                     }
                     ed.init(path.clone())?;
                     // *destination = Some(ed);
@@ -758,9 +758,9 @@ pub enum MessageState<SendMessageState, UnjailMessageState, StakeMessageState, U
 fn init_str<const N: usize>() -> <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State {
     <JsonStringAccumulate<N> as ParserCommon<JsonString>>::init(&JsonStringAccumulate)
 }
-fn call_str<'a, const N: usize>(
+fn call_str<const N: usize>(
     ss: &mut <JsonStringAccumulate<N> as ParserCommon<JsonString>>::State,
-    token: JsonToken<'a>,
+    token: JsonToken<'_>,
     dest: &mut Option<<JsonStringAccumulate<N> as ParserCommon<JsonString>>::Returning>,
 ) -> Result<(), Option<OOB>> {
     <JsonStringAccumulate<N> as JsonInterp<JsonString>>::parse(
@@ -798,10 +798,10 @@ impl ParserCommon<MessageSchema> for DropInterp {
 }
 
 impl JsonInterp<MessageSchema> for DropInterp {
-    fn parse<'a>(
+    fn parse(
         &self,
         state: &mut Self::State,
-        token: JsonToken<'a>,
+        token: JsonToken<'_>,
         destination: &mut Option<Self::Returning>,
     ) -> Result<(), Option<OOB>> {
         <DropInterp as JsonInterp<JsonAny>>::parse(&DropInterp, state, token, destination)
@@ -850,10 +850,10 @@ where
     <UnstakeInterp as ParserCommon<UnstakeValueSchema>>::State: core::fmt::Debug,
 {
     #[inline(never)]
-    fn parse<'a>(
+    fn parse(
         &self,
         state: &mut Self::State,
-        token: JsonToken<'a>,
+        token: JsonToken<'_>,
         destination: &mut Option<Self::Returning>,
     ) -> Result<(), Option<OOB>> {
         match state {
