@@ -79,6 +79,7 @@ pub const fn get_address_impl<const PROMPT: bool>() -> GetAddressImplT {
 }
 
 //const fn show_address<const TITLE: &'static str>() -> impl JsonInterp<JsonString, State: Debug, Returning: Debug>
+#[allow(clippy::type_complexity)]
 const fn show_address<const TITLE: &'static str>(
 ) -> Action<JsonStringAccumulate<64>, fn(&ArrayVec<u8, 64>, &mut Option<()>) -> Option<()>> {
     Action(
@@ -113,6 +114,7 @@ const SEND_MESSAGE_ACTION: SendMessageAction = Preaction(
             field_from_address: JsonStringAccumulate::<64>,
             field_to_address: JsonStringAccumulate::<64>,
         },
+        #[allow(clippy::type_complexity)]
         mkfn(
             |o: &SendValue<
                 Option<ArrayVec<u8, 64>>,
@@ -235,6 +237,7 @@ const STAKE_MESSAGE_ACTION: StakeMessageAction = Preaction(
             field_value: JsonStringAccumulate::<64>,
             field_output_address: JsonStringAccumulate::<64>,
         },
+        #[allow(clippy::type_complexity)]
         mkfn(
             |o: &StakeValue<
                 Option<ArrayVec<ArrayVec<u8, 4>, STAKE_CHAINS_LIST_SIZE>>,
@@ -525,6 +528,7 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
                                 unstake_message: UNSTAKE_MESSAGE_ACTION,
                             },
                         },
+                        #[allow(clippy::type_complexity)]
                         mkfn(
                             |o: &PoktCmd<
                                 Option<()>,
