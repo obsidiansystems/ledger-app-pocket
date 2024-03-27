@@ -479,11 +479,11 @@ pub const SIGN_IMPL: SignImplT = WithStackBoxed(DynBind(
         // And ask the user if this is the key the meant to sign with:
         mktfn(
             |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
+                ed.init(path.clone(), false).ok()?;
                 with_public_keys(path, false, |_, pkh: &PKH| {
                     unsafe {
                         SIGNING_ADDRESS.0 = pkh.0;
                     }
-                    ed.init(path.clone())?;
                     // *destination = Some(ed);
                     set_from_thunk(destination, || Some(ed)); //  Ed25519::new(path).ok());
                     Ok::<_, SignTempError>(())
@@ -611,8 +611,8 @@ pub static BLIND_SIGN_IMPL: BlindSignImplT = Preaction(
             // And ask the user if this is the key the meant to sign with:
             mktfn(
                 |path: &ArrayVec<u32, 10>, destination, mut ed: DynamicStackBox<Ed25519>| {
+                    ed.init(path.clone(), false).ok()?;
                     with_public_keys(path, false, |_, pkh: &PKH| {
-                        ed.init(path.clone())?;
                         try_option(|| -> Option<()> {
                             scroller("Sign for Address", |w| Ok(write!(w, "{pkh}")?))?;
                             Some(())
